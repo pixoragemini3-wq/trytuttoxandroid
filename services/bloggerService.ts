@@ -1,3 +1,4 @@
+
 import { Article, Category, Deal } from '../types';
 
 /**
@@ -5,23 +6,24 @@ import { Article, Category, Deal } from '../types';
  * ID recuperato dall'URL fornito: 2656476092848745834
  */
 const BLOG_ID: string = '2656476092848745834'; 
-const API_KEY = process.env.API_KEY;
 
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string): Promise<Article[]> => {
-  if (!BLOG_ID || BLOG_ID === 'YOUR_BLOG_ID' || BLOG_ID === '') {
-    console.warn("Blogger Service: BLOG_ID non configurato. Mostro dati demo.");
+  const apiKey = process.env.API_KEY;
+  
+  if (!BLOG_ID || !apiKey) {
+    console.warn("Blogger Service: BLOG_ID o API_KEY mancanti.");
     return [];
   }
 
   try {
-    let url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts?key=${API_KEY}&maxResults=20`;
+    let url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts?key=${apiKey}&maxResults=20`;
     
     if (searchQuery) {
-      url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts/search?q=${encodeURIComponent(searchQuery)}&key=${API_KEY}`;
+      url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts/search?q=${encodeURIComponent(searchQuery)}&key=${apiKey}`;
     }
 
     const response = await fetch(url);
-    if (!response.ok) throw new Error("Errore nel recupero dati");
+    if (!response.ok) throw new Error("Errore nel recupero dati da Blogger");
     
     const data = await response.json();
     if (!data.items) return [];
@@ -44,10 +46,11 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
 };
 
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
-  if (!BLOG_ID || BLOG_ID === 'YOUR_BLOG_ID') return [];
+  const apiKey = process.env.API_KEY;
+  if (!BLOG_ID || !apiKey) return [];
 
   try {
-    const url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts/search?q=label:offertedelgiorno&key=${API_KEY}`;
+    const url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts/search?q=label:offertedelgiorno&key=${apiKey}`;
     const response = await fetch(url);
     if (!response.ok) return [];
     
