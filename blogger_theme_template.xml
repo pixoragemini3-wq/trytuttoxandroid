@@ -8,18 +8,22 @@
 
 <b:skin><![CDATA[
   #navbar-iframe { display: none !important; }
-  body { margin: 0; padding: 0; background: #ffffff; min-height: 100vh; }
+  body { margin: 0; padding: 0; background: #ffffff; }
+  /* Loader stilizzato durante l'inizializzazione */
   #root:empty::before {
-    content: 'TuttoXAndroid sta caricando...';
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-family: sans-serif;
-    color: #e31b23;
-    font-weight: bold;
-    text-transform: uppercase;
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    margin: -25px 0 0 -25px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #e31b23;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
   }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 ]]></b:skin>
 
 <script>
@@ -38,26 +42,27 @@
 }
 </script>
 </head>
-<body>
+<body class='bg-white'>
+  
+  <!-- Questa sezione forza Blogger a caricare i dati dei post anche se usiamo React -->
   <div style='display:none;'>
-    <b:section id='data-feeder' name='Data Feeder' showaddelement='false'>
-      <b:widget id='Blog2' locked='true' title='Blog Posts' type='Blog' visible='true'>
+    <b:section id='content-bridge' name='Dati Blog' showaddelement='false'>
+      <b:widget id='Blog1' locked='true' title='Post del blog' type='Blog' visible='true'>
         <b:includable id='main'>
-          <script>
-            <b:loop values='data:posts' var='post'>
+          <b:loop values='data:posts' var='post'>
+            <script>
               window.bloggerNativePosts.push({
                 id: "<data:post.id/>",
                 title: "<data:post.title.jsEscaped/>",
                 excerpt: "<data:post.snippet.jsEscaped/>",
-                content: "", 
+                content: `<data:post.body.jsEscaped/>`,
                 category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
-                imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if>",
+                imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
                 author: "<data:post.author.name.jsEscaped/>",
-                date: "<data:post.date.date.jsEscaped/>",
-                type: 'standard'
+                date: "<data:post.date.date.jsEscaped/>"
               });
-            </b:loop>
-          </script>
+            </script>
+          </b:loop>
         </b:includable>
       </b:widget>
     </b:section>
@@ -66,9 +71,12 @@
   <div id='root'></div>
   
   <script type='module'>
-    const version = new Date().getTime();
-    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${version}`).catch(err => {
-      console.error("Errore caricamento script:", err);
+    // Caricamento dinamico dello script React
+    const cacheBuster = new Date().getTime();
+    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${cacheBuster}`).catch(err => {
+      console.error("Errore nel caricamento del motore grafico:", err);
+      // Tentativo di ricaricamento automatico in caso di errore di rete
+      setTimeout(() => window.location.reload(), 3000);
     });
   </script>
 </body>
