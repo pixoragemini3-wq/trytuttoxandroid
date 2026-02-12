@@ -4,14 +4,14 @@ import { Article } from '../types';
 
 interface ArticleCardProps {
   article: Article;
+  onClick?: () => void;
 }
 
-const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
+const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
   if (article.type === 'hero') {
     return (
-      <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer h-full min-h-[500px] md:h-[550px]">
-        {/* Immagine */}
+      <div onClick={onClick} className="relative w-full overflow-hidden rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer h-full min-h-[500px] md:h-[550px]">
         <div className="w-full md:w-[60%] h-64 md:h-full overflow-hidden relative bg-gray-50">
           <img 
             src={article.imageUrl} 
@@ -21,7 +21,6 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
           <div className="absolute inset-0 bg-black/5"></div>
         </div>
         
-        {/* Box Rosso - Ottimizzazione TESTO RESPONSIVE */}
         <div className="w-full md:w-[40%] p-6 md:p-8 lg:p-10 bg-editorial-red text-white flex flex-col justify-center overflow-hidden transition-colors duration-500 group-hover:bg-[#a6e076]">
           <div className="space-y-4">
              <h2 className="font-condensed text-3xl sm:text-4xl md:text-3xl lg:text-5xl xl:text-6xl font-black leading-[0.9] uppercase tracking-tighter break-words group-hover:text-black transition-colors">
@@ -50,7 +49,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   // Stile OVERLAY (In Evidenza - Carousel)
   if (article.type === 'horizontal') {
     return (
-      <div className="relative w-full aspect-[4/5] overflow-hidden rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
+      <div onClick={onClick} className="relative w-full aspect-[4/5] overflow-hidden rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
         <img 
           src={article.imageUrl} 
           alt={article.title}
@@ -71,7 +70,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
 
   // Stile STANDARD (Feed)
   return (
-    <div className="flex flex-col group cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white rounded-[2rem] p-4 -m-4">
+    <div onClick={onClick} className="flex flex-col group cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white rounded-[2rem] p-4 -m-4">
       <div className="aspect-video overflow-hidden rounded-[1.5rem] bg-gray-100 mb-5 shadow-sm border border-gray-100">
         <img 
           src={article.imageUrl} 
