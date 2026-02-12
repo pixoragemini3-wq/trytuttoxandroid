@@ -1,12 +1,18 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Initialize Gemini API client using the API key from environment variables.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const getTechAssistantResponse = async (userPrompt: string) => {
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    console.warn("Gemini API Key non trovata in process.env.API_KEY");
+    return "L'assistente AI non è configurato correttamente. Verifica la chiave API.";
+  }
+
   try {
-    // Generate response using gemini-3-flash-preview for text tasks.
+    // Inizializziamo il client solo quando serve davvero
+    const ai = new GoogleGenAI({ apiKey });
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: userPrompt,
@@ -15,7 +21,7 @@ export const getTechAssistantResponse = async (userPrompt: string) => {
         temperature: 0.7,
       },
     });
-    // Directly access the .text property of GenerateContentResponse.
+    
     return response.text;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
