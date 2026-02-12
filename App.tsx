@@ -3,11 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MOCK_ARTICLES, MOCK_DEALS } from './constants';
 import ArticleCard from './components/ArticleCard';
 import MegaMenu from './components/MegaMenu';
-import GeminiAssistant from './components/GeminiAssistant';
-import { Category, Article, Deal } from './types';
+import { Article, Deal } from './types';
 import { fetchBloggerPosts, fetchBloggerDeals } from './services/bloggerService';
 
-// Componente per la scheda che ruota (Flip Card)
 const FlippingSubscriptionCard: React.FC = () => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -303,11 +301,6 @@ const App: React.FC = () => {
                     </div>
                     <div className="space-y-12">
                       <FlippingSubscriptionCard />
-                      <div className="w-full aspect-[4/5] bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center p-10 text-center shadow-sm">
-                         <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-4"><svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
-                         <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] mb-2">Pubblicità</span>
-                         <h5 className="text-gray-200 font-condensed text-3xl font-black uppercase italic leading-none">Banner Adsense</h5>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -382,7 +375,6 @@ const App: React.FC = () => {
            <div className="border-t border-gray-900 pt-16 flex flex-col md:flex-row justify-between items-center gap-8 text-[11px] font-black uppercase tracking-[0.35em] text-gray-800"><span>© 2024 TUTTOXANDROID.COM - Part of XMedia Tech Group Italy</span><span className="text-gray-800 hover:text-gray-400 transition-colors cursor-default">Designed with passion in Italy</span></div>
         </div>
       </footer>
-      <GeminiAssistant />
     </div>
   );
 };
