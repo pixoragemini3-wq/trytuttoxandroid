@@ -1,34 +1,60 @@
-<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE html>
 <html b:css='false' b:defaultmessages='false' b:layoutsVersion='3' b:responsive='true' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/charts/static/components/2.0/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
 <head>
 <meta charset='UTF-8' />
 <meta content='width=device-width, initial-scale=1.0' name='viewport' />
 <title><data:blog.title/></title>
+
 <b:skin><![CDATA[
-#navbar-iframe { display: none !important; }
-body { margin: 0; padding: 0; background: #ffffff; }
+  #navbar-iframe { display: none !important; }
+  body { margin: 0; padding: 0; background: #ffffff; min-height: 100vh; }
+  #root:empty::before {
+    content: 'TuttoXAndroid sta caricando...';
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: sans-serif;
+    color: #e31b23;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
 ]]></b:skin>
+
+<script>
+  // La tua chiave API è stata configurata correttamente
+  window.process = { 
+    env: { 
+      API_KEY: "AIzaSyB_o-W3ZBENx9A8eSEjO2ZdM0ZaQKkkxDE" 
+    } 
+  };
+</script>
+
 <script src='https://cdn.tailwindcss.com'></script>
 <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&amp;family=Saira+Extra+Condensed:wght@700;800&amp;display=swap' rel='stylesheet'/>
+
 <script type='importmap'>
 {
   "imports": {
     "react": "https://esm.sh/react@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.40.0"
   }
 }
 </script>
 </head>
 <body>
-<div id='root'></div>
-<div style='display:none;'>
-<b:section id='main-content' name='Main Posts'>
-<b:widget id='Blog1' locked='true' title='Blog Posts' type='Blog' visible='true'/>
-</b:section>
-</div>
-<script type='module'>
-import '/index.tsx';
-</script>
+  <div id='root'></div>
+  <div style='display:none;'>
+    <b:section id='main-content' name='Main Posts'>
+      <b:widget id='Blog1' locked='true' title='Blog Posts' type='Blog' visible='true'/>
+    </b:section>
+  </div>
+  <script type='module'>
+    const version = new Date().getTime();
+    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${version}`).catch(err => {
+      console.error("Errore caricamento:", err);
+    });
+  </script>
 </body>
 </html>
