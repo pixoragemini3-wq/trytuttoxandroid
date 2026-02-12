@@ -23,38 +23,8 @@
 ]]></b:skin>
 
 <script>
-  window.process = { 
-    env: { 
-      API_KEY: "AIzaSyB_o-W3ZBENx9A8eSEjO2ZdM0ZaQKkkxDE" 
-    } 
-  };
-
-  // INIEZIONE NATIVA: Prendiamo i post direttamente da Blogger XML
   window.bloggerNativePosts = [];
 </script>
-
-<!-- Questo blocco viene eseguito dal server Blogger e riempie la nostra lista post -->
-<b:section id='data-feeder' name='Data Feeder' showaddelement='false'>
-  <b:widget id='Blog2' locked='true' title='Blog Posts' type='Blog' visible='true'>
-    <b:includable id='main'>
-      <script>
-        <b:loop values='data:posts' var='post'>
-          window.bloggerNativePosts.push({
-            id: "<data:post.id/>",
-            title: "<data:post.title/>",
-            excerpt: "<data:post.snippet/>",
-            content: "", // Il contenuto completo lo caricheremo al click
-            category: "<b:if cond='data:post.labels'><data:post.labels[0].name/><b:else/>News</b:if>",
-            imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800</b:if>",
-            author: "<data:post.author.name/>",
-            date: "<data:post.date/>",
-            type: 'standard'
-          });
-        </b:loop>
-      </script>
-    </b:includable>
-  </b:widget>
-</b:section>
 
 <script src='https://cdn.tailwindcss.com'></script>
 <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&amp;family=Saira+Extra+Condensed:wght@700;800&amp;display=swap' rel='stylesheet'/>
@@ -63,18 +33,42 @@
 {
   "imports": {
     "react": "https://esm.sh/react@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "@google/genai": "https://esm.sh/@google/genai@1.40.0"
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
   }
 }
 </script>
 </head>
 <body>
+  <div style='display:none;'>
+    <b:section id='data-feeder' name='Data Feeder' showaddelement='false'>
+      <b:widget id='Blog2' locked='true' title='Blog Posts' type='Blog' visible='true'>
+        <b:includable id='main'>
+          <script>
+            <b:loop values='data:posts' var='post'>
+              window.bloggerNativePosts.push({
+                id: "<data:post.id/>",
+                title: "<data:post.title.jsEscaped/>",
+                excerpt: "<data:post.snippet.jsEscaped/>",
+                content: "", 
+                category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
+                imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if>",
+                author: "<data:post.author.name.jsEscaped/>",
+                date: "<data:post.date.date.jsEscaped/>",
+                type: 'standard'
+              });
+            </b:loop>
+          </script>
+        </b:includable>
+      </b:widget>
+    </b:section>
+  </div>
+
   <div id='root'></div>
+  
   <script type='module'>
     const version = new Date().getTime();
     import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${version}`).catch(err => {
-      console.error("Errore caricamento:", err);
+      console.error("Errore caricamento script:", err);
     });
   </script>
 </body>
