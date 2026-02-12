@@ -1,0 +1,8 @@
+{
+  "name": "Copy of TuttoXAndroid Pro - 12 febbraio",
+  "description": "A high-end, modern React-based tech editorial portal designed for TuttoXAndroid. Features a sleek UI inspired by major tech blogs, categorized news, AI-powered tech assistance, and responsive layouts.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

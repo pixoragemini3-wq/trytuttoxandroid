@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html>
+<html b:css='false' b:defaultmessages='false' b:layoutsVersion='3' b:responsive='true' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/charts/static/components/2.0/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+<meta charset='UTF-8' />
+<meta content='width=device-width, initial-scale=1.0' name='viewport' />
+<title><data:blog.title/></title>
+<b:skin><![CDATA[
+#navbar-iframe { display: none !important; }
+body { margin: 0; padding: 0; background: #ffffff; }
+]]></b:skin>
+<script src='https://cdn.tailwindcss.com'></script>
+<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&amp;family=Saira+Extra+Condensed:wght@700;800&amp;display=swap' rel='stylesheet'/>
+<script type='importmap'>
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+  }
+}
+</script>
+</head>
+<body>
+<div id='root'></div>
+<div style='display:none;'>
+<b:section id='main-content' name='Main Posts'>
+<b:widget id='Blog1' locked='true' title='Blog Posts' type='Blog' visible='true'/>
+</b:section>
+</div>
+<script type='module'>
+import '/index.tsx';
+</script>
+</body>
+</html>
