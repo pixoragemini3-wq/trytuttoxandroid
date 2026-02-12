@@ -65,51 +65,87 @@ const App: React.FC = () => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
+  const [isLoading, setIsLoading] = useState(true);
   
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
   const featuredScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadContent();
-  }, []);
+    
+    // Gestione tasto indietro del browser
+    const handlePopState = () => {
+      checkUrlRouting(articles);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [articles.length]); // Riesegui se gli articoli vengono caricati
+
+  const checkUrlRouting = (allArticles: Article[]) => {
+    const path = window.location.pathname;
+    if (path.endsWith('.html')) {
+      // Siamo su una pagina articolo di Blogger
+      const found = allArticles.find(a => {
+        if (!a.url) return false;
+        return a.url.includes(path);
+      });
+      
+      if (found) {
+        setSelectedArticle(found);
+        setCurrentView('article');
+      }
+    } else {
+      setCurrentView('home');
+      setSelectedArticle(null);
+    }
+  };
 
   const loadContent = async () => {
+    setIsLoading(true);
     const [bloggerPosts, bloggerDeals] = await Promise.all([
       fetchBloggerPosts(),
       fetchBloggerDeals()
     ]);
 
+    // Se non ci sono articoli dal blog (magari perché il feed è vuoto o lento), usa i mock
     const finalArticles = bloggerPosts.length > 0 ? bloggerPosts : MOCK_ARTICLES;
     const finalDeals = bloggerDeals.length > 0 ? bloggerDeals : MOCK_DEALS;
 
     setArticles(finalArticles);
     setDeals(finalDeals);
-    setFilteredArticles(finalArticles.filter(a => a.type === 'standard' || !a.type).slice(0, 6));
+    setFilteredArticles(finalArticles.filter(a => a.type === 'standard' || !a.type).slice(0, 10));
+    
+    // Controlla se l'URL attuale è un articolo
+    checkUrlRouting(finalArticles);
+    
+    setIsLoading(false);
   };
 
   const handleCategoryFilter = (cat: string) => {
     setActiveCategory(cat);
     setCurrentView('home');
     if (cat === 'Tutti') {
-      setFilteredArticles(articles.filter(a => a.type === 'standard' || !a.type).slice(0, 6));
+      setFilteredArticles(articles.filter(a => a.type === 'standard' || !a.type).slice(0, 10));
     } else {
-      setFilteredArticles(articles.filter(a => a.category === cat).slice(0, 6));
+      setFilteredArticles(articles.filter(a => a.category === cat));
     }
   };
 
   const handleArticleClick = (article: Article) => {
+    // Navigazione SPA senza ricaricare la pagina
+    window.history.pushState({}, '', article.url || '#');
     setSelectedArticle(article);
     setCurrentView('article');
     window.scrollTo(0, 0);
   };
 
   const handleNavClick = (nav: string) => {
+    window.history.pushState({}, '', '/');
     setCurrentView('home');
     setActiveCategory(nav);
-    setFilteredArticles(articles.filter(a => a.category === nav).slice(0, 6));
+    setFilteredArticles(articles.filter(a => a.category === nav));
     setActiveMegaMenu(null);
     window.scrollTo(0, 0);
   };
@@ -135,11 +171,12 @@ const App: React.FC = () => {
   };
 
   const goToHome = () => {
+    window.history.pushState({}, '', '/');
     setCurrentView('home');
     setSelectedArticle(null);
     setSearchQuery('');
     setActiveCategory('Tutti');
-    setFilteredArticles(articles.filter(a => a.type === 'standard' || !a.type).slice(0, 6));
+    setFilteredArticles(articles.filter(a => a.type === 'standard' || !a.type).slice(0, 10));
     window.scrollTo(0, 0);
   };
 
@@ -155,6 +192,17 @@ const App: React.FC = () => {
 
   const navCategories = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'Tutorial', 'App & Giochi', 'Wearable', 'Modding'];
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-editorial-red border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="font-condensed text-2xl font-black uppercase tracking-widest text-gray-900 animate-pulse italic">TuttoXAndroid sta arrivando...</p>
+        </div>
+      </div>
+    );
+  }
+
   const topStories = articles
     .filter(a => a.type === 'mini' || a.type === 'standard' || !a.type)
     .slice(0, 10);
@@ -165,7 +213,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-x-hidden font-inter">
-      {/* Top Bar Promozionale */}
       <div className="bg-black/10 backdrop-blur-sm py-1.5 hidden md:block absolute top-0 w-full z-[60]">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-8 text-[9px] font-black uppercase tracking-[0.3em] text-white/50">
           <span className="flex items-center gap-2">
@@ -236,7 +283,7 @@ const App: React.FC = () => {
                   <div className="lg:w-3/4 flex flex-col gap-12">
                     {currentView === 'home' && (
                       <div className="w-full h-[550px]">
-                         {articles.length > 0 && <ArticleCard article={{...articles[0], type: 'hero'}} />}
+                         {articles.length > 0 && <ArticleCard article={{...articles[0], type: 'hero'}} onClick={() => handleArticleClick(articles[0])} />}
                       </div>
                     )}
 
@@ -262,7 +309,7 @@ const App: React.FC = () => {
                       <div ref={featuredScrollRef} className="flex gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory pb-4">
                         {(currentView === 'search' ? filteredArticles : articles.filter(a => a.type === 'standard' || !a.type).slice(0, 6)).map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="w-full md:w-[calc(33.33%-1.35rem)] shrink-0 snap-start">
-                            <ArticleCard article={{...item, type: 'horizontal'}} />
+                            <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                           </div>
                         ))}
                       </div>
@@ -294,7 +341,7 @@ const App: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16">
                         {filteredArticles.map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500">
-                            <ArticleCard article={item} />
+                            <ArticleCard article={item} onClick={() => handleArticleClick(item)} />
                           </div>
                         ))}
                       </div>
