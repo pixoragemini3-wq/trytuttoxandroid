@@ -10,6 +10,7 @@ export interface Article {
   imageUrl: string;
   author: string;
   date: string;
+  url?: string;
   featured?: boolean;
   type?: 'standard' | 'mini' | 'hero' | 'horizontal';
 }
