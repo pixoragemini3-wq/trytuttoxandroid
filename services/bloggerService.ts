@@ -1,67 +1,86 @@
+
 import { Article, Category, Deal } from '../types';
 
-const BLOG_ID: string = '2656476092848745834'; 
+// Usiamo il feed pubblico del dominio
+const BLOG_URL = 'https://fortnite-trucchi.blogspot.com/';
 
+// Fix: The category parameter now uses the updated Category type which includes 'Tutti'
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string): Promise<Article[]> => {
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) return [];
-
   try {
-    let url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts?key=${apiKey}&maxResults=20`;
+    // Se siamo dentro Blogger, potremmo avere i dati già pronti in una variabile globale
+    if ((window as any).bloggerNativePosts) {
+      return (window as any).bloggerNativePosts;
+    }
+
+    let url = `${BLOG_URL}/feeds/posts/default?alt=json&max-results=20`;
+    
+    // Fix: Comparison is now valid as 'Tutti' is part of the Category type definition in types.ts
+    if (category && category !== 'Tutti') {
+      url = `${BLOG_URL}/feeds/posts/default/-/${category}?alt=json&max-results=20`;
+    }
+    
     if (searchQuery) {
-      url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts/search?q=${encodeURIComponent(searchQuery)}&key=${apiKey}`;
+      url = `${BLOG_URL}/feeds/posts/default?q=${encodeURIComponent(searchQuery)}&alt=json`;
     }
 
     const response = await fetch(url);
-    if (!response.ok) return [];
+    if (!response.ok) throw new Error('Feed not found');
     
     const data = await response.json();
-    if (!data.items) return [];
+    const entries = data.feed.entry || [];
 
-    return data.items.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      excerpt: item.content.replace(/<[^>]*>?/gm, '').substring(0, 160) + '...',
-      content: item.content,
-      category: (item.labels && (item.labels[0] as Category)) || 'News',
-      imageUrl: extractImage(item.content),
-      author: item.author.displayName,
-      date: new Date(item.published).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
-      type: 'standard'
-    }));
+    return entries.map((entry: any) => {
+      const id = entry.id.$t.split('post-')[1];
+      const title = entry.title.$t;
+      const content = entry.content ? entry.content.$t : entry.summary.$t;
+      
+      // Estraiamo la prima immagine
+      let imageUrl = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
+      if (entry.media$thumbnail) {
+        imageUrl = entry.media$thumbnail.url.replace('s72-c', 's1600');
+      } else {
+        const m = content.match(/<img[^>]+src="([^">]+)"/);
+        if (m) imageUrl = m[1];
+      }
+
+      return {
+        id,
+        title,
+        excerpt: content.replace(/<[^>]*>?/gm, '').substring(0, 160) + '...',
+        content: content,
+        category: (entry.category && entry.category[0].term) as Category || 'News',
+        imageUrl,
+        author: entry.author[0].name.$t,
+        date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
+        type: 'standard'
+      };
+    });
   } catch (error) {
-    console.error("Blogger API Error:", error);
-    return [];
+    console.error("Errore recupero feed pubblico:", error);
+    return []; // Se fallisce, App.tsx userà i MOCK_ARTICLES come fallback
   }
 };
 
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return [];
-
   try {
-    const url = `https://www.googleapis.com/blogger/v3/blogs/${BLOG_ID}/posts/search?q=label:offertedelgiorno&key=${apiKey}`;
+    const url = `${BLOG_URL}/feeds/posts/default/-/offerte?alt=json&max-results=4`;
     const response = await fetch(url);
     if (!response.ok) return [];
     
     const data = await response.json();
-    return data.items ? data.items.map((item: any) => ({
-        id: item.id,
-        product: item.title,
-        oldPrice: 'N/D',
-        newPrice: 'Vedi Offerta',
-        saveAmount: "OFFERTA",
-        link: item.url,
-        imageUrl: extractImage(item.content),
-        brandColor: 'bg-gray-50'
-    })) : [];
+    const entries = data.feed.entry || [];
+
+    return entries.map((entry: any) => ({
+      id: entry.id.$t,
+      product: entry.title.$t,
+      oldPrice: 'N/D',
+      newPrice: 'Vedi Offerta',
+      saveAmount: "OFFERTA",
+      link: entry.link.find((l: any) => l.rel === 'alternate').href,
+      imageUrl: entry.media$thumbnail ? entry.media$thumbnail.url.replace('s72-c', 's1600') : '',
+      brandColor: 'bg-gray-50'
+    }));
   } catch (error) {
     return [];
   }
-};
-
-const extractImage = (content: string): string => {
-  const m = content.match(/<img[^>]+src="([^">]+)"/);
-  return m ? m[1] : 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
 };
