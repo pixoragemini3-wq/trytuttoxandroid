@@ -16,21 +16,15 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           p.title.toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
-      if (filtered.length > 0) return filtered;
+      return filtered;
     }
 
-    // 2. Fallback dinamico al feed JSON (usa percorso relativo per evitare problemi CORS)
+    // 2. Fallback al feed JSON relativo
     let feedPath = '/feeds/posts/default?alt=json&max-results=50';
-    
     if (category && category !== 'Tutti') {
       feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
     }
     
-    if (searchQuery) {
-      feedPath = `/feeds/posts/default?q=${encodeURIComponent(searchQuery)}&alt=json`;
-    }
-
-    console.log("Tentativo recupero feed da:", feedPath);
     const response = await fetch(feedPath);
     if (!response.ok) throw new Error('Risposta feed non valida');
     
@@ -41,34 +35,31 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       const id = entry.id.$t.split('post-')[1];
       const title = entry.title.$t;
       const content = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
+      const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
       
-      // Estrazione immagine: Miniatura -> Immagine nel corpo -> Placeholder
       let imageUrl = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
       if (entry.media$thumbnail) {
-        // Converte miniatura piccola in immagine grande
         imageUrl = entry.media$thumbnail.url.replace(/\/s[0-9]+(-c)?\//, '/s1600/');
       } else {
         const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
         if (imgMatch) imageUrl = imgMatch[1];
       }
 
-      // Estrazione categoria
-      const cat = (entry.category && entry.category[0].term) || 'News';
-
       return {
         id,
         title,
         excerpt: content.replace(/<[^>]*>?/gm, '').substring(0, 180).trim() + '...',
         content: content,
-        category: cat as Category,
+        category: (entry.category && entry.category[0].term) || 'News',
         imageUrl,
         author: entry.author[0].name.$t,
         date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
+        url: postUrl,
         type: 'standard'
       };
     });
   } catch (error) {
-    console.error("Errore critico durante il caricamento degli articoli:", error);
+    console.error("Errore caricamento articoli:", error);
     return [];
   }
 };
