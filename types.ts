@@ -1,5 +1,5 @@
 
-export type Category = 'News' | 'Recensioni' | 'Offerte' | 'Guide' | 'Tutorial' | 'App & Giochi' | 'Smartphone' | 'Wearable' | 'Modding';
+export type Category = 'Tutti' | 'News' | 'Recensioni' | 'Offerte' | 'Guide' | 'Tutorial' | 'App & Giochi' | 'Smartphone' | 'Wearable' | 'Modding';
 
 export interface Article {
   id: string;
