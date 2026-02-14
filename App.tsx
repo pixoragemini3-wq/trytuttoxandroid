@@ -5,6 +5,8 @@ import ArticleCard from './components/ArticleCard';
 import MegaMenu from './components/MegaMenu';
 import { Article, Deal } from './types';
 import { fetchBloggerPosts, fetchBloggerDeals } from './services/bloggerService';
+import GeminiAssistant from './components/GeminiAssistant';
+import SocialSidebar from './components/SocialSidebar';
 
 const FlippingSubscriptionCard: React.FC = () => {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -38,7 +40,7 @@ const FlippingSubscriptionCard: React.FC = () => {
                 className="w-full bg-[#111827] border-[3px] border-white rounded-2xl px-6 py-5 text-base text-white placeholder:text-gray-500 focus:outline-none transition-all font-medium" 
               />
             </div>
-            <button className="w-full bg-editorial-red text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.15em] hover:bg-white hover:text-black transition-all shadow-xl active:scale-95">
+            <button className="w-full bg-[#e31b23] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.15em] hover:bg-white hover:text-black transition-all shadow-xl active:scale-95">
               ISCRIVITI
             </button>
           </form>
@@ -72,56 +74,57 @@ const App: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const featuredScrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    loadContent();
-    
-    // Gestione tasto indietro del browser
-    const handlePopState = () => {
-      checkUrlRouting(articles);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [articles.length]); // Riesegui se gli articoli vengono caricati
+  const LOGO_URL = "https://i.imgur.com/l7YwbQe.png";
 
   const checkUrlRouting = (allArticles: Article[]) => {
     const path = window.location.pathname;
     if (path.endsWith('.html')) {
-      // Siamo su una pagina articolo di Blogger
       const found = allArticles.find(a => {
         if (!a.url) return false;
-        return a.url.includes(path);
+        return a.url.includes(path) || path.includes(a.url.replace(/https?:\/\/[^\/]+/, ''));
       });
       
       if (found) {
         setSelectedArticle(found);
         setCurrentView('article');
+        return true;
       }
     } else {
       setCurrentView('home');
       setSelectedArticle(null);
     }
+    return false;
   };
 
   const loadContent = async () => {
     setIsLoading(true);
-    const [bloggerPosts, bloggerDeals] = await Promise.all([
-      fetchBloggerPosts(),
-      fetchBloggerDeals()
-    ]);
+    try {
+      const [bloggerPosts, bloggerDeals] = await Promise.all([
+        fetchBloggerPosts(),
+        fetchBloggerDeals()
+      ]);
 
-    // Se non ci sono articoli dal blog (magari perché il feed è vuoto o lento), usa i mock
-    const finalArticles = bloggerPosts.length > 0 ? bloggerPosts : MOCK_ARTICLES;
-    const finalDeals = bloggerDeals.length > 0 ? bloggerDeals : MOCK_DEALS;
+      const finalArticles = bloggerPosts.length > 0 ? bloggerPosts : MOCK_ARTICLES;
+      const finalDeals = bloggerDeals.length > 0 ? bloggerDeals : MOCK_DEALS;
 
-    setArticles(finalArticles);
-    setDeals(finalDeals);
-    setFilteredArticles(finalArticles.filter(a => a.type === 'standard' || !a.type).slice(0, 10));
-    
-    // Controlla se l'URL attuale è un articolo
-    checkUrlRouting(finalArticles);
-    
-    setIsLoading(false);
+      setArticles(finalArticles);
+      setDeals(finalDeals);
+      setFilteredArticles(finalArticles.filter(a => a.type === 'standard' || !a.type).slice(0, 10));
+      
+      checkUrlRouting(finalArticles);
+    } catch (error) {
+      console.error("Errore caricamento contenuti:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadContent();
+    const handlePopState = () => checkUrlRouting(articles);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [articles.length]);
 
   const handleCategoryFilter = (cat: string) => {
     setActiveCategory(cat);
@@ -134,7 +137,6 @@ const App: React.FC = () => {
   };
 
   const handleArticleClick = (article: Article) => {
-    // Navigazione SPA senza ricaricare la pagina
     window.history.pushState({}, '', article.url || '#');
     setSelectedArticle(article);
     setCurrentView('article');
@@ -196,8 +198,9 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-editorial-red border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="font-condensed text-2xl font-black uppercase tracking-widest text-gray-900 animate-pulse italic">TuttoXAndroid sta arrivando...</p>
+          <img src={LOGO_URL} alt="Loading..." className="h-64 mb-8 animate-pulse" />
+          <div className="w-12 h-12 border-4 border-[#e31b23] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="font-condensed text-2xl font-black uppercase tracking-widest text-gray-900 italic">Sincronizzazione in corso...</p>
         </div>
       </div>
     );
@@ -216,19 +219,19 @@ const App: React.FC = () => {
       <div className="bg-black/10 backdrop-blur-sm py-1.5 hidden md:block absolute top-0 w-full z-[60]">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-8 text-[9px] font-black uppercase tracking-[0.3em] text-white/50">
           <span className="flex items-center gap-2">
-            <span className="w-1 h-1 bg-editorial-red rounded-full animate-pulse"></span>
+            <span className="w-1 h-1 bg-[#e31b23] rounded-full animate-pulse"></span>
             SAMSUNG GALAXY S25 ULTRA: SCOPRI TUTTE LE NOVITÀ
           </span>
           <span className="text-white/10">|</span>
-          <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener" className="text-editorial-red hover:text-[#c0ff8c] transition-colors cursor-pointer">TELEGRAM OFFERTE &rarr;</a>
+          <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener" className="text-[#e31b23] hover:text-[#c0ff8c] transition-colors cursor-pointer">TELEGRAM OFFERTE &rarr;</a>
         </div>
       </div>
 
       <header className="bg-black text-white relative shadow-2xl z-50 overflow-visible">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20 md:h-28 mt-6 md:mt-8 relative">
-            <div className={`cursor-pointer flex items-center h-full relative z-10 transition-opacity duration-300 ${isSearchVisible ? 'opacity-20 md:opacity-100' : 'opacity-100'}`} onClick={goToHome}>
-              <img src="https://i.imgur.com/x4XqlOk.png" alt="Logo" className="h-28 md:h-36 w-auto object-contain transition-transform duration-300 hover:scale-105" />
+          <div className="flex justify-between items-center h-24 md:h-48 mt-6 md:mt-12 relative">
+            <div className={`cursor-pointer flex items-center h-full relative z-10 transition-all duration-300 ${isSearchVisible ? 'opacity-20 md:opacity-100' : 'opacity-100'}`} onClick={goToHome}>
+              <img src={LOGO_URL} alt="TuttoXAndroid" className="h-48 md:h-80 w-auto object-contain transition-transform duration-300 hover:scale-105" />
             </div>
 
             <nav className={`hidden lg:flex items-center gap-10 transition-all duration-300 ${isSearchVisible ? 'opacity-0 invisible translate-y-2' : 'opacity-100 visible translate-y-0'}`}>
@@ -243,8 +246,8 @@ const App: React.FC = () => {
             <div className={`absolute inset-0 flex items-center justify-end pointer-events-none transition-all duration-300 ${isSearchVisible ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
               <div className="w-full max-w-3xl pointer-events-auto bg-black h-full flex items-center justify-end pr-4 md:pr-0">
                 <form onSubmit={handleSearchSubmit} className="flex-1 relative flex items-center mr-4">
-                  <input ref={searchInputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cerca..." className="w-full bg-transparent border-b border-editorial-red text-xl md:text-2xl font-condensed font-black uppercase tracking-tight py-2 focus:outline-none placeholder:text-gray-700 text-white" />
-                  <button type="submit" className="absolute right-0 p-2 text-editorial-red hover:text-[#c0ff8c] hover:scale-110 transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
+                  <input ref={searchInputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cerca nel portale..." className="w-full bg-transparent border-b-2 border-[#e31b23] text-xl md:text-2xl font-condensed font-black uppercase tracking-tight py-2 focus:outline-none placeholder:text-gray-700 text-white" />
+                  <button type="submit" className="absolute right-0 p-2 text-[#e31b23] hover:text-[#c0ff8c] hover:scale-110 transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
                 </form>
                 <button onClick={toggleSearch} className="p-2 text-gray-500 hover:text-white transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
@@ -327,9 +330,9 @@ const App: React.FC = () => {
                      <div className="flex-1 md:max-w-2xl scroll-fade-right">
                         <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-1">
                           {['Tutti', ...navCategories].map(cat => (
-                            <button key={cat} onClick={() => handleCategoryFilter(cat)} className={`text-[11px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all relative pb-2 group ${activeCategory === cat ? 'text-editorial-red' : 'text-gray-400 hover:text-[#a6e076]'}`}>
+                            <button key={cat} onClick={() => handleCategoryFilter(cat)} className={`text-[11px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all relative pb-2 group ${activeCategory === cat ? 'text-[#e31b23]' : 'text-gray-400 hover:text-[#a6e076]'}`}>
                               {cat}
-                              <span className={`absolute bottom-0 left-0 h-0.5 bg-editorial-red transition-all duration-300 ${activeCategory === cat ? 'w-full' : 'w-0 group-hover:w-1/2 group-hover:bg-[#a6e076]'}`}></span>
+                              <span className={`absolute bottom-0 left-0 h-0.5 bg-[#e31b23] transition-all duration-300 ${activeCategory === cat ? 'w-full' : 'w-0 group-hover:w-1/2 group-hover:bg-[#a6e076]'}`}></span>
                             </button>
                           ))}
                         </div>
@@ -348,6 +351,7 @@ const App: React.FC = () => {
                     </div>
                     <div className="space-y-12">
                       <FlippingSubscriptionCard />
+                      <SocialSidebar />
                     </div>
                   </div>
                 </div>
@@ -372,7 +376,7 @@ const App: React.FC = () => {
                               <span className="text-4xl font-black text-gray-900 tracking-tighter">{deal.newPrice}</span>
                               <span className="text-base text-gray-300 line-through font-bold">{deal.oldPrice}</span>
                             </div>
-                            <span className="inline-block bg-red-50 text-editorial-red text-[11px] font-black uppercase px-8 py-3.5 rounded-full tracking-widest border border-red-100 group-hover:bg-[#c0ff8c] group-hover:text-black group-hover:border-transparent transition-all">{deal.saveAmount}</span>
+                            <span className="inline-block bg-red-50 text-[#e31b23] text-[11px] font-black uppercase px-8 py-3.5 rounded-full tracking-widest border border-red-100 group-hover:bg-[#c0ff8c] group-hover:text-black group-hover:border-transparent transition-all">{deal.saveAmount}</span>
                           </div>
                         </div>
                       </a>
@@ -388,7 +392,7 @@ const App: React.FC = () => {
           <div className="bg-white">
             <article className="max-w-4xl mx-auto px-4 py-12 md:py-16 animate-in fade-in duration-700">
                <div className="mb-6 flex items-center gap-6">
-                 <span className="bg-editorial-red text-white px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl">{selectedArticle.category}</span>
+                 <span className="bg-[#e31b23] text-white px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl">{selectedArticle.category}</span>
                  <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">{selectedArticle.date}</span>
                </div>
                <h1 className="font-condensed text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black uppercase mb-8 leading-tight text-gray-900 tracking-tight">{selectedArticle.title}</h1>
@@ -402,7 +406,7 @@ const App: React.FC = () => {
                </div>
                <div className="mt-20 pt-12 border-t border-gray-100">
                   <h3 className="font-condensed text-4xl font-black uppercase italic text-gray-900 mb-10 tracking-tight">Articoli Suggeriti</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">{suggestedArticles.map(item => (<div key={item.id} onClick={() => handleArticleClick(item)} className="cursor-pointer group flex gap-5 items-center"><div className="w-32 h-24 shrink-0 overflow-hidden rounded-2xl bg-gray-100 shadow-sm"><img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" /></div><div><span className="text-editorial-red text-[8px] font-black uppercase tracking-widest mb-1 block group-hover:text-[#a6e076] transition-colors">{item.category}</span><h4 className="text-sm font-bold leading-tight group-hover:text-[#a6e076] transition-colors text-gray-900 line-clamp-2 uppercase">{item.title}</h4></div></div>))}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">{suggestedArticles.map(item => (<div key={item.id} onClick={() => handleArticleClick(item)} className="cursor-pointer group flex gap-5 items-center"><div className="w-32 h-24 shrink-0 overflow-hidden rounded-2xl bg-gray-100 shadow-sm"><img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" /></div><div><span className="text-[#e31b23] text-[8px] font-black uppercase tracking-widest mb-1 block group-hover:text-[#a6e076] transition-colors">{item.category}</span><h4 className="text-sm font-bold leading-tight group-hover:text-[#a6e076] transition-colors text-gray-900 line-clamp-2 uppercase">{item.title}</h4></div></div>))}</div>
                </div>
                <div className="mt-24 border-t border-gray-100 pt-12 flex justify-center"><button onClick={goToHome} className="bg-black text-white px-16 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-[#c0ff8c] hover:text-black transition-all shadow-2xl active:scale-95">&larr; Torna alla Home</button></div>
             </article>
@@ -413,15 +417,20 @@ const App: React.FC = () => {
       <footer className="bg-black text-white pt-32 pb-16">
         <div className="max-w-7xl mx-auto px-4">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-24 mb-24">
-              <div className="col-span-1"><img src="https://i.imgur.com/x4XqlOk.png" className="h-24 w-auto mb-10 mx-auto md:mx-0" alt="Logo" /><p className="text-gray-500 font-bold text-base leading-relaxed max-w-sm text-center md:text-left">Dal 2012, il tuo punto di riferimento quotidiano per l'universo Android, la tecnologia e le migliori offerte online.</p></div>
+              <div className="col-span-1">
+                <img src={LOGO_URL} className="h-64 w-auto mb-10 mx-auto md:mx-0" alt="TuttoXAndroid" />
+                <p className="text-gray-500 font-bold text-base leading-relaxed max-w-sm text-center md:text-left">Dal 2012, il tuo punto di riferimento quotidiano per l'universo Android, la tecnologia e le migliori offerte online.</p>
+              </div>
               <div className="col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-12">
-                 <div><h5 className="font-black uppercase text-[11px] tracking-[0.2em] text-editorial-red mb-10 underline underline-offset-[12px] decoration-2">Contenuti</h5><ul className="space-y-5 text-sm font-black text-gray-600 uppercase tracking-widest"><li onClick={() => handleNavClick('News')} className="hover:text-[#c0ff8c] cursor-pointer transition-colors">News Android</li><li onClick={() => handleNavClick('Recensioni')} className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Recensioni Smartphone</li><li onClick={() => handleNavClick('Offerte')} className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Offerte Tech</li></ul></div>
-                 <div><h5 className="font-black uppercase text-[11px] tracking-[0.2em] text-editorial-red mb-10 underline underline-offset-[12px] decoration-2">Community</h5><ul className="space-y-5 text-sm font-black text-gray-600 uppercase tracking-widest"><li className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Canale Telegram</li><li className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Instagram</li><li className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Canale YouTube</li></ul></div>
+                 <div><h5 className="font-black uppercase text-[11px] tracking-[0.2em] text-[#e31b23] mb-10 underline underline-offset-[12px] decoration-2">Contenuti</h5><ul className="space-y-5 text-sm font-black text-gray-600 uppercase tracking-widest"><li onClick={() => handleNavClick('News')} className="hover:text-[#c0ff8c] cursor-pointer transition-colors">News Android</li><li onClick={() => handleNavClick('Recensioni')} className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Recensioni Smartphone</li><li onClick={() => handleNavClick('Offerte')} className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Offerte Tech</li></ul></div>
+                 <div><h5 className="font-black uppercase text-[11px] tracking-[0.2em] text-[#e31b23] mb-10 underline underline-offset-[12px] decoration-2">Community</h5><ul className="space-y-5 text-sm font-black text-gray-600 uppercase tracking-widest"><li className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Canale Telegram</li><li className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Instagram</li><li className="hover:text-[#c0ff8c] cursor-pointer transition-colors">Canale YouTube</li></ul></div>
               </div>
            </div>
-           <div className="border-t border-gray-900 pt-16 flex flex-col md:flex-row justify-between items-center gap-8 text-[11px] font-black uppercase tracking-[0.35em] text-gray-800"><span>© 2024 TUTTOXANDROID.COM - Part of XMedia Tech Group Italy</span><span className="text-gray-800 hover:text-gray-400 transition-colors cursor-default">Designed with passion in Italy</span></div>
+           <div className="border-t border-gray-900 pt-16 flex flex-col md:flex-row justify-between items-center gap-8 text-[11px] font-black uppercase tracking-[0.35em] text-gray-800"><span>© 2025 TUTTOXANDROID.COM - Part of XMedia Tech Group Italy</span><span className="text-gray-800 hover:text-gray-400 transition-colors cursor-default">Professional Tech Editorial Portal</span></div>
         </div>
       </footer>
+      
+      <GeminiAssistant />
     </div>
   );
 };

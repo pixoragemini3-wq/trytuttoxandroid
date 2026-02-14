@@ -8,7 +8,7 @@
 
 <b:skin><![CDATA[
   #navbar-iframe { display: none !important; }
-  body { margin: 0; padding: 0; background: #ffffff; }
+  body { margin: 0; padding: 0; background: #ffffff; -webkit-font-smoothing: antialiased; }
   #root:empty::before {
     content: '';
     position: fixed;
@@ -30,13 +30,13 @@
 </script>
 
 <script src='https://cdn.tailwindcss.com'></script>
-<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&amp;family=Saira+Extra+Condensed:wght@700;800&amp;display=swap' rel='stylesheet'/>
+<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=Saira+Extra+Condensed:wght@700;800;900&amp;display=swap' rel='stylesheet'/>
 
 <script type='importmap'>
 {
   "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+    "react": "https://esm.sh/react@19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@19.2.4/client"
   }
 }
 </script>
