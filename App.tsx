@@ -7,6 +7,8 @@ import { Article, Deal } from './types';
 import { fetchBloggerPosts, fetchBloggerDeals } from './services/bloggerService';
 import GeminiAssistant from './components/GeminiAssistant';
 import SocialSidebar from './components/SocialSidebar';
+import SocialSection from './components/SocialSection';
+import TopStoriesMobile from './components/TopStoriesMobile';
 
 const FlippingSubscriptionCard: React.FC = () => {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -231,7 +233,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-24 md:h-48 mt-6 md:mt-12 relative">
             <div className={`cursor-pointer flex items-center h-full relative z-10 transition-all duration-300 ${isSearchVisible ? 'opacity-20 md:opacity-100' : 'opacity-100'}`} onClick={goToHome}>
-              <img src={LOGO_URL} alt="TuttoXAndroid" className="h-48 md:h-80 w-auto object-contain transition-transform duration-300 hover:scale-105" />
+              <img src={LOGO_URL} alt="TuttoXAndroid" className="h-40 md:h-80 w-auto object-contain transition-transform duration-300 hover:scale-105" />
             </div>
 
             <nav className={`hidden lg:flex items-center gap-10 transition-all duration-300 ${isSearchVisible ? 'opacity-0 invisible translate-y-2' : 'opacity-100 visible translate-y-0'}`}>
@@ -266,10 +268,16 @@ const App: React.FC = () => {
       <main className="flex-1">
         {(currentView === 'home' || currentView === 'search') && (
           <>
-            <section className="py-12 bg-white">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="flex flex-col lg:flex-row gap-10">
-                  <div className="lg:w-1/4">
+            {/* Top Stories Mobile - "Un pezzetto giallo" compatto */}
+            {currentView === 'home' && (
+              <TopStoriesMobile articles={topStories} onArticleClick={handleArticleClick} />
+            )}
+
+            <section className="py-0 lg:py-12 bg-white">
+              <div className="max-w-7xl mx-auto px-0 lg:px-4">
+                <div className="flex flex-col lg:flex-row gap-0 lg:gap-10">
+                  {/* Sidebar Desktop - Nascosta su mobile */}
+                  <div className="hidden lg:block lg:w-1/4">
                     <div className="bg-yellow-400 p-8 rounded-[2.5rem] shadow-sm h-full flex flex-col min-h-[600px]">
                       <h2 className="font-condensed text-4xl font-black mb-8 leading-none text-gray-900 uppercase italic">Top Stories</h2>
                       <div className="space-y-6 flex-1">
@@ -283,35 +291,28 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="lg:w-3/4 flex flex-col gap-12">
+                  <div className="w-full lg:w-3/4 flex flex-col gap-8 lg:gap-12">
+                    {/* Hero Article - La notizia principale subito visibile */}
                     {currentView === 'home' && (
-                      <div className="w-full h-[550px]">
+                      <div className="w-full h-[450px] md:h-[550px]">
                          {articles.length > 0 && <ArticleCard article={{...articles[0], type: 'hero'}} onClick={() => handleArticleClick(articles[0])} />}
                       </div>
                     )}
 
-                    <div className="group/section relative">
-                      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
+                    {/* Featured / In Evidenza - Scroll orizzontale (2-3 carte visibili parzialmente) */}
+                    <div className="group/section relative px-4 lg:px-0">
+                      <div className="flex items-end justify-between mb-6 lg:mb-8">
                          <div>
-                            <h3 className="font-condensed text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none mb-3">
+                            <h3 className="font-condensed text-3xl lg:text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none mb-3">
                               {currentView === 'search' ? `Trovati ${filteredArticles.length} articoli` : 'In Evidenza'}
                             </h3>
-                            <div className="sparkle-line rounded-full w-48 group-hover/section:w-full transition-all duration-700"></div>
-                         </div>
-                         
-                         <div className="flex gap-2 mt-4 md:mt-0">
-                            <button onClick={() => scrollFeatured('left')} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 hover:bg-[#c0ff8c] transition-all active:scale-90">
-                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7"/></svg>
-                            </button>
-                            <button onClick={() => scrollFeatured('right')} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 hover:bg-[#c0ff8c] transition-all active:scale-90">
-                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"/></svg>
-                            </button>
+                            <div className="sparkle-line rounded-full w-32 lg:w-48 group-hover/section:w-full transition-all duration-700"></div>
                          </div>
                       </div>
                       
-                      <div ref={featuredScrollRef} className="flex gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory pb-4">
+                      <div ref={featuredScrollRef} className="flex gap-4 lg:gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory pb-4">
                         {(currentView === 'search' ? filteredArticles : articles.filter(a => a.type === 'standard' || !a.type).slice(0, 6)).map(item => (
-                          <div key={item.id} onClick={() => handleArticleClick(item)} className="w-full md:w-[calc(33.33%-1.35rem)] shrink-0 snap-start">
+                          <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[82%] md:w-[calc(33.33%-1.35rem)] shrink-0 snap-start">
                             <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                           </div>
                         ))}
@@ -322,11 +323,18 @@ const App: React.FC = () => {
               </div>
             </section>
 
+            {/* Social Section "Social Hub" - Prima delle Ultime Notizie su mobile, 6 canali senza scorrere */}
+            {currentView === 'home' && (
+              <div className="lg:hidden">
+                <SocialSection />
+              </div>
+            )}
+
             {currentView === 'home' && (
               <section className="py-12 bg-gray-50/30 border-t border-gray-100">
                 <div className="max-w-7xl mx-auto px-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 border-b border-gray-100 pb-6">
-                     <h3 className="font-condensed text-5xl font-black uppercase text-gray-900 italic leading-none">Ultime Notizie</h3>
+                     <h3 className="font-condensed text-4xl lg:text-5xl font-black uppercase text-gray-900 italic leading-none">Ultime Notizie</h3>
                      <div className="flex-1 md:max-w-2xl scroll-fade-right">
                         <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-1">
                           {['Tutti', ...navCategories].map(cat => (
@@ -341,7 +349,7 @@ const App: React.FC = () => {
                   
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
                     <div className="lg:col-span-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12 lg:gap-y-16">
                         {filteredArticles.map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500">
                             <ArticleCard article={item} onClick={() => handleArticleClick(item)} />
@@ -358,58 +366,86 @@ const App: React.FC = () => {
               </section>
             )}
 
-            {currentView === 'home' && deals.length > 0 && (
-              <section className="py-24 bg-white border-t border-gray-100">
-                <div className="max-w-7xl mx-auto px-4">
-                  <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-                    <div><h2 className="font-condensed text-7xl font-black uppercase tracking-tight text-gray-900 italic leading-none">Offerte del Giorno</h2></div>
-                    <button className="text-[11px] font-black uppercase tracking-[0.2em] bg-black text-white px-10 py-4 rounded-full hover:bg-[#c0ff8c] hover:text-black transition-all shadow-xl">Esplora Tutte &rarr;</button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-                    {deals.map(deal => (
-                      <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all group flex flex-col hover:-translate-y-4 duration-500">
-                        <div className={`h-64 flex items-center justify-center p-12 ${deal.brandColor || 'bg-gray-50'}`}><img src={deal.imageUrl} alt={deal.product} className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-1000" /></div>
-                        <div className="p-10 text-center flex-1 flex flex-col">
-                          <h4 className="font-black text-xl text-gray-900 mb-6 leading-tight group-hover:text-[#a6e076] transition-colors">{deal.product}</h4>
-                          <div className="mt-auto">
-                            <div className="flex items-center justify-center gap-4 mb-6">
-                              <span className="text-4xl font-black text-gray-900 tracking-tighter">{deal.newPrice}</span>
-                              <span className="text-base text-gray-300 line-through font-bold">{deal.oldPrice}</span>
-                            </div>
-                            <span className="inline-block bg-red-50 text-[#e31b23] text-[11px] font-black uppercase px-8 py-3.5 rounded-full tracking-widest border border-red-100 group-hover:bg-[#c0ff8c] group-hover:text-black group-hover:border-transparent transition-all">{deal.saveAmount}</span>
-                          </div>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </section>
+            {/* Social Section Desktop - Mantenuta in fondo al feed per desktop */}
+            {currentView === 'home' && (
+              <div className="hidden lg:block">
+                <SocialSection />
+              </div>
             )}
           </>
         )}
 
         {currentView === 'article' && selectedArticle && (
-          <div className="bg-white">
-            <article className="max-w-4xl mx-auto px-4 py-12 md:py-16 animate-in fade-in duration-700">
-               <div className="mb-6 flex items-center gap-6">
-                 <span className="bg-[#e31b23] text-white px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl">{selectedArticle.category}</span>
-                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">{selectedArticle.date}</span>
-               </div>
-               <h1 className="font-condensed text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black uppercase mb-8 leading-tight text-gray-900 tracking-tight">{selectedArticle.title}</h1>
-               <div className="flex items-center gap-3 mb-8 pb-4 border-b border-gray-100"><span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">DI {selectedArticle.author.toUpperCase()}</span></div>
-               <img src={selectedArticle.imageUrl} className="w-full h-auto max-h-[500px] object-cover rounded-[3rem] mb-12 shadow-2xl" alt="" />
-               <div className="prose prose-lg md:prose-xl max-w-none text-gray-800 font-medium leading-relaxed selection:bg-[#c0ff8c]" dangerouslySetInnerHTML={{ __html: selectedArticle.content || selectedArticle.excerpt }} />
-               <div className="my-16 p-8 bg-blue-50 border-2 border-blue-100 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 shadow-sm group cursor-pointer hover:border-[#c0ff8c] transition-colors">
-                  <div className="w-20 h-20 bg-blue-500 rounded-3xl flex items-center justify-center text-white shrink-0 shadow-lg group-hover:bg-[#a6e076] transition-colors"><svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg></div>
-                  <div className="flex-1 text-center md:text-left"><h4 className="text-2xl font-black uppercase text-blue-900 mb-2 leading-none group-hover:text-black transition-colors">Canale Telegram Offerte</h4><p className="text-sm text-blue-700 font-bold uppercase tracking-wide">Iscriviti per non perdere sconti e promozioni tech in tempo reale!</p></div>
-                  <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#c0ff8c] hover:text-black transition-all shadow-xl active:scale-95 whitespace-nowrap text-center">Unisciti Ora</a>
-               </div>
-               <div className="mt-20 pt-12 border-t border-gray-100">
-                  <h3 className="font-condensed text-4xl font-black uppercase italic text-gray-900 mb-10 tracking-tight">Articoli Suggeriti</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">{suggestedArticles.map(item => (<div key={item.id} onClick={() => handleArticleClick(item)} className="cursor-pointer group flex gap-5 items-center"><div className="w-32 h-24 shrink-0 overflow-hidden rounded-2xl bg-gray-100 shadow-sm"><img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" /></div><div><span className="text-[#e31b23] text-[8px] font-black uppercase tracking-widest mb-1 block group-hover:text-[#a6e076] transition-colors">{item.category}</span><h4 className="text-sm font-bold leading-tight group-hover:text-[#a6e076] transition-colors text-gray-900 line-clamp-2 uppercase">{item.title}</h4></div></div>))}</div>
-               </div>
-               <div className="mt-24 border-t border-gray-100 pt-12 flex justify-center"><button onClick={goToHome} className="bg-black text-white px-16 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-[#c0ff8c] hover:text-black transition-all shadow-2xl active:scale-95">&larr; Torna alla Home</button></div>
-            </article>
+          <div className="bg-white min-h-screen">
+            <div className="max-w-4xl mx-auto px-4 pt-12 md:pt-20 pb-24">
+              <div className="mb-4">
+                <span className="text-[#e31b23] font-black text-xs uppercase tracking-[0.2em]">{selectedArticle.category}</span>
+              </div>
+
+              <h1 className="text-4xl md:text-6xl font-black text-gray-900 leading-[1.1] mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {selectedArticle.title}
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-600 font-medium leading-relaxed mb-10 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
+                {selectedArticle.excerpt}
+              </p>
+
+              <div className="flex items-center justify-between border-y border-gray-100 py-6 mb-12 animate-in fade-in duration-700 delay-200">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={selectedArticle.authorImageUrl || `https://i.pravatar.cc/150?u=${encodeURIComponent(selectedArticle.author)}`} 
+                    alt={selectedArticle.author} 
+                    className="w-14 h-14 rounded-full object-cover shadow-sm bg-gray-100 border-2 border-white ring-1 ring-gray-100"
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900 text-lg underline decoration-2 underline-offset-4 cursor-pointer hover:text-[#e31b23] transition-colors leading-none">
+                      {selectedArticle.author}
+                    </span>
+                    <span className="text-[11px] text-gray-400 font-black uppercase tracking-widest mt-2">
+                      {selectedArticle.date}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                   <button className="p-3 rounded-full hover:bg-gray-100 transition-all text-gray-400 hover:text-gray-900 active:scale-90" title="Condividi">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-12 relative animate-in zoom-in-95 duration-700 delay-300">
+                <img 
+                  src={selectedArticle.imageUrl} 
+                  className="w-full h-auto rounded-[3rem] shadow-2xl object-cover max-h-[600px]" 
+                  alt={selectedArticle.title} 
+                />
+              </div>
+
+              <div 
+                className="prose prose-lg md:prose-xl max-w-none text-gray-800 font-medium leading-[1.8] selection:bg-[#c0ff8c] mb-20 article-content" 
+                dangerouslySetInnerHTML={{ __html: selectedArticle.content || selectedArticle.excerpt }} 
+              />
+
+              <div className="mt-24 pt-16 border-t border-gray-100">
+                <h3 className="font-condensed text-5xl font-black uppercase italic text-gray-900 mb-12 tracking-tight">Potrebbe interessarti</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  {suggestedArticles.map(item => (
+                    <div key={item.id} onClick={() => handleArticleClick(item)} className="cursor-pointer group">
+                      <div className="aspect-video overflow-hidden rounded-[2rem] bg-gray-100 mb-6 shadow-sm border border-gray-50">
+                        <img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                      </div>
+                      <span className="text-[#e31b23] text-[10px] font-black uppercase tracking-widest mb-2 block">{item.category}</span>
+                      <h4 className="text-xl font-bold leading-tight group-hover:text-[#e31b23] transition-colors text-gray-900">{item.title}</h4>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-24 flex justify-center">
+                <button onClick={goToHome} className="bg-black text-white px-16 py-6 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-[#e31b23] transition-all shadow-2xl active:scale-95">
+                  &larr; Torna alla Home
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

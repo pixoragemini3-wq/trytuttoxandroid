@@ -45,6 +45,9 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
         if (imgMatch) imageUrl = imgMatch[1];
       }
 
+      // Extract author thumbnail from Blogger GData feed if present
+      const authorImage = entry.author?.[0]?.gd$image?.src;
+
       return {
         id,
         title,
@@ -53,6 +56,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
         category: (entry.category && entry.category[0].term) || 'News',
         imageUrl,
         author: entry.author[0].name.$t,
+        authorImageUrl: authorImage,
         date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
         url: postUrl,
         type: 'standard'

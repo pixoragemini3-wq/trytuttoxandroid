@@ -9,6 +9,8 @@ export interface Article {
   category: Category;
   imageUrl: string;
   author: string;
+  // Added to fix TypeScript error in App.tsx line 436: Property 'authorImageUrl' does not exist on type 'Article'
+  authorImageUrl?: string;
   date: string;
   url?: string;
   featured?: boolean;
