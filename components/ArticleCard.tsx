@@ -49,7 +49,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
   // Stile OVERLAY (In Evidenza - Carousel)
   if (article.type === 'horizontal') {
     return (
-      <div onClick={onClick} className="relative w-full aspect-[4/5] overflow-hidden rounded-[2rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
+      <div onClick={onClick} className="relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[2rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
         <img 
           src={article.imageUrl} 
           alt={article.title}
