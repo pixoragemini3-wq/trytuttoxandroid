@@ -21,10 +21,18 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
   const [isLoading, setIsLoading] = useState(true);
   
+  // News Pagination Logic
+  const [visibleNewsCount, setVisibleNewsCount] = useState(6);
+  
+  // Sticky Banner Logic
+  const [showStickyBanner, setShowStickyBanner] = useState(false);
+  const staticBannerRef = useRef<HTMLDivElement>(null);
+  
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const featuredScrollRef = useRef<HTMLDivElement>(null);
+  const newsSectionRef = useRef<HTMLDivElement>(null);
 
   const topStories = articles.slice(0, 8);
   const LOGO_URL = "https://i.imgur.com/l7YwbQe.png";
@@ -40,7 +48,8 @@ const App: React.FC = () => {
       const finalDeals = bloggerDeals.length > 0 ? bloggerDeals : MOCK_DEALS;
       setArticles(finalArticles);
       setDeals(finalDeals);
-      setFilteredArticles(finalArticles.filter(a => a.type === 'standard' || !a.type).slice(0, 10));
+      // Filtro rilassato: mostriamo tutto tranne la HERO principale che è già in evidenza
+      setFilteredArticles(finalArticles.filter(a => a.type !== 'hero'));
     } catch (error) {
       console.error("Errore caricamento:", error);
     } finally {
@@ -49,6 +58,25 @@ const App: React.FC = () => {
   };
 
   useEffect(() => { loadContent(); }, []);
+
+  // Sticky Banner Scroll Listener
+  useEffect(() => {
+    const handleScroll = () => {
+      if (staticBannerRef.current) {
+        const rect = staticBannerRef.current.getBoundingClientRect();
+        // Se il banner statico è uscito dallo schermo verso l'alto (top < -height)
+        // Mostriamo quello sticky
+        if (rect.bottom < 0) {
+          setShowStickyBanner(true);
+        } else {
+          setShowStickyBanner(false);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleArticleClick = (article: Article) => {
     setSelectedArticle(article);
@@ -70,18 +98,27 @@ const App: React.FC = () => {
     setFilteredArticles(results);
     setCurrentView('search');
     setIsSearchVisible(false);
+    setVisibleNewsCount(6); // Reset pagination on search
   };
 
   const handleNavClick = (nav: string) => {
     setCurrentView('home');
     setActiveCategory(nav);
+    setVisibleNewsCount(6); // Reset pagination on category change
     if (nav === 'Tutti') {
-       setFilteredArticles(articles.filter(a => a.type === 'standard' || !a.type));
+       // Filtro coerente: tutto tranne la HERO
+       setFilteredArticles(articles.filter(a => a.type !== 'hero'));
     } else {
        setFilteredArticles(articles.filter(a => a.category === nav));
     }
     setIsMobileMenuOpen(false);
-    // window.scrollTo(0, 0); // Removed scroll to top to keep context when filtering in-page
+    
+    // Scroll automatico alla sezione notizie
+    setTimeout(() => {
+      if (newsSectionRef.current) {
+        newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const goToHome = () => {
@@ -89,15 +126,21 @@ const App: React.FC = () => {
     setSelectedArticle(null);
     setSearchQuery('');
     setActiveCategory('Tutti');
-    setFilteredArticles(articles.slice(0, 10));
+    setVisibleNewsCount(6); // Reset pagination
+    // Reset filtro: tutto tranne la HERO
+    setFilteredArticles(articles.filter(a => a.type !== 'hero'));
     window.scrollTo(0, 0);
+  };
+
+  const loadMoreNews = () => {
+    setVisibleNewsCount(prev => prev + 6);
   };
 
   const navCategories = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'Tutorial', 'App & Giochi', 'Wearable', 'Modding'];
 
   // Helper component for Deals Section with Telegram CTA
   const DealsSection = () => (
-    <section className="py-12 lg:py-24 bg-white border-t border-gray-100">
+    <section className="py-8 lg:py-24 bg-white border-t border-gray-100">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 lg:mb-16 gap-4">
           <div>
@@ -108,16 +151,20 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-10">
           {deals.map(deal => (
             <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all group flex flex-col hover:-translate-y-2 lg:hover:-translate-y-4 duration-500">
-              <div className={`h-32 lg:h-64 flex items-center justify-center p-4 lg:p-12 ${deal.brandColor || 'bg-gray-50'}`}><img src={deal.imageUrl} className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-1000" /></div>
-              <div className="p-4 lg:p-10 text-center flex-1 flex flex-col">
-                <h4 className="font-black text-xs lg:text-xl text-gray-900 mb-2 leading-tight line-clamp-2">{deal.product}</h4>
+              {/* Reduced height and padding for mobile deals */}
+              <div className={`h-24 lg:h-64 flex items-center justify-center p-2 lg:p-12 ${deal.brandColor || 'bg-gray-50'}`}>
+                <img src={deal.imageUrl} className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-1000" />
+              </div>
+              {/* Reduced padding for text container */}
+              <div className="p-2 lg:p-10 text-center flex-1 flex flex-col">
+                <h4 className="font-black text-[10px] lg:text-xl text-gray-900 mb-1 lg:mb-2 leading-tight line-clamp-2">{deal.product}</h4>
                 <div className="mt-auto">
-                  <div className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-4 mb-2 lg:mb-6">
-                    <span className="text-lg lg:text-4xl font-black text-gray-900 tracking-tighter">{deal.newPrice}</span>
-                    <span className="text-[10px] lg:text-base text-gray-300 line-through font-bold">{deal.oldPrice}</span>
+                  <div className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-4 mb-1 lg:mb-6">
+                    <span className="text-sm lg:text-4xl font-black text-gray-900 tracking-tighter">{deal.newPrice}</span>
+                    <span className="text-[9px] lg:text-base text-gray-300 line-through font-bold">{deal.oldPrice}</span>
                   </div>
                 </div>
               </div>
@@ -213,7 +260,7 @@ const App: React.FC = () => {
                    </h3>
                    <div ref={featuredScrollRef} className="flex gap-4 lg:gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory pb-4">
                       {filteredArticles.slice(0, 6).map(item => (
-                        <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[85%] md:w-[30%] shrink-0 snap-start">
+                        <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[30%] shrink-0 snap-start">
                           <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                         </div>
                       ))}
@@ -221,7 +268,17 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Animated Social Banner after In Evidenza - Mobile Only */}
-                {currentView === 'home' && <SocialBannerMobile />}
+                {/* Wrapped in a Ref for scroll detection */}
+                {currentView === 'home' && (
+                  <div ref={staticBannerRef}>
+                    <SocialBannerMobile />
+                  </div>
+                )}
+
+                {/* Sticky Banner that appears when scrolled past */}
+                {currentView === 'home' && showStickyBanner && (
+                  <SocialBannerMobile isFixed={true} />
+                )}
 
                 {/* Offerte - Visible on Mobile AND Desktop now */}
                 {currentView === 'home' && deals.length > 0 && (
@@ -232,7 +289,7 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            <section className="py-12 bg-gray-50/50">
+            <section ref={newsSectionRef} className="py-12 bg-gray-50/50">
               <div className="max-w-7xl mx-auto px-4">
                 
                 {/* ULTIME NOTIZIE HEADER CON FILTRI */}
@@ -252,12 +309,28 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                   <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-12">
-                      {filteredArticles.map(item => (
-                        /* Force type='standard' here to prevent Hero card from breaking the grid layout when filtering categories like News */
-                        <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
-                      ))}
+                   {/* MOBILE: grid-cols-2 (2 columns), DESKTOP: md:grid-cols-2 (stays 2 cols but wider) */}
+                   <div className="lg:col-span-2">
+                     <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-12 mb-8">
+                        {filteredArticles.slice(0, visibleNewsCount).map(item => (
+                          /* Force type='standard' here to prevent Hero card from breaking the grid layout when filtering categories like News */
+                          <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
+                        ))}
+                     </div>
+                     
+                     {/* Load More Button */}
+                     {visibleNewsCount < filteredArticles.length && (
+                       <div className="flex justify-center mt-8">
+                         <button 
+                            onClick={loadMoreNews}
+                            className="bg-black text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#e31b23] transition-colors shadow-lg active:scale-95"
+                         >
+                            Vedi altre {activeCategory === 'Tutti' ? 'Notizie' : activeCategory}
+                         </button>
+                       </div>
+                     )}
                    </div>
+                   
                    <div className="hidden lg:block space-y-12">
                       <SocialSidebar />
                    </div>
@@ -285,7 +358,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="bg-black text-white py-16 text-center">
+      <footer className={`bg-black text-white py-16 text-center ${showStickyBanner ? 'pb-24' : ''}`}>
          <img src={LOGO_URL} className="h-12 mx-auto mb-8" alt="TuttoXAndroid" />
          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-600">© 2025 TUTTOXANDROID.COM - DIGITAL EDITORIAL GROUP</p>
       </footer>

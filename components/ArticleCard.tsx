@@ -49,18 +49,18 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
   // Stile OVERLAY (In Evidenza - Carousel)
   if (article.type === 'horizontal') {
     return (
-      <div onClick={onClick} className="relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[2rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
+      <div onClick={onClick} className="relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[1.5rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
         <img 
           src={article.imageUrl} 
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 p-5 lg:p-8 w-full">
-           <span className="bg-[#e31b23] text-white px-3 py-1 rounded text-[9px] font-black uppercase tracking-widest mb-3 inline-block transition-colors group-hover:bg-[#c0ff8c] group-hover:text-black">
+        <div className="absolute bottom-0 left-0 p-3 lg:p-8 w-full">
+           <span className="bg-[#e31b23] text-white px-2 py-0.5 lg:px-3 lg:py-1 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-widest mb-2 lg:mb-3 inline-block transition-colors group-hover:bg-[#c0ff8c] group-hover:text-black">
              {article.category}
            </span>
-           <h3 className="text-white font-condensed text-2xl lg:text-4xl font-black uppercase leading-[0.95] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
+           <h3 className="text-white font-condensed text-lg lg:text-4xl font-black uppercase leading-[0.95] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
              {article.title}
            </h3>
         </div>
@@ -68,10 +68,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
     );
   }
 
-  // Stile STANDARD (Feed)
+  // Stile STANDARD (Feed - Grid 2 columns on mobile)
   return (
     <div onClick={onClick} className="flex flex-col group cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white lg:rounded-[2rem] lg:p-4 lg:-m-4">
-      <div className="aspect-video overflow-hidden rounded-[1.5rem] bg-gray-100 mb-4 lg:mb-5 shadow-sm border border-gray-100">
+      <div className="aspect-video overflow-hidden rounded-[1rem] lg:rounded-[1.5rem] bg-gray-100 mb-3 lg:mb-5 shadow-sm border border-gray-100">
         <img 
           src={article.imageUrl} 
           alt={article.title}
@@ -79,13 +79,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
         />
       </div>
       <div className="flex flex-col flex-1">
-        <span className="text-[#e31b23] text-[9px] font-black uppercase tracking-[0.15em] mb-2 block transition-colors group-hover:text-[#a6e076]">
+        <span className="text-[#e31b23] text-[8px] lg:text-[9px] font-black uppercase tracking-[0.15em] mb-1.5 lg:mb-2 block transition-colors group-hover:text-[#a6e076]">
           {article.category}
         </span>
-        <h3 className="font-bold text-base sm:text-xl lg:text-2xl leading-tight text-gray-900 group-hover:text-[#a6e076] transition-colors mb-3 lg:mb-4 line-clamp-2">
+        <h3 className="font-bold text-sm sm:text-xl lg:text-2xl leading-tight text-gray-900 group-hover:text-[#a6e076] transition-colors mb-2 lg:mb-4 line-clamp-3 lg:line-clamp-2">
           {article.title}
         </h3>
-        <div className="mt-auto text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <div className="mt-auto text-[9px] lg:text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
           <span className="w-1.5 h-1.5 bg-gray-300 rounded-full group-hover:bg-[#a6e076]"></span>
           {article.date}
         </div>

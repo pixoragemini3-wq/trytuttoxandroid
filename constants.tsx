@@ -64,7 +64,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Guide',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80&w=600',
     author: 'Admin',
     date: '1 Giorno fa',
     type: 'mini'
@@ -75,7 +75,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Offerte',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1598327770666-97b3734e5651?auto=format&fit=crop&q=80&w=600',
     author: 'Admin',
     date: '2 Ore fa',
     type: 'mini'
@@ -86,7 +86,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'News',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&q=80&w=600',
     author: 'Luca Bianchi',
     date: '10 Min fa',
     type: 'mini'
@@ -97,7 +97,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Recensioni',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1551817958-c1e0e56702c2?auto=format&fit=crop&q=80&w=600',
     author: 'Marco Rossi',
     date: 'Oggi',
     type: 'mini'
@@ -108,7 +108,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Tutorial',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1512428559087-560fa5ce7d25?auto=format&fit=crop&q=80&w=600',
     author: 'Sara Verdi',
     date: '4 Ore fa',
     type: 'mini'
@@ -119,7 +119,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'App & Giochi',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1592484898118-2c40c83a54e9?auto=format&fit=crop&q=80&w=600',
     author: 'Sara Verdi',
     date: 'Ieri',
     type: 'mini'
@@ -130,7 +130,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Smartphone',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1585675100414-9c79f22c673e?auto=format&fit=crop&q=80&w=600',
     author: 'Luca Bianchi',
     date: '2 Ore fa',
     type: 'mini'
@@ -141,7 +141,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Offerte',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1613040809024-b4ef7ba99bc3?auto=format&fit=crop&q=80&w=600',
     author: 'Admin',
     date: '5 Min fa',
     type: 'mini'
@@ -152,7 +152,7 @@ export const MOCK_ARTICLES: Article[] = [
     excerpt: '',
     content: '',
     category: 'Modding',
-    imageUrl: '',
+    imageUrl: 'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&q=80&w=600',
     author: 'Admin',
     date: '3 Giorni fa',
     type: 'mini'
