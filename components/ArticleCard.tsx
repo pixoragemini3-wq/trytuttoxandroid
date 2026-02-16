@@ -5,13 +5,32 @@ import { Article } from '../types';
 interface ArticleCardProps {
   article: Article;
   onClick?: () => void;
+  className?: string; // Added to support custom styling overrides
 }
 
-const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
+const getCategoryColors = (category: string, type: 'text' | 'bg') => {
+  const map: Record<string, string> = {
+    'Smartphone': 'blue-600',
+    'Modding': 'orange-500',
+    'App & Giochi': 'green-500',
+    'Recensioni': 'purple-600',
+    'Guide': 'cyan-600',
+    'Offerte': 'yellow-500',
+    'Wearable': 'pink-500',
+    'News': '[#e31b23]',
+  };
+  
+  const color = map[category] || '[#e31b23]';
+  
+  if (type === 'text') return `text-${color}`;
+  return `bg-${color.startsWith('[') ? color : `${color}`}`;
+};
+
+const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
   if (article.type === 'hero') {
     return (
-      <div onClick={onClick} className="relative w-full overflow-hidden lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer h-full min-h-[450px] md:h-[550px]">
+      <div onClick={onClick} className={`relative w-full overflow-hidden lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer h-full min-h-[450px] md:h-[550px] ${className}`}>
         <div className="w-full md:w-[60%] h-56 md:h-full overflow-hidden relative bg-gray-50">
           <img 
             src={article.imageUrl} 
@@ -48,16 +67,21 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
 
   // Stile OVERLAY (In Evidenza - Carousel)
   if (article.type === 'horizontal') {
+    const bgClass = getCategoryColors(article.category, 'bg');
+    const isCustom = bgClass.includes('[');
+    
     return (
-      <div onClick={onClick} className="relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[1.5rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0">
+      <div onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[1.5rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0 ${className}`}>
         <img 
           src={article.imageUrl} 
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 p-3 lg:p-8 w-full">
-           <span className="bg-[#e31b23] text-white px-2 py-0.5 lg:px-3 lg:py-1 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-widest mb-2 lg:mb-3 inline-block transition-colors group-hover:bg-[#c0ff8c] group-hover:text-black">
+        <div className="absolute bottom-0 left-0 p-3 lg:p-8 w-full flex flex-col items-start">
+           <span 
+             className={`${isCustom ? bgClass : `bg-${article.category === 'Smartphone' ? 'blue-600' : article.category === 'Modding' ? 'orange-500' : article.category === 'App & Giochi' ? 'green-500' : article.category === 'Recensioni' ? 'purple-600' : article.category === 'Guide' ? 'cyan-600' : article.category === 'Offerte' ? 'yellow-500' : article.category === 'Wearable' ? 'pink-500' : '[#e31b23]'}`} text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-widest mb-2 lg:mb-3 inline-flex items-center justify-center leading-none transition-colors group-hover:bg-[#c0ff8c] group-hover:text-black`}
+           >
              {article.category}
            </span>
            <h3 className="text-white font-condensed text-lg lg:text-4xl font-black uppercase leading-[0.95] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
@@ -69,8 +93,19 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
   }
 
   // Stile STANDARD (Feed - Grid 2 columns on mobile)
+  const textClass = getCategoryColors(article.category, 'text');
+  const textColorClass = 
+    article.category === 'Smartphone' ? 'text-blue-600' : 
+    article.category === 'Modding' ? 'text-orange-500' : 
+    article.category === 'App & Giochi' ? 'text-green-500' : 
+    article.category === 'Recensioni' ? 'text-purple-600' : 
+    article.category === 'Guide' ? 'text-cyan-600' : 
+    article.category === 'Offerte' ? 'text-yellow-500' : 
+    article.category === 'Wearable' ? 'text-pink-500' : 
+    'text-[#e31b23]';
+
   return (
-    <div onClick={onClick} className="flex flex-col group cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white lg:rounded-[2rem] lg:p-4 lg:-m-4">
+    <div onClick={onClick} className={`flex flex-col group cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white lg:rounded-[2rem] lg:p-4 lg:-m-4 ${className}`}>
       <div className="aspect-video overflow-hidden rounded-[1rem] lg:rounded-[1.5rem] bg-gray-100 mb-3 lg:mb-5 shadow-sm border border-gray-100">
         <img 
           src={article.imageUrl} 
@@ -79,7 +114,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
         />
       </div>
       <div className="flex flex-col flex-1">
-        <span className="text-[#e31b23] text-[8px] lg:text-[9px] font-black uppercase tracking-[0.15em] mb-1.5 lg:mb-2 block transition-colors group-hover:text-[#a6e076]">
+        <span className={`${textColorClass} text-[8px] lg:text-[9px] font-black uppercase tracking-[0.15em] mb-1.5 lg:mb-2 block transition-colors group-hover:text-[#a6e076]`}>
           {article.category}
         </span>
         <h3 className="font-bold text-sm sm:text-xl lg:text-2xl leading-tight text-gray-900 group-hover:text-[#a6e076] transition-colors mb-2 lg:mb-4 line-clamp-3 lg:line-clamp-2">
