@@ -10,14 +10,24 @@ import SocialSection from './components/SocialSection';
 import TopStoriesMobile from './components/TopStoriesMobile';
 import SocialBannerMobile from './components/SocialBannerMobile';
 import ArticleDetail from './components/ArticleDetail';
-import AdUnit from './components/AdUnit'; // Import AdUnit
-import DesktopSidebar from './components/DesktopSidebar'; // New Import
+import AdUnit from './components/AdUnit'; 
+import DesktopSidebar from './components/DesktopSidebar'; 
+import CookieConsent from './components/CookieConsent'; // GDPR
+import { AboutPage, CollabPage } from './components/StaticPages'; // Nuove Pagine
 
 const App: React.FC = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'home' | 'article' | 'search'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'article' | 'search' | 'about' | 'collab'>('home');
   
+  // Layout Customization State (Simula le impostazioni di layout di Blogger)
+  const [layoutConfig] = useState({
+    showTicker: true,
+    boxedLayout: false,
+    fixedSidebar: true,
+    showFooterSocial: true
+  });
+
   // New: Reading List for Infinite Stream
   const [readingList, setReadingList] = useState<Article[]>([]);
   
@@ -50,9 +60,15 @@ const App: React.FC = () => {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
+  // Drag Scroll Logic for Featured Carousel
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
   const topStories = articles.slice(0, 8);
   const LOGO_URL = "https://i.imgur.com/l7YwbQe.png";
-  const navCategories = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'Tutorial', 'App & Giochi', 'Wearable', 'Modding'];
+  // Removed 'Modding' as requested
+  const navCategories = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'App & Giochi'];
 
   const loadContent = async () => {
     setIsLoading(true);
@@ -167,8 +183,20 @@ const App: React.FC = () => {
   };
 
   const handleArticleClick = (article: Article) => {
+    // If we were dragging, do not open article
+    if (isDragging) return;
+
+    // LOGICA LINK DIRETTO AMAZON
+    // Se è nella categoria Offerte e ha un link deal (ed è chiaramente un'offerta diretta)
+    // Apri direttamente il link esterno.
+    if (article.category === 'Offerte' && article.dealData?.link) {
+       window.open(article.dealData.link, '_blank');
+       return;
+    }
+    
     setReadingList([article]);
     setCurrentView('article');
+    setActiveMegaMenu(null); // Close menu on click
     window.scrollTo(0, 0);
   };
 
@@ -200,6 +228,42 @@ const App: React.FC = () => {
         newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
+  };
+
+  const handleFooterLinkClick = (view: 'about' | 'collab' | 'home') => {
+    setCurrentView(view);
+    window.scrollTo(0, 0);
+  };
+
+  // Helper per i colori della Navigazione
+  const getNavColor = (cat: string) => {
+    switch(cat) {
+      case 'Smartphone': return 'text-blue-500 bg-blue-500';
+      case 'Modding': return 'text-orange-500 bg-orange-500';
+      case 'App & Giochi': return 'text-green-500 bg-green-500';
+      case 'Recensioni': return 'text-purple-500 bg-purple-500';
+      case 'Guide': return 'text-cyan-500 bg-cyan-500';
+      case 'Offerte': return 'text-yellow-500 bg-yellow-500';
+      case 'Wearable': return 'text-pink-500 bg-pink-500';
+      case 'News': return 'text-[#e31b23] bg-[#e31b23]';
+      default: return 'text-[#c0ff8c] bg-[#c0ff8c]';
+    }
+  };
+
+  // Helper per il colore della linea divisoria dinamica
+  const getDividerColor = () => {
+    const target = activeMegaMenu || activeCategory;
+    switch(target) {
+      case 'Smartphone': return 'bg-blue-500';
+      case 'Modding': return 'bg-orange-500';
+      case 'App & Giochi': return 'bg-green-500';
+      case 'Recensioni': return 'bg-purple-500';
+      case 'Guide': return 'bg-cyan-500';
+      case 'Offerte': return 'bg-yellow-500';
+      case 'Wearable': return 'bg-pink-500';
+      case 'News': return 'bg-[#e31b23]';
+      default: return 'bg-[#e31b23]';
+    }
   };
 
   // Swipe Handlers
@@ -235,6 +299,30 @@ const App: React.FC = () => {
     }
   };
 
+  // DRAG SCROLL HANDLERS (Featured Carousel)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!featuredScrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - featuredScrollRef.current.offsetLeft);
+    setScrollLeft(featuredScrollRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !featuredScrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - featuredScrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Scroll-fast
+    featuredScrollRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   const goToHome = () => {
     setCurrentView('home');
     setReadingList([]);
@@ -268,6 +356,7 @@ const App: React.FC = () => {
                 <img src={deal.imageUrl} className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-1000" />
               </div>
               <div className="p-2 lg:p-10 text-center flex-1 flex flex-col">
+                {/* Visual Fix: Ensure text color contrasts with potentially dark background (not issue here as it is white part of card, but fixing logic just in case card bg changes) */}
                 <h4 className="font-black text-[10px] lg:text-xl text-gray-900 mb-1 lg:mb-2 leading-tight line-clamp-2">{deal.product}</h4>
                 <div className="mt-auto">
                   <div className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-4 mb-1 lg:mb-6">
@@ -283,8 +372,94 @@ const App: React.FC = () => {
     </section>
   );
 
+  // New Component for Smartphone Category
+  const SmartphoneShowcase = () => (
+    <div className="w-full mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
+      {/* Green Brand Bar - ONLY Visible in Smartphone Tab */}
+      <div className="bg-[#c0ff8c] border-y-2 border-black/5 py-4 mb-8 overflow-x-auto no-scrollbar shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center min-w-max gap-12 md:gap-0">
+            {['SAMSUNG', 'XIAOMI', 'PIXEL', 'ONEPLUS', 'MOTOROLA', 'REALME', 'SONY', 'NOTHING', 'HONOR'].map(brand => (
+              <button 
+                key={brand} 
+                onClick={() => { setSearchQuery(brand); handleSearchSubmit({ preventDefault: () => {} } as any); }}
+                className="text-black font-black text-sm md:text-xl uppercase tracking-widest cursor-pointer hover:underline decoration-4 underline-offset-4 decoration-black/20 hover:scale-110 transition-all"
+              >
+                {brand}
+              </button>
+            ))}
+        </div>
+      </div>
+
+      {/* Social Promo Cards - Custom Designed for Smartphone Tab */}
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+         
+         {/* Android Italy Group - BLUE CARD */}
+         <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
+            {/* Background Blue Gradient with Image */}
+            <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay" alt="Background" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0066FF]/90 to-[#0040DD]/90"></div>
+            
+            {/* Content */}
+            <div className="absolute inset-0 p-8 flex flex-col justify-between z-10">
+               <div className="flex justify-between items-start">
+                  <span className="bg-white text-[#0066FF] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md">Community Ufficiale</span>
+                  <div className="text-right">
+                     <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Il gruppo di supporto</p>
+                     <p className="text-xs font-black text-white uppercase tracking-wider">Android più grande d'Italia</p>
+                  </div>
+               </div>
+
+               <div className="flex flex-col items-center text-center mt-4">
+                   <h3 className="font-condensed text-6xl md:text-7xl font-black uppercase italic leading-none text-white drop-shadow-lg transform -skew-x-6">
+                      ANDROID<br/>ITALY
+                   </h3>
+               </div>
+               
+               <div className="flex items-center justify-between mt-auto">
+                   <div className="flex items-center gap-2">
+                       <span className="w-3 h-3 bg-[#c0ff8c] rounded-full animate-pulse shadow-[0_0_10px_#c0ff8c]"></span>
+                       <span className="text-xl font-black text-white tracking-tight">36.000+ <span className="text-sm font-bold opacity-80">Iscritti</span></span>
+                   </div>
+                   <span className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest group-hover:bg-white group-hover:text-[#0066FF] transition-colors shadow-xl">
+                     Unisciti al Gruppo &rarr;
+                   </span>
+               </div>
+            </div>
+         </a>
+
+         {/* TuttoXAndroid Page - DARK CARD */}
+         <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
+            {/* Background Dark Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#333333] to-[#000000]"></div>
+             
+             {/* Content */}
+            <div className="absolute inset-0 p-8 flex flex-col justify-center items-center z-10 text-center">
+               
+               {/* ANIMATED LOGO CONTAINER */}
+               <div className="w-24 h-24 bg-white p-1 rounded-full shadow-2xl mb-6 relative group-hover:scale-110 group-hover:drop-shadow-[0_0_20px_rgba(227,27,35,0.6)] transition-all duration-500 ease-out group-hover:animate-pulse">
+                  <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo" />
+                  <div className="absolute bottom-0 right-0 bg-[#1877F2] text-white p-1.5 rounded-full border-2 border-white">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333.915-1.333h3.101v-5.029l-4.128-.022c-4.181 0-5.888 2.067-5.888 5.728v2.323z"/></svg>
+                  </div>
+               </div>
+
+               <h3 className="font-condensed text-5xl font-black uppercase text-white mb-2 leading-none">TuttoXAndroid</h3>
+               <p className="text-gray-400 font-medium text-sm mb-8 tracking-wide">Follower: 12.475 • Seguiti: 1</p>
+               
+               <span className="w-full max-w-sm bg-[#e31b23] text-white px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest group-hover:bg-white group-hover:text-[#e31b23] transition-colors shadow-lg shadow-red-900/50">
+                 Lascia un Like &rarr;
+               </span>
+            </div>
+             {/* Abstract Decoration */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 mix-blend-overlay"></div>
+         </a>
+
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen flex flex-col bg-white font-inter">
+    <div className={`min-h-screen flex flex-col bg-white font-inter ${layoutConfig.boxedLayout ? 'max-w-[1600px] mx-auto shadow-2xl border-x border-gray-100' : ''}`}>
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black z-[100] flex flex-col animate-in fade-in duration-300">
@@ -300,6 +475,10 @@ const App: React.FC = () => {
                   {cat}
                 </button>
               ))}
+              <div className="border-t border-white/10 pt-6 mt-6">
+                 <button onClick={() => { handleFooterLinkClick('about'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 mb-4 hover:text-white">Chi Siamo</button>
+                 <button onClick={() => { handleFooterLinkClick('collab'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 hover:text-white">Collabora</button>
+              </div>
            </div>
            <div className="p-8 bg-[#e31b23] text-center">
               <p className="text-white font-black uppercase text-[10px] tracking-widest mb-4">Iscriviti alla community</p>
@@ -309,20 +488,46 @@ const App: React.FC = () => {
       )}
 
       <header className="bg-black text-white relative shadow-2xl z-50">
+        {/* Top Bar - CHANGED TO ABSOLUTE to remove black band height */}
+        <div className="hidden md:flex justify-start items-center px-4 lg:px-8 py-2 absolute top-0 left-0 w-full z-20">
+           <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-gray-400">
+              <button onClick={() => handleFooterLinkClick('about')} className="hover:text-white transition-colors">Chi Siamo</button>
+              <button onClick={() => handleFooterLinkClick('collab')} className="hover:text-white transition-colors">Lavora con noi</button>
+              <span className="cursor-pointer hover:text-white transition-colors">Pubblicità</span>
+              <span className="cursor-pointer hover:text-white transition-colors">Privacy Policy</span>
+           </div>
+        </div>
+
         {/* Header content... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-28 md:h-64 mt-0 md:mt-12 relative">
+          {/* Increased Height to accommodate larger logo (1.2x) */}
+          <div className="flex justify-between items-center h-24 md:h-64 mt-0 relative">
             <div className={`cursor-pointer flex items-center h-full z-10 ${isSearchVisible ? 'hidden md:flex' : 'flex'}`} onClick={goToHome}>
-              <img src={LOGO_URL} alt="TuttoXAndroid" className="h-full md:h-80 w-auto object-contain py-0 scale-[1.25] origin-left ml-2 md:ml-0 md:scale-100" />
+              {/* ANIMATED HEADER LOGO - Increased Size 1.2x & Reduced Shadow Opacity */}
+              <div className="relative group transition-all duration-300">
+                 <img 
+                    src={LOGO_URL} 
+                    alt="TuttoXAndroid" 
+                    className="h-full md:h-[240px] w-auto object-contain origin-left ml-2 md:ml-0 transition-transform duration-300 group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(227,27,35,0.3)]" 
+                 />
+                 {/* Simulate 'Spin/Flash' on hover via sheen */}
+                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite] w-full h-full skew-x-12 pointer-events-none"></div>
+              </div>
             </div>
 
             <nav className={`hidden lg:flex items-center gap-10 ${isSearchVisible ? 'hidden' : 'flex'}`}>
-              {navCategories.slice(0, 6).map(nav => (
-                <button key={nav} onMouseEnter={() => setActiveMegaMenu(nav)} onClick={() => handleNavClick(nav)} className="text-[11px] font-black uppercase tracking-[0.2em] hover:text-[#c0ff8c] transition-all relative group">
-                  {nav}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#c0ff8c] transition-all group-hover:w-full"></span>
-                </button>
-              ))}
+              {navCategories.slice(0, 7).map(nav => {
+                const colorClasses = getNavColor(nav);
+                // Removed text color hover class to avoid double coloring
+                const underlineBgClass = colorClasses.split(' ')[1];
+
+                return (
+                  <button key={nav} onMouseEnter={() => setActiveMegaMenu(nav)} onClick={() => handleNavClick(nav)} className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all relative group hover:opacity-100 opacity-90`}>
+                    {nav}
+                    <span className={`absolute bottom-0 left-0 h-0.5 ${underlineBgClass} transition-all ${activeCategory === nav ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                  </button>
+                );
+              })}
             </nav>
 
             <div className={`absolute inset-0 flex items-center justify-end z-20 ${isSearchVisible ? 'flex' : 'hidden'}`}>
@@ -340,13 +545,30 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
-        {activeMegaMenu && !isSearchVisible && <MegaMenu category={activeMegaMenu} onClose={() => setActiveMegaMenu(null)} />}
+
+        {/* MODERN DIVIDER LINE - Dynamic Color */}
+        <div className={`h-[4px] w-full ${getDividerColor()} shadow-md transition-colors duration-300`}></div>
+
+        {activeMegaMenu && !isSearchVisible && (
+          <MegaMenu 
+            category={activeMegaMenu} 
+            onClose={() => setActiveMegaMenu(null)} 
+            articles={articles}
+            onArticleClick={handleArticleClick}
+          />
+        )}
       </header>
 
       <main className="flex-1 lg:mt-2">
+        {/* VIEW: STATIC PAGES */}
+        {currentView === 'about' && <AboutPage />}
+        {currentView === 'collab' && <CollabPage />}
+
+        {/* VIEW: HOME & SEARCH */}
         {(currentView === 'home' || currentView === 'search') && (
           <>
-            {currentView === 'home' && (
+            {/* Ticker controlled by layoutConfig */}
+            {currentView === 'home' && layoutConfig.showTicker && (
               <TopStoriesMobile 
                 articles={topStories} 
                 onArticleClick={handleArticleClick} 
@@ -356,26 +578,34 @@ const App: React.FC = () => {
 
             <section className="bg-white">
               <div className="max-w-7xl mx-auto">
+                
+                {/* Smartphone Category Specific Header */}
+                {currentView === 'home' && activeCategory === 'Smartphone' && (
+                  <SmartphoneShowcase />
+                )}
+
                 {currentView === 'home' && heroArticle && (
                   <div className="w-full h-[350px] md:h-[550px] flex gap-2">
-                     {/* Desktop Sidebar (Left of Hero) */}
-                     <DesktopSidebar 
-                        articles={topStories.slice(1, 5)} 
-                        onArticleClick={handleArticleClick} 
-                     />
+                     {/* Desktop Sidebar (Left of Hero) - Controlled by layoutConfig */}
+                     {layoutConfig.fixedSidebar && (
+                       <DesktopSidebar 
+                          articles={topStories.slice(1, 5)} 
+                          onArticleClick={handleArticleClick} 
+                       />
+                     )}
                      
                      {/* Hero Article */}
                      <div className="flex-1 h-full w-full">
                         <ArticleCard 
                           article={heroArticle} 
                           onClick={() => handleArticleClick(heroArticle)}
-                          className="" // Rimosso lg:rounded-l-none per avere bordi arrotondati e separazione
+                          className="" 
                         />
                      </div>
                   </div>
                 )}
 
-                {/* FEATURED CAROUSEL SECTION - Added spacing for mobile */}
+                {/* FEATURED CAROUSEL SECTION */}
                 <div className="px-4 lg:px-0 py-8 lg:py-6 mt-8 lg:mt-0">
                    <div className="flex items-end justify-between mb-8">
                        <h3 className="font-condensed text-3xl lg:text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
@@ -391,10 +621,18 @@ const App: React.FC = () => {
                        </div>
                    </div>
 
-                   <div ref={featuredScrollRef} className="flex gap-4 lg:gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory pb-4">
+                   <div 
+                     ref={featuredScrollRef} 
+                     className={`flex gap-4 lg:gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory py-8 px-2 cursor-grab active:cursor-grabbing ${isDragging ? 'snap-none' : 'snap-x'}`}
+                     onMouseDown={handleMouseDown}
+                     onMouseLeave={handleMouseLeave}
+                     onMouseUp={handleMouseUp}
+                     onMouseMove={handleMouseMove}
+                     style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
+                   >
                       {/* Show items that are not Hero */}
                       {displayArticles.slice(0, 8).map(item => (
-                        <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[30%] shrink-0 snap-start">
+                        <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[25%] lg:w-[22%] shrink-0 snap-start select-none">
                           <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                         </div>
                       ))}
@@ -419,7 +657,7 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* NEWS SECTION - ADDED TOUCH HANDLERS FOR SWIPE */}
+            {/* NEWS SECTION */}
             <section 
               ref={newsSectionRef} 
               className="py-12 bg-gray-50/50"
@@ -517,7 +755,6 @@ const App: React.FC = () => {
                  .filter(a => a.id !== article.id && a.id !== related.id)
                  .slice(0, 4);
                
-               // Filtra 4 notizie della categoria "Offerte" da mostrare nel widget dedicato
                const offerNews = articles
                  .filter(a => a.category === 'Offerte' && a.id !== article.id)
                  .slice(0, 4);
@@ -528,8 +765,8 @@ const App: React.FC = () => {
                     article={article} 
                     relatedArticle={related}
                     moreArticles={moreArticles}
-                    deals={deals} // Pass deals to ArticleDetail
-                    offerNews={offerNews} // Pass offerNews to ArticleDetail
+                    deals={deals}
+                    offerNews={offerNews}
                     onArticleClick={handleArticleClick}
                   />
                );
@@ -556,7 +793,22 @@ const App: React.FC = () => {
       </main>
 
       <footer className={`bg-black text-white py-16 text-center ${showStickyBanner ? 'pb-24' : ''}`}>
-         <img src={LOGO_URL} className="h-12 mx-auto mb-8" alt="TuttoXAndroid" />
+         {/* Updated Logo Size */}
+         <img 
+            src={LOGO_URL} 
+            className="h-24 md:h-32 mx-auto mb-8 hover:scale-105 transition-transform duration-500 cursor-pointer" 
+            alt="TuttoXAndroid"
+            onClick={goToHome} 
+         />
+         
+         {/* Footer Links (Redazione) */}
+         <div className="flex flex-wrap justify-center gap-6 mb-8 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+           <button onClick={() => handleFooterLinkClick('about')} className="hover:text-white hover:underline transition-all">Chi Siamo</button>
+           <button onClick={() => handleFooterLinkClick('collab')} className="hover:text-white hover:underline transition-all">Collabora con noi</button>
+           <a href="#" className="hover:text-white hover:underline transition-all">Privacy Policy</a>
+           <a href="#" className="hover:text-white hover:underline transition-all">Cookie Policy</a>
+         </div>
+
          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-600">© 2025 TUTTOXANDROID.COM - DIGITAL EDITORIAL GROUP</p>
       </footer>
       
@@ -569,6 +821,9 @@ const App: React.FC = () => {
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" /></svg>
         </button>
       )}
+
+      {/* GDPR Consent Popup */}
+      <CookieConsent />
 
     </div>
   );

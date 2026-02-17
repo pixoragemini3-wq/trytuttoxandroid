@@ -156,6 +156,50 @@ export const MOCK_ARTICLES: Article[] = [
     author: 'Admin',
     date: '3 Giorni fa',
     type: 'mini'
+  },
+  {
+    id: '15',
+    title: "Xiaomi 14 Ultra scende sotto i 900€ per la prima volta",
+    excerpt: '',
+    content: '',
+    category: 'Offerte',
+    imageUrl: 'https://images.unsplash.com/photo-1514826786317-59744fe2a548?auto=format&fit=crop&q=80&w=600',
+    author: 'Admin',
+    date: '1 Ora fa',
+    type: 'mini'
+  },
+  {
+    id: '16',
+    title: "Sconto shock su Amazon: Echo Show 8 a metà prezzo",
+    excerpt: '',
+    content: '',
+    category: 'Offerte',
+    imageUrl: 'https://images.unsplash.com/photo-1543512214-318c7553f230?auto=format&fit=crop&q=80&w=600',
+    author: 'Admin',
+    date: '30 Min fa',
+    type: 'mini'
+  },
+  {
+    id: '17',
+    title: "Galaxy Watch 6 in offerta: best buy assoluto",
+    excerpt: '',
+    content: '',
+    category: 'Offerte',
+    imageUrl: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&q=80&w=600',
+    author: 'Admin',
+    date: '10 Ore fa',
+    type: 'mini'
+  },
+  {
+    id: '18',
+    title: "Volantino MediaWorld: tutte le migliori offerte di Marzo",
+    excerpt: '',
+    content: '',
+    category: 'Offerte',
+    imageUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=600',
+    author: 'Admin',
+    date: '1 Giorno fa',
+    type: 'mini'
   }
 ];
 

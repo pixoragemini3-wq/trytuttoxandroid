@@ -71,20 +71,20 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     const isCustom = bgClass.includes('[');
     
     return (
-      <div onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[1.5rem] lg:rounded-[2.5rem] group cursor-pointer shadow-xl bg-black shrink-0 ${className}`}>
+      <div onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-[1.5rem] lg:rounded-[2rem] group cursor-pointer shadow-xl bg-black shrink-0 ${className}`}>
         <img 
           src={article.imageUrl} 
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 p-3 lg:p-8 w-full flex flex-col items-start">
+        <div className="absolute bottom-0 left-0 p-3 lg:p-5 w-full flex flex-col items-start">
            <span 
-             className={`${isCustom ? bgClass : `bg-${article.category === 'Smartphone' ? 'blue-600' : article.category === 'Modding' ? 'orange-500' : article.category === 'App & Giochi' ? 'green-500' : article.category === 'Recensioni' ? 'purple-600' : article.category === 'Guide' ? 'cyan-600' : article.category === 'Offerte' ? 'yellow-500' : article.category === 'Wearable' ? 'pink-500' : '[#e31b23]'}`} text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-widest mb-2 lg:mb-3 inline-flex items-center justify-center leading-none transition-colors group-hover:bg-[#c0ff8c] group-hover:text-black`}
+             className={`${isCustom ? bgClass : `bg-${article.category === 'Smartphone' ? 'blue-600' : article.category === 'Modding' ? 'orange-500' : article.category === 'App & Giochi' ? 'green-500' : article.category === 'Recensioni' ? 'purple-600' : article.category === 'Guide' ? 'cyan-600' : article.category === 'Offerte' ? 'yellow-500' : article.category === 'Wearable' ? 'pink-500' : '[#e31b23]'}`} text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded text-[8px] lg:text-[8px] font-black uppercase tracking-widest mb-2 lg:mb-3 inline-flex items-center justify-center leading-none transition-colors group-hover:bg-[#c0ff8c] group-hover:text-black`}
            >
              {article.category}
            </span>
-           <h3 className="text-white font-condensed text-lg lg:text-4xl font-black uppercase leading-[0.95] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
+           <h3 className="text-white font-condensed text-lg lg:text-2xl font-black uppercase leading-[0.95] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
              {article.title}
            </h3>
         </div>

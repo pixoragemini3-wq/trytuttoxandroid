@@ -1,5 +1,5 @@
 
-import { Article, Category, Deal } from '../types';
+import { Article, Category, Deal, DealData } from '../types';
 
 // Helper per pulire HTML e decodificare entità (rimuove &nbsp;, &amp; ecc.)
 const stripHtml = (html: string): string => {
@@ -18,9 +18,8 @@ const stripHtml = (html: string): string => {
   }
 };
 
-// Helper per estrarre i dati DEAL dal contenuto HTML
-const extractDealData = (content: string, defaultLink: string, defaultTitle: string, defaultImage: string, id: string): Deal | null => {
-  // Regex per cercare pattern come [DEAL old="99€" new="49€" link="..."]
+// Helper per estrarre dati DEAL specifici per la sezione Widget (NON per l'articolo singolo)
+const extractDealWidgetData = (content: string, defaultLink: string, defaultTitle: string, defaultImage: string, id: string): Deal | null => {
   const regex = /\[DEAL\s+old="([^"]+)"\s+new="([^"]+)"(?:\s+link="([^"]+)")?\]/i;
   const match = content.match(regex);
 
@@ -31,12 +30,35 @@ const extractDealData = (content: string, defaultLink: string, defaultTitle: str
       oldPrice: match[1],
       newPrice: match[2],
       saveAmount: 'OFFERTA',
-      link: match[3] || defaultLink, // Usa il link nel tag o il link del post
+      link: match[3] || defaultLink,
       imageUrl: defaultImage,
-      brandColor: 'bg-[#e31b23]' // Placeholder, verrà sovrascritto
+      brandColor: 'bg-[#e31b23]'
     };
   }
   return null;
+};
+
+// Helper per parsare la stringa DEAL e rimuoverla dal contenuto
+const parseArticleContent = (rawContent: string): { cleanContent: string; dealData: DealData | null } => {
+  // Regex più flessibile: cerca [DEAL old="..." new="..." link="..."]
+  // Gestisce anche spazi extra o ordine diverso se necessario, ma assumiamo formato standard per ora
+  const dealRegex = /\[DEAL\s+old="([^"]*)"\s+new="([^"]*)"\s+link="([^"]*)"\]/i;
+  const match = rawContent.match(dealRegex);
+
+  let dealData: DealData | null = null;
+  let cleanContent = rawContent;
+
+  if (match) {
+    dealData = {
+      oldPrice: match[1],
+      newPrice: match[2],
+      link: match[3]
+    };
+    // Rimuove l'intera stringa [DEAL...] dal contenuto
+    cleanContent = rawContent.replace(dealRegex, '');
+  }
+
+  return { cleanContent, dealData };
 };
 
 // Funzione helper per forzare l'alta risoluzione delle immagini
@@ -71,16 +93,20 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       let filtered = nativePosts.map((p: any) => {
           const isFeatured = p.category === 'Evidenza' || p.title.includes('⭐');
           
-          // Rimuove shortcode DEAL dal contenuto grezzo prima di pulirlo
-          const contentWithoutDeals = p.excerpt.replace(/\[DEAL.*?\]/g, '');
-          const cleanExcerpt = stripHtml(contentWithoutDeals).substring(0, 180).trim() + '...';
+          // Parse content to extract deal and remove string
+          const { cleanContent, dealData } = parseArticleContent(p.content || ''); // p.content might be full body in native
+          
+          // Clean excerpt from stripped content
+          const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
 
           return {
             ...p,
-            title: stripHtml(p.title), // Pulisce anche il titolo da eventuali entità
+            title: stripHtml(p.title),
             imageUrl: forceHighResImage(p.imageUrl),
             featured: isFeatured,
-            excerpt: cleanExcerpt
+            excerpt: cleanExcerpt,
+            content: cleanContent, // Use cleaned content
+            dealData: dealData // Attach parsed deal data
           };
       });
 
@@ -112,36 +138,44 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     return entries.map((entry: any) => {
       const id = entry.id.$t.split('post-')[1];
       const rawTitle = entry.title.$t;
-      let content = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
+      let rawContent = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
       const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
       
       const categories = entry.category ? entry.category.map((c: any) => c.term) : [];
-      const isFeatured = categories.includes('Evidenza') || categories.includes('Featured');
+      
+      const isFeatured = categories.some((c: string) => 
+        c === 'Evidenza' || 
+        c === 'Featured' || 
+        c.toLowerCase().endsWith('inevidenza')
+      );
       
       let mainCategory = categories.length > 0 ? categories[0] : 'News';
+      const displayCategory = categories.find((c: string) => !c.toLowerCase().endsWith('inevidenza') && c !== 'Evidenza' && c !== 'Featured');
+      if (displayCategory) mainCategory = displayCategory;
+
       if (mainCategory === 'offerteimperdibili') mainCategory = 'Offerte';
 
       let imageUrl = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
       if (entry.media$thumbnail) {
         imageUrl = entry.media$thumbnail.url;
       } else {
-        const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
+        const imgMatch = rawContent.match(/<img[^>]+src="([^">]+)"/);
         if (imgMatch) imageUrl = imgMatch[1];
       }
       
       imageUrl = forceHighResImage(imageUrl);
       const authorImage = entry.author?.[0]?.gd$image?.src;
 
-      // PULIZIA AVANZATA DEL TESTO
-      const contentWithoutDeals = content.replace(/\[DEAL.*?\]/g, '');
-      const cleanExcerpt = stripHtml(contentWithoutDeals).substring(0, 180).trim() + '...';
+      // PARSING DEAL & CLEANING
+      const { cleanContent, dealData } = parseArticleContent(rawContent);
+      const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
       const cleanTitle = stripHtml(rawTitle);
 
       return {
         id,
         title: cleanTitle,
         excerpt: cleanExcerpt,
-        content: content,
+        content: cleanContent,
         category: mainCategory,
         imageUrl,
         author: entry.author[0].name.$t,
@@ -149,7 +183,8 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
         date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
         url: postUrl,
         type: 'standard',
-        featured: isFeatured
+        featured: isFeatured,
+        dealData: dealData
       };
     });
   } catch (error) {
@@ -165,13 +200,11 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const data = await response.json();
     const entries = data.feed.entry || [];
     const generatedDeals: Deal[] = [];
-    
-    // Palette colori per le card delle offerte (ciclo)
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
 
     entries.forEach((entry: any, index: number) => {
       const content = entry.content ? entry.content.$t : '';
-      const title = stripHtml(entry.title.$t); // Pulisce il titolo
+      const title = stripHtml(entry.title.$t); 
       const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
       const id = entry.id.$t;
       
@@ -184,7 +217,7 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       }
       imageUrl = forceHighResImage(imageUrl);
 
-      const deal = extractDealData(content, postUrl, title, imageUrl, id);
+      const deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
       if (deal) {
         deal.brandColor = dealColors[index % dealColors.length];
         generatedDeals.push(deal);

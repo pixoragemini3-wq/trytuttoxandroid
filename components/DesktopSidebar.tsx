@@ -12,7 +12,7 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
     <div className="hidden lg:flex flex-col w-[280px] shrink-0 bg-[#fff200] h-full py-10 px-6 rounded-[2.5rem] relative overflow-hidden z-10">
        {/* Header */}
        <div className="mb-6">
-          <h3 className="font-condensed text-5xl font-black uppercase leading-[0.85] tracking-tight text-black mb-3">
+          <h3 className="font-condensed text-4xl font-black uppercase leading-[0.85] tracking-tight text-black mb-3">
             Best of<br/>the BEST
           </h3>
           <p className="text-xs font-bold leading-tight text-black/80">

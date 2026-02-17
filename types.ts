@@ -1,5 +1,11 @@
 
-export type Category = 'Tutti' | 'News' | 'Recensioni' | 'Offerte' | 'Guide' | 'Tutorial' | 'App & Giochi' | 'Smartphone' | 'Wearable' | 'Modding' | 'offerteimperdibili';
+export type Category = 'Tutti' | 'News' | 'Recensioni' | 'Offerte' | 'Guide' | 'Tutorial' | 'App & Giochi' | 'Smartphone' | 'Wearable' | 'Modding' | 'offerteimperdibili' | 'App';
+
+export interface DealData {
+  oldPrice: string;
+  newPrice: string;
+  link: string;
+}
 
 export interface Article {
   id: string;
@@ -15,6 +21,7 @@ export interface Article {
   url?: string;
   featured?: boolean;
   type?: 'standard' | 'mini' | 'hero' | 'horizontal';
+  dealData?: DealData | null; // New field for parsed deal string
 }
 
 export interface Deal {
