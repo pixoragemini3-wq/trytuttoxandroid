@@ -28,10 +28,11 @@ const getCategoryColors = (category: string, type: 'text' | 'bg') => {
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
+  // FIXED: Removed overflow-hidden on text container, added h-auto and min-h for responsiveness
   if (article.type === 'hero') {
     return (
-      <div onClick={onClick} className={`relative w-full overflow-hidden lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer h-full min-h-[450px] md:h-[550px] ${className}`}>
-        <div className="w-full md:w-[60%] h-56 md:h-full overflow-hidden relative bg-gray-50">
+      <div onClick={onClick} className={`relative w-full lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer min-h-[auto] md:h-[550px] ${className}`}>
+        <div className="w-full md:w-[60%] h-64 md:h-full overflow-hidden relative bg-gray-50 shrink-0">
           <img 
             src={article.imageUrl} 
             alt={article.title}
@@ -40,12 +41,12 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           <div className="absolute inset-0 bg-black/5"></div>
         </div>
         
-        <div className="w-full md:w-[40%] p-6 md:p-8 lg:p-12 bg-[#e31b23] text-white flex flex-col justify-center overflow-hidden transition-all duration-500 group-hover:bg-[#c0ff8c]">
+        <div className="w-full md:w-[40%] p-6 md:p-8 lg:p-12 bg-[#e31b23] text-white flex flex-col justify-center transition-all duration-500 group-hover:bg-[#c0ff8c]">
           <div className="space-y-4 w-full">
              <h2 className="font-condensed text-3xl sm:text-4xl md:text-4xl lg:text-5xl font-black leading-none uppercase tracking-tighter break-words hyphens-auto w-full group-hover:text-black transition-colors">
               {article.title}
             </h2>
-            <p className="text-sm md:text-base opacity-95 font-medium leading-relaxed line-clamp-3 md:line-clamp-4 group-hover:text-black transition-colors">
+            <p className="text-sm md:text-base opacity-95 font-medium leading-relaxed line-clamp-4 group-hover:text-black transition-colors">
               {article.excerpt}
             </p>
           </div>

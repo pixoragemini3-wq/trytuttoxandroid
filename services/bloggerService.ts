@@ -13,12 +13,11 @@ const stripHtml = (html: string): string => {
     const doc = new DOMParser().parseFromString(clean, 'text/html');
     return doc.body.textContent || "";
   } catch (e) {
-    // Fallback regex se DOMParser fallisce (es. SSR puro, ma qui siamo client)
     return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ');
   }
 };
 
-// Helper per estrarre dati DEAL specifici per la sezione Widget (NON per l'articolo singolo)
+// Helper per estrarre dati DEAL specifici per la sezione Widget
 const extractDealWidgetData = (content: string, defaultLink: string, defaultTitle: string, defaultImage: string, id: string): Deal | null => {
   const regex = /\[DEAL\s+old="([^"]+)"\s+new="([^"]+)"(?:\s+link="([^"]+)")?\]/i;
   const match = content.match(regex);
@@ -40,8 +39,6 @@ const extractDealWidgetData = (content: string, defaultLink: string, defaultTitl
 
 // Helper per parsare la stringa DEAL e rimuoverla dal contenuto
 const parseArticleContent = (rawContent: string): { cleanContent: string; dealData: DealData | null } => {
-  // Regex più flessibile: cerca [DEAL old="..." new="..." link="..."]
-  // Gestisce anche spazi extra o ordine diverso se necessario, ma assumiamo formato standard per ora
   const dealRegex = /\[DEAL\s+old="([^"]*)"\s+new="([^"]*)"\s+link="([^"]*)"\]/i;
   const match = rawContent.match(dealRegex);
 
@@ -54,7 +51,6 @@ const parseArticleContent = (rawContent: string): { cleanContent: string; dealDa
       newPrice: match[2],
       link: match[3]
     };
-    // Rimuove l'intera stringa [DEAL...] dal contenuto
     cleanContent = rawContent.replace(dealRegex, '');
   }
 
@@ -91,13 +87,13 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     const nativePosts = (window as any).bloggerNativePosts;
     if (nativePosts && nativePosts.length > 0) {
       let filtered = nativePosts.map((p: any) => {
-          const isFeatured = p.category === 'Evidenza' || p.title.includes('⭐');
+          const isFeatured = p.category === 'Evidenza' || p.title.includes('⭐') || (p.tags && p.tags.includes('Evidenza'));
           
-          // Parse content to extract deal and remove string
-          const { cleanContent, dealData } = parseArticleContent(p.content || ''); // p.content might be full body in native
-          
-          // Clean excerpt from stripped content
+          const { cleanContent, dealData } = parseArticleContent(p.content || '');
           const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
+
+          // Ensure tags is an array
+          const tags = Array.isArray(p.tags) ? p.tags : (p.category ? [p.category] : []);
 
           return {
             ...p,
@@ -105,16 +101,21 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
             imageUrl: forceHighResImage(p.imageUrl),
             featured: isFeatured,
             excerpt: cleanExcerpt,
-            content: cleanContent, // Use cleaned content
-            dealData: dealData // Attach parsed deal data
+            content: cleanContent,
+            dealData: dealData,
+            tags: tags
           };
       });
 
+      // Filter in memory for native posts
       if (category && category !== 'Tutti') {
-        filtered = filtered.filter((p: any) => p.category === category);
+        filtered = filtered.filter((p: Article) => {
+            // Check main category OR if tags array includes the category
+            return p.category === category || (p.tags && p.tags.includes(category));
+        });
       }
       if (searchQuery) {
-        filtered = filtered.filter((p: any) => 
+        filtered = filtered.filter((p: Article) => 
           p.title.toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
@@ -122,9 +123,16 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     }
 
     // 2. Fallback al feed JSON relativo
+    // Note: The category filter in URL only filters by label, so we still get list.
+    // If we want comprehensive tag filtering client side, we might want to fetch all.
+    // But for performance, we keep fetching by category if possible, or fetch all if 'Tutti'.
+    
     let feedPath = '/feeds/posts/default?alt=json&max-results=50';
     if (category && category !== 'Tutti') {
-      feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
+       // Blogger API filter is strict on label. 
+       // If this fails to return items that have MULTIPLE labels, we might need to fetch all and filter client side.
+       // For now, let's try strict, if empty, maybe fetch all? No, let's trust the feed.
+       feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
     }
     
     const response = await fetch(feedPath);
@@ -150,6 +158,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       );
       
       let mainCategory = categories.length > 0 ? categories[0] : 'News';
+      // Logic to pick a "Display" category that isn't internal like 'Evidenza'
       const displayCategory = categories.find((c: string) => !c.toLowerCase().endsWith('inevidenza') && c !== 'Evidenza' && c !== 'Featured');
       if (displayCategory) mainCategory = displayCategory;
 
@@ -166,7 +175,6 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       imageUrl = forceHighResImage(imageUrl);
       const authorImage = entry.author?.[0]?.gd$image?.src;
 
-      // PARSING DEAL & CLEANING
       const { cleanContent, dealData } = parseArticleContent(rawContent);
       const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
       const cleanTitle = stripHtml(rawTitle);
@@ -177,6 +185,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
         excerpt: cleanExcerpt,
         content: cleanContent,
         category: mainCategory,
+        tags: categories, // Store all tags
         imageUrl,
         author: entry.author[0].name.$t,
         authorImageUrl: authorImage,
@@ -203,7 +212,7 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
 
     entries.forEach((entry: any, index: number) => {
-      const content = entry.content ? entry.content.$t : '';
+      const content = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
       const title = stripHtml(entry.title.$t); 
       const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
       const id = entry.id.$t;
@@ -227,7 +236,6 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     return generatedDeals.length > 0 ? generatedDeals.slice(0, 4) : [];
     
   } catch (error) {
-    console.warn("Nessun post 'offerteimperdibili' trovato o errore fetch", error);
     return [];
   }
 };

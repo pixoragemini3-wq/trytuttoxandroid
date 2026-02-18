@@ -60,13 +60,32 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     // Parse HTML string into DOM nodes
     const parser = new DOMParser();
     const doc = parser.parseFromString(article.content, 'text/html');
-    const nodes = Array.from(doc.body.children);
     
-    // Convert generic HTMLCollection to Array of strings/elements
-    const elements = nodes.map((node, index) => ({
-      html: node.outerHTML,
-      index
-    }));
+    // FIX: Use childNodes instead of children to capture Text Nodes (content without tags)
+    // Filter out empty text nodes (newlines/spaces) that might throw off injection logic
+    const nodes = Array.from(doc.body.childNodes).filter(node => {
+        return node.nodeType === Node.ELEMENT_NODE || (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '');
+    });
+
+    // Fallback: If parsing resulted in 0 nodes (unlikely with text check, but possible), wrap content in a div
+    if (nodes.length === 0 && article.content.trim().length > 0) {
+        return [<div key="raw-content" dangerouslySetInnerHTML={{ __html: article.content }} />];
+    }
+
+    // Convert generic NodeList to Array of strings/elements wrapper
+    const elements = nodes.map((node, index) => {
+      // If it's an element, use outerHTML. If it's text, use textContent wrapped in span or raw.
+      // Actually, for consistency, we can use a wrapper div for text nodes or just render them.
+      let htmlContent = '';
+      if (node.nodeType === Node.ELEMENT_NODE) {
+          htmlContent = (node as Element).outerHTML;
+      } else if (node.nodeType === Node.TEXT_NODE) {
+          // Wrap loose text in a p tag for styling consistency, or just return it.
+          // Blogger usually wraps text in divs or p's, but if not:
+          htmlContent = `<p>${node.textContent}</p>`; 
+      }
+      return { html: htmlContent, index };
+    });
 
     const totalNodes = elements.length;
     // Calculate injection points based on content length
@@ -78,7 +97,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     elements.forEach((el, i) => {
        // Render the actual paragraph/element
        output.push(
-         <div key={`node-${i}`} dangerouslySetInnerHTML={{ __html: el.html }} />
+         <div key={`node-${i}`} dangerouslySetInnerHTML={{ __html: el.html }} className="mb-4" />
        );
 
        // INJECTION 1: INTERNAL RELATED ARTICLE (Early, around paragraph 2)
@@ -133,7 +152,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   }, [article.content, relatedArticle]);
 
   return (
-    <div className="bg-white border-b-8 border-gray-100 last:border-0 pb-12 mb-0 relative animate-in fade-in duration-500">
+    <div className="bg-white border-b-8 border-gray-100 last:border-0 pb-12 mb-0 relative animate-in fade-in duration-500 min-h-screen">
       <Helmet>
         <title>{article.title} - TuttoXAndroid</title>
         <meta name="description" content={article.excerpt} />
@@ -167,7 +186,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
         </span>
 
         {/* Title */}
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-6 md:mb-8 leading-tight md:leading-[0.95] tracking-tight">
+        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-6 md:mb-8 leading-tight md:leading-[0.95] tracking-tight break-words hyphens-auto">
           {article.title}
         </h1>
 

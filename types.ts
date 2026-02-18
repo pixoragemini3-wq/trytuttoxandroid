@@ -13,15 +13,15 @@ export interface Article {
   excerpt: string;
   content: string;
   category: Category;
+  tags: string[]; // Added: List of all categories/labels for filtering
   imageUrl: string;
   author: string;
-  // Added to fix TypeScript error in App.tsx line 436: Property 'authorImageUrl' does not exist on type 'Article'
   authorImageUrl?: string;
   date: string;
   url?: string;
   featured?: boolean;
   type?: 'standard' | 'mini' | 'hero' | 'horizontal';
-  dealData?: DealData | null; // New field for parsed deal string
+  dealData?: DealData | null;
 }
 
 export interface Deal {
