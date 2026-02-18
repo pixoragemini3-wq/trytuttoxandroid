@@ -73,21 +73,42 @@ const App: React.FC = () => {
   // Determine view based on URL path
   const isAbout = location.pathname === '/about';
   const isCollab = location.pathname === '/collab';
-  const isArticle = location.pathname.startsWith('/article/');
+  // Check for native Blogger permalink structure (.html) OR old router structure (/article/)
+  const isArticle = location.pathname.endsWith('.html') || location.pathname.startsWith('/article/');
   const isSearch = location.pathname === '/search';
   
-  // FIXED: Default to Home if no other specific route is matched
   const isHome = !isAbout && !isCollab && !isArticle && !isSearch;
   
-  // Extract ID if in article view
-  const getArticleIdFromPath = () => {
-    if (!isArticle) return null;
-    const parts = location.pathname.split('/');
-    return parts[parts.length - 1]; // Take the last part as ID to be safe
+  // Extract Article based on URL matching
+  const getCurrentArticle = () => {
+    if (!isArticle) return undefined;
+    
+    // 1. Try matching by exact pathname (Native URL)
+    let found = articles.find(a => {
+      try {
+        return new URL(a.url || '').pathname === location.pathname;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    // 2. Fallback: Try matching by ID (Legacy Router)
+    if (!found && location.pathname.startsWith('/article/')) {
+       const parts = location.pathname.split('/');
+       const id = parts[parts.length - 1];
+       found = articles.find(a => a.id === id);
+    }
+    
+    // 3. Fallback: If we are on a single post page loaded by Blogger directly, 
+    // the articles array might only contain that one post (injected via bloggerNativePosts).
+    if (!found && articles.length === 1) {
+       return articles[0];
+    }
+
+    return found;
   };
 
-  const currentArticleId = getArticleIdFromPath();
-  const currentArticle = articles.find(a => a.id === currentArticleId);
+  const currentArticle = getCurrentArticle();
 
   // Effect to handle Category via Query Params if needed, or just reset on home
   useEffect(() => {
@@ -191,9 +212,19 @@ const App: React.FC = () => {
        return;
     }
     
-    // Router Navigation
+    // Router Navigation using Native URL if available
     setActiveMegaMenu(null);
-    navigate(`/article/${article.id}`);
+    if (article.url) {
+       try {
+         const path = new URL(article.url).pathname;
+         navigate(path);
+       } catch(e) {
+         navigate(`/article/${article.id}`);
+       }
+    } else {
+       navigate(`/article/${article.id}`);
+    }
+    window.scrollTo(0, 0);
   };
 
   const toggleSearch = () => {
