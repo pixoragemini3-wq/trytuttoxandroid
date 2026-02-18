@@ -77,7 +77,6 @@ const App: React.FC = () => {
   const isSearch = location.pathname === '/search';
   
   // FIXED: Default to Home if no other specific route is matched
-  // This handles cases where path might be '/index.html' or subdirectories in preview environments
   const isHome = !isAbout && !isCollab && !isArticle && !isSearch;
   
   // Extract ID if in article view

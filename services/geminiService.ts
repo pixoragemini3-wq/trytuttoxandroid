@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 export const getTechAssistantResponse = async (userPrompt: string) => {
