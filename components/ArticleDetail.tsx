@@ -1,20 +1,41 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
 import { Helmet } from 'react-helmet-async';
+import { fetchArticleById } from '../services/bloggerService';
 
 interface ArticleDetailProps {
   article: Article;
-  relatedArticle?: Article; // Articolo singolo suggerito nel testo
-  moreArticles?: Article[]; // Banner orizzontale a fine articolo (3-4 articoli)
-  deals?: Deal[]; // Offerte correlate (PRODOTTI)
-  offerNews?: Article[]; // Notizie correlate (ARTICOLI con tag Offerte)
-  onArticleClick?: (article: Article) => void; // Per navigare dai suggeriti
+  relatedArticle?: Article;
+  moreArticles?: Article[];
+  deals?: Deal[];
+  offerNews?: Article[];
+  onArticleClick?: (article: Article) => void;
 }
 
 const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, moreArticles = [], deals = [], offerNews = [], onArticleClick }) => {
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [fullContent, setFullContent] = useState(article.content);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Fetch full content on mount to ensure we have everything (fixes truncation)
+  useEffect(() => {
+    setFullContent(article.content);
+    
+    const loadFull = async () => {
+      // If we are in local dev, skip
+      if (window.location.hostname.includes('localhost')) return;
+      
+      setIsUpdating(true);
+      const freshContent = await fetchArticleById(article.id);
+      if (freshContent && freshContent.length > (article.content?.length || 0)) {
+        setFullContent(freshContent);
+      }
+      setIsUpdating(false);
+    };
+    loadFull();
+  }, [article.id, article.content]);
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) {
@@ -55,52 +76,46 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // --- CONTENT PARSING & INJECTION LOGIC ---
   const contentComponents = useMemo(() => {
-    if (!article.content) return [<p key="excerpt" className="lead">{article.excerpt}</p>];
+    const contentToRender = fullContent || article.content;
+    if (!contentToRender) return [<p key="excerpt" className="lead">{article.excerpt}</p>];
 
     // Parse HTML string into DOM nodes
     const parser = new DOMParser();
-    const doc = parser.parseFromString(article.content, 'text/html');
+    const doc = parser.parseFromString(contentToRender, 'text/html');
     
-    // FIX: Use childNodes instead of children to capture Text Nodes (content without tags)
-    // Filter out empty text nodes (newlines/spaces) that might throw off injection logic
+    // Convert generic NodeList to Array
     const nodes = Array.from(doc.body.childNodes).filter(node => {
+        // Keep elements and non-empty text
         return node.nodeType === Node.ELEMENT_NODE || (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '');
     });
 
-    // Fallback: If parsing resulted in 0 nodes (unlikely with text check, but possible), wrap content in a div
-    if (nodes.length === 0 && article.content.trim().length > 0) {
-        return [<div key="raw-content" dangerouslySetInnerHTML={{ __html: article.content }} />];
+    // Fallback for simple content or failed parsing
+    if (nodes.length <= 1 && contentToRender.trim().length > 0) {
+        return [<div key="raw-content" dangerouslySetInnerHTML={{ __html: contentToRender }} />];
     }
 
-    // Convert generic NodeList to Array of strings/elements wrapper
     const elements = nodes.map((node, index) => {
-      // If it's an element, use outerHTML. If it's text, use textContent wrapped in span or raw.
-      // Actually, for consistency, we can use a wrapper div for text nodes or just render them.
       let htmlContent = '';
       if (node.nodeType === Node.ELEMENT_NODE) {
           htmlContent = (node as Element).outerHTML;
       } else if (node.nodeType === Node.TEXT_NODE) {
-          // Wrap loose text in a p tag for styling consistency, or just return it.
-          // Blogger usually wraps text in divs or p's, but if not:
           htmlContent = `<p>${node.textContent}</p>`; 
       }
       return { html: htmlContent, index };
     });
 
     const totalNodes = elements.length;
-    // Calculate injection points based on content length
-    const socialBoxIndex = Math.floor(totalNodes / 2); // Middle
-    const secondAdIndex = Math.floor(totalNodes * 0.75); // 3/4 way down
+    const socialBoxIndex = Math.floor(totalNodes / 2); 
+    const secondAdIndex = Math.floor(totalNodes * 0.8);
     
     const output: React.ReactNode[] = [];
 
     elements.forEach((el, i) => {
-       // Render the actual paragraph/element
        output.push(
-         <div key={`node-${i}`} dangerouslySetInnerHTML={{ __html: el.html }} className="mb-4" />
+         <div key={`node-${i}`} dangerouslySetInnerHTML={{ __html: el.html }} className="mb-4 break-words" />
        );
 
-       // INJECTION 1: INTERNAL RELATED ARTICLE (Early, around paragraph 2)
+       // INJECTION 1: RELATED ARTICLE
        if (i === 2 && relatedArticle) {
          output.push(
             <div key="related-box" onClick={() => handleSuggestedClick(relatedArticle)} className="my-8 bg-gray-50 rounded-2xl p-6 border-l-4 border-[#e31b23] not-prose hover:bg-gray-100 transition-colors cursor-pointer group">
@@ -121,8 +136,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
          );
        }
 
-       // INJECTION 2: SOCIAL BOX (The "Black Box") - MIDDLE
-       if (i === socialBoxIndex && totalNodes > 4) {
+       // INJECTION 2: SOCIAL BOX
+       if (i === socialBoxIndex && totalNodes > 6) {
           output.push(
             <div key="social-box" className="not-prose my-10 bg-black text-white p-8 rounded-3xl relative overflow-hidden group shadow-2xl">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#e31b23] rounded-full blur-[60px] opacity-30 group-hover:opacity-50 transition-opacity"></div>
@@ -138,8 +153,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           );
        }
 
-       // INJECTION 3: SECOND ADSENSE (Later in content)
-       if (i === secondAdIndex && totalNodes > 8) {
+       // INJECTION 3: AD
+       if (i === secondAdIndex && totalNodes > 10) {
           output.push(
             <div key="ad-2" className="not-prose my-8">
                <AdUnit slotId="in-article-2" format="fluid" layoutKey="-fb+5w+4e-db+86" label="Annuncio" />
@@ -149,7 +164,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     });
 
     return output;
-  }, [article.content, relatedArticle]);
+  }, [fullContent, article.content, relatedArticle]);
 
   return (
     <div className="bg-white border-b-8 border-gray-100 last:border-0 pb-12 mb-0 relative animate-in fade-in duration-500 min-h-screen">
@@ -160,37 +175,25 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
         <meta property="og:description" content={article.excerpt} />
         <meta property="og:image" content={article.imageUrl} />
         <meta property="og:type" content="article" />
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "NewsArticle",
-            "headline": article.title,
-            "image": [article.imageUrl],
-            "datePublished": article.date,
-            "author": [{ "@type": "Person", "name": article.author }],
-            "publisher": {
-              "@type": "Organization",
-              "name": "TuttoXAndroid",
-              "logo": { "@type": "ImageObject", "url": "https://i.imgur.com/l7YwbQe.png" }
-            },
-            "description": article.excerpt
-          })}
-        </script>
       </Helmet>
 
+      {/* Loading Indicator for Full Content */}
+      {isUpdating && (
+         <div className="fixed top-20 right-4 z-50 bg-black text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg flex items-center gap-2 animate-pulse">
+            <div className="w-2 h-2 bg-[#c0ff8c] rounded-full"></div>
+            Caricamento testo completo...
+         </div>
+      )}
+
       <div className="max-w-3xl mx-auto px-4 pt-6 md:pt-16">
-        
-        {/* Category Tag */}
         <span className={`inline-block ${catBgClass} text-white px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest mb-4 md:mb-6`}>
           {article.category}
         </span>
 
-        {/* Title */}
         <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-6 md:mb-8 leading-tight md:leading-[0.95] tracking-tight break-words hyphens-auto">
           {article.title}
         </h1>
 
-        {/* AUTHOR & SHARE BLOCK */}
         <div className="flex flex-row items-center justify-between border-t border-b border-gray-100 py-3 mb-8 relative">
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
@@ -229,31 +232,24 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           </div>
         </div>
 
-        {/* Featured Image */}
         <div className="w-full aspect-video md:aspect-[21/9] rounded-2xl md:rounded-[2rem] overflow-hidden mb-6 shadow-xl bg-gray-100">
            <img src={article.imageUrl} className="w-full h-full object-cover" alt={article.title} />
         </div>
 
-        {/* FIRST ADSENSE (Small/Top) - Non intrusive */}
         <div className="not-prose mb-8 flex justify-center">
            <AdUnit slotId="top-article" format="auto" className="w-full max-w-[320px] md:max-w-full" label="Sponsor" />
         </div>
 
         {/* Content Body */}
         <div className="prose prose-base md:prose-xl max-w-none font-medium leading-relaxed text-gray-800 space-y-4">
-          
-          {/* Render Parsed Content with Injections */}
           {contentComponents}
 
-          {/* DEAL PRODUCT CARD (If Parsed from Content) - Rendered AFTER content */}
           {article.dealData && (
              <div className="not-prose my-12 animate-in slide-in-from-bottom-5">
                 <div className="bg-white rounded-3xl overflow-hidden border-2 border-[#e31b23] shadow-2xl relative">
-                   {/* Badge */}
                    <div className="absolute top-0 right-0 bg-[#e31b23] text-white px-6 py-2 rounded-bl-3xl font-black uppercase text-xs tracking-widest z-10">
                      Offerta Selezionata
                    </div>
-                   
                    <div className="flex flex-col md:flex-row">
                       <div className="md:w-1/3 bg-gray-50 p-8 flex items-center justify-center">
                          <img src={article.imageUrl} className="max-h-48 object-contain mix-blend-multiply" alt="Deal" />
@@ -280,7 +276,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
              </div>
           )}
 
-          {/* DEALS WIDGET (Prodotti singoli - Tag 'offerteimperdibili') - Bottom Context */}
           {article.category === 'Offerte' && deals && deals.length > 0 && !article.dealData && (
              <div className="not-prose my-12 border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-lg shadow-gray-100/50">
                 <div className="bg-[#e31b23] px-5 py-3 flex justify-between items-center relative overflow-hidden">
@@ -309,19 +304,16 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           )}
         </div>
 
-        {/* Tags footer */}
         <div className="mt-12 pt-8 border-t border-gray-100 flex flex-wrap gap-2 mb-8">
            {['Tech', 'Android', article.category, 'News'].map(tag => (
              <span key={tag} className="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold uppercase text-gray-500 hover:bg-black hover:text-white transition-colors cursor-pointer">#{tag}</span>
            ))}
         </div>
         
-        {/* BOTTOM ADSENSE */}
         <div className="mb-12">
             <AdUnit slotId="bottom-article" format="auto" label="Sponsor" />
         </div>
 
-        {/* RELATED ARTICLES HORIZONTAL BANNER (Bottom Bounce Rate) */}
         {moreArticles.length > 0 && (
           <div className="not-prose mb-8">
             <h3 className="font-condensed text-2xl font-black uppercase mb-6 flex items-center gap-3">
