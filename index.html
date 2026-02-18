@@ -25,46 +25,6 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
-      
-      .scroll-container {
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      @keyframes shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-      }
-      .sparkle-line {
-        height: 4px;
-        background-color: #f3f4f6;
-        transition: all 0.4s ease;
-        position: relative;
-        overflow: hidden;
-      }
-      .group:hover .sparkle-line {
-        background: linear-gradient(90deg, #e31b23 0%, #c0ff8c 50%, #e31b23 100%);
-        background-size: 200% 100%;
-        animation: shimmer 1.2s infinite linear;
-        box-shadow: 0 0 15px rgba(227, 27, 35, 0.4);
-      }
-      
-      .perspective-1000 {
-        perspective: 1000px;
-      }
-      .preserve-3d {
-        transform-style: preserve-3d;
-      }
-      .backface-hidden {
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-      }
-      .rotate-y-180 {
-        transform: rotateY(180deg);
-      }
-      .flipped {
-        transform: rotateY(180deg);
-      }
       /* Spinner Animation */
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       .loader {
@@ -74,17 +34,18 @@
         width: 40px;
         height: 40px;
         animation: spin 1s linear infinite;
+        margin: 20px auto;
       }
     </style>
     <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react/": "https://esm.sh/react@18.2.0/",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom",
-    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom",
+    "react": "https://esm.sh/react@18.2.0?v=fixed",
+    "react/": "https://esm.sh/react@18.2.0/?v=fixed",
+    "react-dom": "https://esm.sh/react-dom@18.2.0?v=fixed",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?v=fixed",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom&v=fixed",
+    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&v=fixed",
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }

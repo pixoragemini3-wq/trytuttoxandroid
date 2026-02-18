@@ -21,6 +21,7 @@
     border-top: 5px solid #e31b23;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    z-index: 9999;
   }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 ]]></b:skin>
@@ -35,12 +36,12 @@
 <script type='importmap'>
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react/": "https://esm.sh/react@18.2.0/",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom",
-    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom",
+    "react": "https://esm.sh/react@18.2.0?v=fixed",
+    "react/": "https://esm.sh/react@18.2.0/?v=fixed",
+    "react-dom": "https://esm.sh/react-dom@18.2.0?v=fixed",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?v=fixed",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom&v=fixed",
+    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&v=fixed",
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0"
   }
 }
@@ -75,11 +76,23 @@
   <div id='root'></div>
   
   <script type='module'>
-    const cacheBuster = new Date().getTime();
-    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${cacheBuster}`).catch(err => {
-      console.error("Errore di caricamento applicazione:", err);
-      // Fallback manuale se l'import dinamico fallisce
-      document.body.innerHTML = '<div style="text-align:center; padding: 50px; font-family: sans-serif;"><h1>Errore Caricamento</h1><p>Si prega di ricaricare la pagina.</p></div>';
+    // Force a cache bust every time to avoid getting stale files
+    const cacheBuster = "v" + new Date().getTime(); 
+    
+    // Importa l'applicazione principale
+    // NOTA: Se GitHub non ha i file aggiornati, questo fallirà.
+    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${cacheBuster}`)
+    .catch(err => {
+      console.error("CRITICAL ERROR LOADING APP:", err);
+      const root = document.getElementById('root');
+      root.innerHTML = `
+        <div style="font-family: sans-serif; text-align: center; padding: 40px;">
+          <h1 style="color: #e31b23;">Errore di Caricamento</h1>
+          <p>Impossibile caricare l'applicazione dal server.</p>
+          <p style="font-size: 12px; color: #666;">Dettagli tecnici: ${err.message}</p>
+          <p style="margin-top: 20px; font-weight: bold;">Assicurati di aver caricato (Push) i file aggiornati su GitHub.</p>
+        </div>
+      `;
     });
   </script>
 </body>
