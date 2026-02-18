@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
+import { Helmet } from 'react-helmet-async';
 
 interface ArticleDetailProps {
   article: Article;
@@ -14,38 +15,6 @@ interface ArticleDetailProps {
 
 const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, moreArticles = [], deals = [], offerNews = [], onArticleClick }) => {
   const [showShareMenu, setShowShareMenu] = useState(false);
-
-  // SEO Logic
-  useEffect(() => {
-    document.title = `${article.title} - TuttoXAndroid`;
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta');
-      metaDesc.setAttribute('name', 'description');
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.setAttribute('content', article.excerpt);
-    
-    // JSON-LD
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "NewsArticle",
-      "headline": article.title,
-      "image": [article.imageUrl],
-      "datePublished": article.date,
-      "author": [{ "@type": "Person", "name": article.author }],
-      "publisher": {
-        "@type": "Organization",
-        "name": "TuttoXAndroid",
-        "logo": { "@type": "ImageObject", "url": "https://i.imgur.com/l7YwbQe.png" }
-      },
-      "description": article.excerpt
-    });
-    document.head.appendChild(script);
-    return () => { document.head.removeChild(script); };
-  }, [article]);
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) {
@@ -165,7 +134,31 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   return (
     <div className="bg-white border-b-8 border-gray-100 last:border-0 pb-12 mb-0 relative animate-in fade-in duration-500">
-      
+      <Helmet>
+        <title>{article.title} - TuttoXAndroid</title>
+        <meta name="description" content={article.excerpt} />
+        <meta property="og:title" content={article.title} />
+        <meta property="og:description" content={article.excerpt} />
+        <meta property="og:image" content={article.imageUrl} />
+        <meta property="og:type" content="article" />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "headline": article.title,
+            "image": [article.imageUrl],
+            "datePublished": article.date,
+            "author": [{ "@type": "Person", "name": article.author }],
+            "publisher": {
+              "@type": "Organization",
+              "name": "TuttoXAndroid",
+              "logo": { "@type": "ImageObject", "url": "https://i.imgur.com/l7YwbQe.png" }
+            },
+            "description": article.excerpt
+          })}
+        </script>
+      </Helmet>
+
       <div className="max-w-3xl mx-auto px-4 pt-6 md:pt-16">
         
         {/* Category Tag */}

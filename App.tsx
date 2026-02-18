@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MOCK_ARTICLES, MOCK_DEALS } from './constants';
 import ArticleCard from './components/ArticleCard';
 import MegaMenu from './components/MegaMenu';
@@ -14,12 +15,16 @@ import AdUnit from './components/AdUnit';
 import DesktopSidebar from './components/DesktopSidebar'; 
 import CookieConsent from './components/CookieConsent'; // GDPR
 import { AboutPage, CollabPage } from './components/StaticPages'; // Nuove Pagine
+import GeminiAssistant from './components/GeminiAssistant';
 
 const App: React.FC = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'home' | 'article' | 'search' | 'about' | 'collab'>('home');
   
+  // Routing Hooks
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // Layout Customization State (Simula le impostazioni di layout di Blogger)
   const [layoutConfig] = useState({
     showTicker: true,
@@ -28,8 +33,9 @@ const App: React.FC = () => {
     showFooterSocial: true
   });
 
-  // New: Reading List for Infinite Stream
-  const [readingList, setReadingList] = useState<Article[]>([]);
+  // Reading List logic is slightly adapted for router context
+  // When navigating via Router, we technically reset "Feed" flow, but we can keep cache if needed.
+  // For simplicity with Router, we focus on the specific URL article.
   
   const [articles, setArticles] = useState<Article[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -47,9 +53,6 @@ const App: React.FC = () => {
   // Scroll To Top Logic
   const [showScrollTop, setShowScrollTop] = useState(false);
   
-  // Infinite Scroll Sentinel Ref
-  const loadMoreArticlesRef = useRef<HTMLDivElement>(null);
-
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -70,6 +73,31 @@ const App: React.FC = () => {
   // Removed 'Modding' as requested
   const navCategories = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'App & Giochi'];
 
+  // --- ROUTER & VIEW LOGIC ---
+  // Determine view based on URL path
+  const isHome = location.pathname === '/';
+  const isAbout = location.pathname === '/about';
+  const isCollab = location.pathname === '/collab';
+  const isArticle = location.pathname.startsWith('/article/');
+  const isSearch = location.pathname === '/search';
+  
+  // Extract ID if in article view
+  const getArticleIdFromPath = () => {
+    if (!isArticle) return null;
+    const parts = location.pathname.split('/');
+    return parts[2]; // /article/:id
+  };
+
+  const currentArticleId = getArticleIdFromPath();
+  const currentArticle = articles.find(a => a.id === currentArticleId);
+
+  // Effect to handle Category via Query Params if needed, or just reset on home
+  useEffect(() => {
+    if (isHome) {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname]);
+
   const loadContent = async () => {
     setIsLoading(true);
     try {
@@ -84,7 +112,7 @@ const App: React.FC = () => {
       
       setArticles(finalArticles);
       setDeals(finalDeals);
-      setFilteredArticles(finalArticles); // Filter will be applied in render or helpers
+      setFilteredArticles(finalArticles); 
     } catch (error) {
       console.error("Errore caricamento:", error);
     } finally {
@@ -116,36 +144,6 @@ const App: React.FC = () => {
   };
 
   const displayArticles = getDisplayArticles();
-
-  // Intersection Observer for Infinite Article Loading (Up to 5 articles)
-  useEffect(() => {
-    if (currentView !== 'article' || readingList.length >= 5) return;
-
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        loadNextArticle();
-      }
-    }, { threshold: 0.1 });
-
-    if (loadMoreArticlesRef.current) {
-      observer.observe(loadMoreArticlesRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [currentView, readingList]);
-
-  // Logic to load the next article
-  const loadNextArticle = () => {
-    const currentIds = new Set(readingList.map(a => a.id));
-    const available = articles.filter(a => !currentIds.has(a.id));
-    
-    if (available.length > 0) {
-      const currentCategory = readingList[readingList.length - 1].category;
-      let next = available.find(a => a.category === currentCategory);
-      if (!next) next = available[0];
-      if (next) setReadingList(prev => [...prev, next!]);
-    }
-  };
 
   // Scroll Listener for Sticky Banner & Back To Top
   useEffect(() => {
@@ -182,22 +180,19 @@ const App: React.FC = () => {
     }
   };
 
+  // --- NAVIGATION HANDLERS (UPDATED FOR ROUTER) ---
   const handleArticleClick = (article: Article) => {
-    // If we were dragging, do not open article
     if (isDragging) return;
 
-    // LOGICA LINK DIRETTO AMAZON
-    // Se è nella categoria Offerte e ha un link deal (ed è chiaramente un'offerta diretta)
-    // Apri direttamente il link esterno.
+    // Direct Link Logic
     if (article.category === 'Offerte' && article.dealData?.link) {
        window.open(article.dealData.link, '_blank');
        return;
     }
     
-    setReadingList([article]);
-    setCurrentView('article');
-    setActiveMegaMenu(null); // Close menu on click
-    window.scrollTo(0, 0);
+    // Router Navigation
+    setActiveMegaMenu(null);
+    navigate(`/article/${article.id}`);
   };
 
   const toggleSearch = () => {
@@ -212,26 +207,35 @@ const App: React.FC = () => {
     if (!searchQuery.trim()) return;
     const results = articles.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()));
     setFilteredArticles(results);
-    setCurrentView('search');
+    navigate('/search');
     setIsSearchVisible(false);
     setVisibleNewsCount(6); 
   };
 
   const handleNavClick = (nav: string) => {
-    setCurrentView('home');
     setActiveCategory(nav);
     setVisibleNewsCount(6); 
-    setFilteredArticles(articles); // Reset base filter, logic is in displayArticles
+    setFilteredArticles(articles);
     setIsMobileMenuOpen(false);
-    setTimeout(() => {
-      if (newsSectionRef.current) {
-        newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
+    
+    // If not home, go home then scroll
+    if (!isHome) {
+        navigate('/');
+        // Small delay to allow render then scroll
+        setTimeout(() => {
+           if (newsSectionRef.current) {
+             newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+           }
+        }, 100);
+    } else {
+       if (newsSectionRef.current) {
+         newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+       }
+    }
   };
 
-  const handleFooterLinkClick = (view: 'about' | 'collab' | 'home') => {
-    setCurrentView(view);
+  const handleFooterLinkClick = (path: '/about' | '/collab' | '/') => {
+    navigate(path);
     window.scrollTo(0, 0);
   };
 
@@ -324,8 +328,7 @@ const App: React.FC = () => {
   };
 
   const goToHome = () => {
-    setCurrentView('home');
-    setReadingList([]);
+    navigate('/');
     setSearchQuery('');
     setActiveCategory('Tutti');
     setVisibleNewsCount(6); 
@@ -353,10 +356,10 @@ const App: React.FC = () => {
           {deals.map(deal => (
             <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all group flex flex-col hover:-translate-y-2 lg:hover:-translate-y-4 duration-500">
               <div className={`h-24 lg:h-64 flex items-center justify-center p-2 lg:p-12 ${deal.brandColor || 'bg-gray-50'}`}>
-                <img src={deal.imageUrl} className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-1000" />
+                {/* REMOVED mix-blend-multiply to avoid "dark watermark" effect on colored backgrounds */}
+                <img src={deal.imageUrl} className="max-h-full object-contain group-hover:scale-110 transition-transform duration-1000" />
               </div>
               <div className="p-2 lg:p-10 text-center flex-1 flex flex-col">
-                {/* Visual Fix: Ensure text color contrasts with potentially dark background (not issue here as it is white part of card, but fixing logic just in case card bg changes) */}
                 <h4 className="font-black text-[10px] lg:text-xl text-gray-900 mb-1 lg:mb-2 leading-tight line-clamp-2">{deal.product}</h4>
                 <div className="mt-auto">
                   <div className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-4 mb-1 lg:mb-6">
@@ -395,11 +398,9 @@ const App: React.FC = () => {
          
          {/* Android Italy Group - BLUE CARD */}
          <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
-            {/* Background Blue Gradient with Image */}
             <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay" alt="Background" />
             <div className="absolute inset-0 bg-gradient-to-br from-[#0066FF]/90 to-[#0040DD]/90"></div>
             
-            {/* Content */}
             <div className="absolute inset-0 p-8 flex flex-col justify-between z-10">
                <div className="flex justify-between items-start">
                   <span className="bg-white text-[#0066FF] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md">Community Ufficiale</span>
@@ -429,28 +430,20 @@ const App: React.FC = () => {
 
          {/* TuttoXAndroid Page - DARK CARD */}
          <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
-            {/* Background Dark Gradient */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#333333] to-[#000000]"></div>
-             
-             {/* Content */}
             <div className="absolute inset-0 p-8 flex flex-col justify-center items-center z-10 text-center">
-               
-               {/* ANIMATED LOGO CONTAINER */}
                <div className="w-24 h-24 bg-white p-1 rounded-full shadow-2xl mb-6 relative group-hover:scale-110 group-hover:drop-shadow-[0_0_20px_rgba(227,27,35,0.6)] transition-all duration-500 ease-out group-hover:animate-pulse">
                   <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo" />
                   <div className="absolute bottom-0 right-0 bg-[#1877F2] text-white p-1.5 rounded-full border-2 border-white">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333.915-1.333h3.101v-5.029l-4.128-.022c-4.181 0-5.888 2.067-5.888 5.728v2.323z"/></svg>
                   </div>
                </div>
-
                <h3 className="font-condensed text-5xl font-black uppercase text-white mb-2 leading-none">TuttoXAndroid</h3>
                <p className="text-gray-400 font-medium text-sm mb-8 tracking-wide">Follower: 12.475 • Seguiti: 1</p>
-               
                <span className="w-full max-w-sm bg-[#e31b23] text-white px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest group-hover:bg-white group-hover:text-[#e31b23] transition-colors shadow-lg shadow-red-900/50">
                  Lascia un Like &rarr;
                </span>
             </div>
-             {/* Abstract Decoration */}
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 mix-blend-overlay"></div>
          </a>
 
@@ -476,8 +469,8 @@ const App: React.FC = () => {
                 </button>
               ))}
               <div className="border-t border-white/10 pt-6 mt-6">
-                 <button onClick={() => { handleFooterLinkClick('about'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 mb-4 hover:text-white">Chi Siamo</button>
-                 <button onClick={() => { handleFooterLinkClick('collab'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 hover:text-white">Collabora</button>
+                 <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 mb-4 hover:text-white">Chi Siamo</button>
+                 <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 hover:text-white">Collabora</button>
               </div>
            </div>
            <div className="p-8 bg-[#e31b23] text-center">
@@ -491,8 +484,8 @@ const App: React.FC = () => {
         {/* Top Bar - CHANGED TO ABSOLUTE to remove black band height */}
         <div className="hidden md:flex justify-start items-center px-4 lg:px-8 py-2 absolute top-0 left-0 w-full z-20">
            <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-gray-400">
-              <button onClick={() => handleFooterLinkClick('about')} className="hover:text-white transition-colors">Chi Siamo</button>
-              <button onClick={() => handleFooterLinkClick('collab')} className="hover:text-white transition-colors">Lavora con noi</button>
+              <button onClick={() => handleFooterLinkClick('/about')} className="hover:text-white transition-colors">Chi Siamo</button>
+              <button onClick={() => handleFooterLinkClick('/collab')} className="hover:text-white transition-colors">Lavora con noi</button>
               <span className="cursor-pointer hover:text-white transition-colors">Pubblicità</span>
               <span className="cursor-pointer hover:text-white transition-colors">Privacy Policy</span>
            </div>
@@ -515,14 +508,14 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <nav className={`hidden lg:flex items-center gap-10 ${isSearchVisible ? 'hidden' : 'flex'}`}>
+            <nav className={`hidden lg:flex items-center gap-8 ${isSearchVisible ? 'hidden' : 'flex'}`}>
               {navCategories.slice(0, 7).map(nav => {
                 const colorClasses = getNavColor(nav);
                 // Removed text color hover class to avoid double coloring
                 const underlineBgClass = colorClasses.split(' ')[1];
 
                 return (
-                  <button key={nav} onMouseEnter={() => setActiveMegaMenu(nav)} onClick={() => handleNavClick(nav)} className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all relative group hover:opacity-100 opacity-90`}>
+                  <button key={nav} onMouseEnter={() => setActiveMegaMenu(nav)} onClick={() => handleNavClick(nav)} className={`text-lg font-condensed font-black uppercase tracking-wide transition-all relative group hover:opacity-100 opacity-90`}>
                     {nav}
                     <span className={`absolute bottom-0 left-0 h-0.5 ${underlineBgClass} transition-all ${activeCategory === nav ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
                   </button>
@@ -561,14 +554,14 @@ const App: React.FC = () => {
 
       <main className="flex-1 lg:mt-2">
         {/* VIEW: STATIC PAGES */}
-        {currentView === 'about' && <AboutPage />}
-        {currentView === 'collab' && <CollabPage />}
+        {isAbout && <AboutPage />}
+        {isCollab && <CollabPage />}
 
         {/* VIEW: HOME & SEARCH */}
-        {(currentView === 'home' || currentView === 'search') && (
+        {(isHome || isSearch) && (
           <>
             {/* Ticker controlled by layoutConfig */}
-            {currentView === 'home' && layoutConfig.showTicker && (
+            {isHome && layoutConfig.showTicker && (
               <TopStoriesMobile 
                 articles={topStories} 
                 onArticleClick={handleArticleClick} 
@@ -580,11 +573,11 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 
                 {/* Smartphone Category Specific Header */}
-                {currentView === 'home' && activeCategory === 'Smartphone' && (
+                {isHome && activeCategory === 'Smartphone' && (
                   <SmartphoneShowcase />
                 )}
 
-                {currentView === 'home' && heroArticle && (
+                {isHome && heroArticle && (
                   <div className="w-full h-[350px] md:h-[550px] flex gap-2">
                      {/* Desktop Sidebar (Left of Hero) - Controlled by layoutConfig */}
                      {layoutConfig.fixedSidebar && (
@@ -606,10 +599,10 @@ const App: React.FC = () => {
                 )}
 
                 {/* FEATURED CAROUSEL SECTION */}
-                <div className="px-4 lg:px-0 py-8 lg:py-6 mt-8 lg:mt-0">
-                   <div className="flex items-end justify-between mb-8">
+                <div className="px-4 lg:px-0 py-4 lg:py-6 mt-2 lg:mt-0">
+                   <div className="flex items-end justify-between mb-4 lg:mb-8">
                        <h3 className="font-condensed text-3xl lg:text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
-                          {currentView === 'search' ? `Trovati ${filteredArticles.length} risultati` : 'In Evidenza'}
+                          {isSearch ? `Trovati ${filteredArticles.length} risultati` : 'In Evidenza'}
                        </h3>
                        <div className="hidden lg:flex gap-2">
                            <button onClick={() => scrollFeatured('left')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a sinistra">
@@ -628,7 +621,7 @@ const App: React.FC = () => {
                      onMouseLeave={handleMouseLeave}
                      onMouseUp={handleMouseUp}
                      onMouseMove={handleMouseMove}
-                     style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
+                     style={{ scrollBehavior: isDragging ? 'auto' : 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                    >
                       {/* Show items that are not Hero */}
                       {displayArticles.slice(0, 8).map(item => (
@@ -639,17 +632,17 @@ const App: React.FC = () => {
                    </div>
                 </div>
 
-                {currentView === 'home' && (
+                {isHome && (
                   <div ref={staticBannerRef}>
                     <SocialBannerMobile />
                   </div>
                 )}
 
-                {currentView === 'home' && showStickyBanner && (
+                {isHome && showStickyBanner && (
                   <SocialBannerMobile isFixed={true} />
                 )}
 
-                {currentView === 'home' && deals.length > 0 && (
+                {isHome && deals.length > 0 && (
                   <div className="w-full">
                     <DealsSection />
                   </div>
@@ -732,7 +725,7 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {currentView === 'home' && (
+            {isHome && (
               <div className="lg:hidden">
                 <SocialSection />
               </div>
@@ -740,55 +733,41 @@ const App: React.FC = () => {
           </>
         )}
 
-        {/* READING LIST MODE (Infinite Stream) */}
-        {currentView === 'article' && (
+        {/* VIEW: ARTICLE DETAIL (Infinite Stream logic removed for pure router simple navigation first) */}
+        {isArticle && currentArticle && (
           <div className="bg-white">
             <TopStoriesMobile 
                articles={topStories} 
                onArticleClick={handleArticleClick} 
                onMenuToggle={() => setIsMobileMenuOpen(true)}
+               hideMenuButton={true}
             />
 
-            {readingList.map((article, index) => {
-               const related = articles.find(a => a.category === article.category && a.id !== article.id) || articles[0];
-               const moreArticles = articles
-                 .filter(a => a.id !== article.id && a.id !== related.id)
-                 .slice(0, 4);
-               
-               const offerNews = articles
-                 .filter(a => a.category === 'Offerte' && a.id !== article.id)
-                 .slice(0, 4);
-
-               return (
-                  <ArticleDetail 
-                    key={`${article.id}-${index}`} 
-                    article={article} 
-                    relatedArticle={related}
-                    moreArticles={moreArticles}
-                    deals={deals}
-                    offerNews={offerNews}
-                    onArticleClick={handleArticleClick}
-                  />
-               );
-            })}
+            <ArticleDetail 
+              article={currentArticle} 
+              relatedArticle={articles.find(a => a.category === currentArticle.category && a.id !== currentArticle.id) || articles[0]}
+              moreArticles={articles.filter(a => a.id !== currentArticle.id).slice(0, 4)}
+              deals={deals}
+              offerNews={articles.filter(a => a.category === 'Offerte' && a.id !== currentArticle.id).slice(0, 4)}
+              onArticleClick={handleArticleClick}
+            />
             
-            {readingList.length < 5 && (
-              <div ref={loadMoreArticlesRef} className="py-12 flex justify-center">
-                 <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-4 border-[#e31b23] border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs font-black uppercase tracking-widest text-gray-400">Caricamento prossimo articolo...</span>
-                 </div>
-              </div>
-            )}
-            
-            {readingList.length >= 5 && (
-              <div className="py-12 text-center">
+            <div className="py-12 text-center">
                  <button onClick={goToHome} className="bg-black text-white px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">
                    Torna alla Home
                  </button>
-              </div>
-            )}
+            </div>
           </div>
+        )}
+        
+        {/* VIEW: ARTICLE NOT FOUND or LOADING */}
+        {isArticle && !currentArticle && !isLoading && (
+           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
+             <h2 className="text-3xl font-black uppercase mb-4">Articolo non trovato</h2>
+             <button onClick={goToHome} className="bg-[#e31b23] text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest">
+               Torna alla Home
+             </button>
+           </div>
         )}
       </main>
 
@@ -803,8 +782,8 @@ const App: React.FC = () => {
          
          {/* Footer Links (Redazione) */}
          <div className="flex flex-wrap justify-center gap-6 mb-8 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-           <button onClick={() => handleFooterLinkClick('about')} className="hover:text-white hover:underline transition-all">Chi Siamo</button>
-           <button onClick={() => handleFooterLinkClick('collab')} className="hover:text-white hover:underline transition-all">Collabora con noi</button>
+           <button onClick={() => handleFooterLinkClick('/about')} className="hover:text-white hover:underline transition-all">Chi Siamo</button>
+           <button onClick={() => handleFooterLinkClick('/collab')} className="hover:text-white hover:underline transition-all">Collabora con noi</button>
            <a href="#" className="hover:text-white hover:underline transition-all">Privacy Policy</a>
            <a href="#" className="hover:text-white hover:underline transition-all">Cookie Policy</a>
          </div>
@@ -824,6 +803,9 @@ const App: React.FC = () => {
 
       {/* GDPR Consent Popup */}
       <CookieConsent />
+
+      {/* Gemini AI Assistant */}
+      <GeminiAssistant />
 
     </div>
   );

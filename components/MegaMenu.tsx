@@ -165,8 +165,9 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
             <div className="col-span-2 flex flex-col gap-4">
                {/* Android Italy Card with Background */}
                <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-32 w-full rounded-2xl overflow-hidden group shadow-lg hover:shadow-xl transition-all border border-blue-100">
-                  <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay" alt="Background" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-900 via-blue-800/80 to-blue-600/60"></div>
+                  {/* Updated Background: More visible image */}
+                  <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 via-blue-800/60 to-transparent"></div>
                   
                   <div className="absolute inset-0 p-5 flex items-center justify-between z-10">
                      <div>
@@ -189,11 +190,11 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
 
                   <div className="absolute inset-0 p-5 flex items-center justify-between z-10">
                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white rounded-full p-1 shadow-lg shrink-0">
-                           <img src="https://i.imgur.com/l7YwbQe.png" className="w-full h-full object-contain" alt="Logo" />
+                        <div className="w-12 h-12 bg-white rounded-full p-1 shadow-lg shrink-0 overflow-hidden">
+                           <img src="https://i.imgur.com/HcqNQcO.png" className="w-full h-full object-contain" alt="Logo" />
                         </div>
                         <div>
-                           <h3 className="font-condensed text-2xl font-black uppercase text-white leading-none drop-shadow-md">TuttoX<br/>Android</h3>
+                           <h3 className="font-condensed text-2xl font-black uppercase text-white leading-none drop-shadow-md">TuttoXAndroid</h3>
                            <span className="text-[9px] text-gray-200 font-black uppercase tracking-widest drop-shadow-sm">Pagina Ufficiale</span>
                         </div>
                      </div>

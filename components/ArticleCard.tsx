@@ -40,22 +40,22 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           <div className="absolute inset-0 bg-black/5"></div>
         </div>
         
-        <div className="w-full md:w-[40%] p-6 md:p-8 lg:p-10 bg-[#e31b23] text-white flex flex-col justify-center overflow-hidden transition-all duration-500 group-hover:bg-[#c0ff8c]">
-          <div className="space-y-4">
-             <h2 className="font-condensed text-2xl sm:text-4xl md:text-3xl lg:text-5xl xl:text-6xl font-black leading-[0.95] uppercase tracking-tighter break-words group-hover:text-black transition-colors">
+        <div className="w-full md:w-[40%] p-6 md:p-8 lg:p-12 bg-[#e31b23] text-white flex flex-col justify-center overflow-hidden transition-all duration-500 group-hover:bg-[#c0ff8c]">
+          <div className="space-y-4 w-full">
+             <h2 className="font-condensed text-3xl sm:text-4xl md:text-4xl lg:text-5xl font-black leading-none uppercase tracking-tighter break-words hyphens-auto w-full group-hover:text-black transition-colors">
               {article.title}
             </h2>
-            <p className="text-xs md:text-base opacity-95 font-semibold leading-snug line-clamp-3 md:line-clamp-4 lg:line-clamp-6 group-hover:text-black transition-colors">
+            <p className="text-sm md:text-base opacity-95 font-medium leading-relaxed line-clamp-3 md:line-clamp-4 group-hover:text-black transition-colors">
               {article.excerpt}
             </p>
           </div>
           
           <div className="mt-6 md:mt-8 flex items-center gap-3 border-t border-white/20 pt-4 md:pt-6 group-hover:border-black/10">
             <div className="flex flex-col">
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] border-b-2 border-white group-hover:border-black group-hover:text-black inline-block w-fit mb-1 transition-colors">
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] border-b-2 border-white group-hover:border-black group-hover:text-black inline-block w-fit mb-1 transition-colors">
                 DI {article.author.toUpperCase()}
               </span>
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-70 group-hover:text-black group-hover:opacity-40 transition-colors">
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest opacity-70 group-hover:text-black group-hover:opacity-40 transition-colors">
                 {article.date.toUpperCase()}
               </span>
             </div>
@@ -84,7 +84,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
            >
              {article.category}
            </span>
-           <h3 className="text-white font-condensed text-lg lg:text-2xl font-black uppercase leading-[0.95] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
+           <h3 className="text-white font-condensed text-sm lg:text-2xl font-black uppercase leading-tight tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
              {article.title}
            </h3>
         </div>
