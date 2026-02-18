@@ -15,7 +15,6 @@ import AdUnit from './components/AdUnit';
 import DesktopSidebar from './components/DesktopSidebar'; 
 import CookieConsent from './components/CookieConsent'; // GDPR
 import { AboutPage, CollabPage } from './components/StaticPages'; // Nuove Pagine
-import GeminiAssistant from './components/GeminiAssistant';
 
 const App: React.FC = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
@@ -822,7 +821,6 @@ const App: React.FC = () => {
       )}
 
       <CookieConsent />
-      <GeminiAssistant />
     </div>
   );
 };
