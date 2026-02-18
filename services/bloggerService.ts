@@ -81,7 +81,7 @@ const forceHighResImage = (url: string): string => {
   return url;
 };
 
-const fetchWithTimeout = async (url: string, timeout = 3000) => {
+const fetchWithTimeout = async (url: string, timeout = 5000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -94,10 +94,33 @@ const fetchWithTimeout = async (url: string, timeout = 3000) => {
   }
 };
 
+// NEW: Fetch specific article by ID to get full content
+export const fetchArticleById = async (id: string): Promise<string | null> => {
+  try {
+    const hostname = window.location.hostname;
+    if (hostname.includes('localhost') || hostname.includes('stackblitz')) {
+      return null;
+    }
+    
+    // We fetch the specific post JSON which usually contains full content
+    const response = await fetch(`/feeds/posts/default/${id}?alt=json`);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const rawContent = data.entry?.content?.$t || data.entry?.summary?.$t || "";
+    
+    const { cleanContent } = parseArticleContent(rawContent);
+    return cleanContent;
+  } catch (error) {
+    console.error("Error fetching full article:", error);
+    return null;
+  }
+};
+
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string): Promise<Article[]> => {
   try {
     const hostname = window.location.hostname;
-    // Safety check for local/preview environments to avoid CORS/404 on feeds
+    // Safety check for local/preview environments
     if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) {
       return [];
     }
@@ -144,8 +167,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
     }
     
-    // Use timeout to fail fast if network is slow/blocked
-    const response = await fetchWithTimeout(feedPath, 3000);
+    const response = await fetchWithTimeout(feedPath, 5000);
     if (!response.ok) {
       return [];
     }
@@ -206,7 +228,6 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       };
     });
   } catch (error) {
-    // Return empty array on error to allow fallback to MOCK data
     return [];
   }
 };
@@ -218,7 +239,7 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       return [];
     }
 
-    const response = await fetchWithTimeout('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20', 3000);
+    const response = await fetchWithTimeout('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20', 5000);
     if (!response.ok) return [];
     
     const data = await response.json();
