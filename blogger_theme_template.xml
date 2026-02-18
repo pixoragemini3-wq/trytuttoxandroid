@@ -36,7 +36,12 @@
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom",
+    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0"
   }
 }
 </script>
@@ -72,8 +77,9 @@
   <script type='module'>
     const cacheBuster = new Date().getTime();
     import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${cacheBuster}`).catch(err => {
-      console.error("Errore script:", err);
-      setTimeout(() => window.location.reload(), 2000);
+      console.error("Errore di caricamento applicazione:", err);
+      // Fallback manuale se l'import dinamico fallisce
+      document.body.innerHTML = '<div style="text-align:center; padding: 50px; font-family: sans-serif;"><h1>Errore Caricamento</h1><p>Si prega di ricaricare la pagina.</p></div>';
     });
   </script>
 </body>
