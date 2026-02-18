@@ -34,17 +34,19 @@
 <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=Saira+Extra+Condensed:wght@700;800;900&amp;display=swap' rel='stylesheet'/>
 
 <script type='importmap'>
+<![CDATA[
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0?v=fixed",
     "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime?v=fixed",
     "react-dom": "https://esm.sh/react-dom@18.2.0?v=fixed",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?v=fixed",
-    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom&amp;v=fixed",
-    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&amp;v=fixed",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom&v=fixed",
+    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&v=fixed",
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0"
   }
 }
+]]>
 </script>
 </head>
 <body class='bg-white'>
@@ -76,12 +78,13 @@
   <div id='root'></div>
   
   <script type='module'>
+    //<![CDATA[
     // Force a cache bust every time to avoid getting stale files
     const cacheBuster = "v" + new Date().getTime(); 
     
-    // Importa l'applicazione principale
-    // NOTA: Se GitHub non ha i file aggiornati, questo fallirà.
-    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?v=${cacheBuster}`)
+    // Importa l'applicazione principale da GitHub
+    // CDATA permette di usare "&" nell'URL senza rompere il parser XML di Blogger
+    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
     .catch(err => {
       console.error("CRITICAL ERROR LOADING APP:", err);
       const root = document.getElementById('root');
@@ -94,6 +97,7 @@
         </div>
       `;
     });
+    //]]>
   </script>
 </body>
 </html>
