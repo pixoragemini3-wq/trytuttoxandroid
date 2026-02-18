@@ -83,7 +83,15 @@ const forceHighResImage = (url: string): string => {
 
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string): Promise<Article[]> => {
   try {
-    // 1. Tenta prima di leggere i post iniettati dal template XML
+    // 1. SAFETY CHECK: Se siamo in localhost o preview, saltiamo la fetch a Blogger per evitare errori CORS/404
+    // Questo forza l'uso dei MOCK_ARTICLES in App.tsx
+    const hostname = window.location.hostname;
+    if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) {
+      console.log("Local environment detected, skipping Blogger API fetch to use Mocks.");
+      return [];
+    }
+
+    // 2. Tenta prima di leggere i post iniettati dal template XML
     const nativePosts = (window as any).bloggerNativePosts;
     if (nativePosts && nativePosts.length > 0) {
       let filtered = nativePosts.map((p: any) => {
@@ -122,16 +130,9 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       return filtered;
     }
 
-    // 2. Fallback al feed JSON relativo
-    // Note: The category filter in URL only filters by label, so we still get list.
-    // If we want comprehensive tag filtering client side, we might want to fetch all.
-    // But for performance, we keep fetching by category if possible, or fetch all if 'Tutti'.
-    
+    // 3. Fallback al feed JSON relativo
     let feedPath = '/feeds/posts/default?alt=json&max-results=50';
     if (category && category !== 'Tutti') {
-       // Blogger API filter is strict on label. 
-       // If this fails to return items that have MULTIPLE labels, we might need to fetch all and filter client side.
-       // For now, let's try strict, if empty, maybe fetch all? No, let's trust the feed.
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
     }
     
@@ -203,6 +204,11 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
 
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
+    const hostname = window.location.hostname;
+    if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) {
+      return [];
+    }
+
     const response = await fetch('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20');
     if (!response.ok) return [];
     

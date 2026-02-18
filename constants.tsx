@@ -1,12 +1,34 @@
 
 import { Article, Deal } from './types';
 
+const DUMMY_CONTENT = `
+<p class="lead">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<h3>Analisi e Prestazioni</h3>
+<p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+<figure class="my-8">
+  <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800" alt="Tech Analysis" class="rounded-xl shadow-lg w-full object-cover" />
+  <figcaption class="text-center text-xs text-gray-500 mt-2 italic">Dettaglio tecnico del dispositivo</figcaption>
+</figure>
+<p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</p>
+<blockquote>
+  "La vera innovazione non sta solo nell'hardware, ma nell'esperienza utente che ne deriva."
+</blockquote>
+<h3>Conclusioni</h3>
+<p>In conclusione, questo prodotto rappresenta un passo avanti significativo per il settore. Consigliamo l'acquisto a chi cerca affidabilità e performance senza compromessi.</p>
+<ul>
+  <li><strong>Pro:</strong> Prestazioni eccellenti, Display luminoso, Autonomia</li>
+  <li><strong>Contro:</strong> Prezzo di lancio elevato</li>
+</ul>
+<p>Fateci sapere nei commenti cosa ne pensate!</p>
+`;
+
 export const MOCK_ARTICLES: Article[] = [
   {
     id: '1',
     title: "Le nuove tariffe streaming di YouTube TV partono da 55€ al mese",
     excerpt: "Ogni piano include ora il Cloud DVR illimitato e una selezione di canali 4K inclusi nel prezzo base per i primi sei mesi.",
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'News',
     tags: ['News', 'Streaming'],
     imageUrl: 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&q=80&w=1200',
@@ -19,7 +41,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '2',
     title: 'Samsung Galaxy S25 Ultra: Il test della fotocamera in notturna',
     excerpt: 'Abbiamo portato il nuovo flagship tra le strade di Milano per vedere di cosa è capace il sensore da 200MP.',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Smartphone',
     tags: ['Smartphone', 'Samsung', 'Fotocamera'],
     imageUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?auto=format&fit=crop&q=80&w=600',
@@ -31,7 +53,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '3',
     title: 'Guida definitiva: Come installare una Custom ROM nel 2024',
     excerpt: 'Tutto quello che devi sapere per sbloccare il potenziale del tuo smartphone Android in sicurezza.',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Modding',
     tags: ['Modding', 'Guide', 'Custom ROM'],
     imageUrl: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&q=80&w=600',
@@ -43,7 +65,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '4',
     title: "Le migliori 10 App per la produttività su Android 15",
     excerpt: 'Dalla gestione dei task alla scrittura, ecco le applicazioni che non possono mancare sul tuo dispositivo.',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'App & Giochi',
     tags: ['App & Giochi', 'Produttività', 'Android 15'],
     imageUrl: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&q=80&w=600',
@@ -55,7 +77,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '5',
     title: "Recensione Xiaomi Watch 2 Pro: WearOS al giusto prezzo?",
     excerpt: 'Uno smartwatch elegante e potente che sfida i grandi del settore con un prezzo aggressivo.',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Wearable',
     tags: ['Wearable', 'Xiaomi', 'Recensioni'],
     imageUrl: 'https://images.unsplash.com/photo-1544117518-30dd5ff7a986?auto=format&fit=crop&q=80&w=600',
@@ -67,7 +89,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '6',
     title: "Migliori VPN per Android: La nostra classifica 2024",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Guide',
     tags: ['Guide', 'VPN', 'Sicurezza'],
     imageUrl: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80&w=600',
@@ -79,7 +101,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '7',
     title: "Offerta Lampo: Pixel 8 al prezzo più basso di sempre",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Offerte',
     tags: ['Offerte', 'Pixel', 'Google'],
     imageUrl: 'https://images.unsplash.com/photo-1598327770666-97b3734e5651?auto=format&fit=crop&q=80&w=600',
@@ -91,7 +113,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '8',
     title: "Android 16: Ecco i primi rumors sulla nuova interfaccia",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'News',
     tags: ['News', 'Android 16', 'Google'],
     imageUrl: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&q=80&w=600',
@@ -103,7 +125,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '9',
     title: "Recensione Garmin Fenix 8: Lo sportivo definitivo",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Recensioni',
     tags: ['Recensioni', 'Garmin', 'Sport'],
     imageUrl: 'https://images.unsplash.com/photo-1551817958-c1e0e56702c2?auto=format&fit=crop&q=80&w=600',
@@ -115,7 +137,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '10',
     title: "Come velocizzare il tuo smartphone Android in 5 passaggi",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Tutorial',
     tags: ['Tutorial', 'Guide', 'Ottimizzazione'],
     imageUrl: 'https://images.unsplash.com/photo-1512428559087-560fa5ce7d25?auto=format&fit=crop&q=80&w=600',
@@ -127,7 +149,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '11',
     title: "I migliori giochi offline per lunghi viaggi in aereo",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'App & Giochi',
     tags: ['App & Giochi', 'Giochi', 'Offline'],
     imageUrl: 'https://images.unsplash.com/photo-1592484898118-2c40c83a54e9?auto=format&fit=crop&q=80&w=600',
@@ -139,7 +161,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '12',
     title: "OnePlus 13: trapelate le specifiche tecniche mostruose",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Smartphone',
     tags: ['Smartphone', 'OnePlus', 'Rumors'],
     imageUrl: 'https://images.unsplash.com/photo-1585675100414-9c79f22c673e?auto=format&fit=crop&q=80&w=600',
@@ -151,7 +173,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '13',
     title: "Le cuffie Sony WH-1000XM5 sono in sconto del 30%",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Offerte',
     tags: ['Offerte', 'Sony', 'Audio'],
     imageUrl: 'https://images.unsplash.com/photo-1613040809024-b4ef7ba99bc3?auto=format&fit=crop&q=80&w=600',
@@ -163,7 +185,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '14',
     title: "Cos'è un Kernel Android e perché dovrebbe interessarti",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Modding',
     tags: ['Modding', 'Kernel', 'Approfondimenti'],
     imageUrl: 'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&q=80&w=600',
@@ -175,7 +197,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '15',
     title: "Xiaomi 14 Ultra scende sotto i 900€ per la prima volta",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Offerte',
     tags: ['Offerte', 'Xiaomi', 'Smartphone'],
     imageUrl: 'https://images.unsplash.com/photo-1514826786317-59744fe2a548?auto=format&fit=crop&q=80&w=600',
@@ -187,7 +209,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '16',
     title: "Sconto shock su Amazon: Echo Show 8 a metà prezzo",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Offerte',
     tags: ['Offerte', 'Amazon', 'Smart Home'],
     imageUrl: 'https://images.unsplash.com/photo-1543512214-318c7553f230?auto=format&fit=crop&q=80&w=600',
@@ -199,7 +221,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '17',
     title: "Galaxy Watch 6 in offerta: best buy assoluto",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Offerte',
     tags: ['Offerte', 'Samsung', 'Wearable'],
     imageUrl: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&q=80&w=600',
@@ -211,7 +233,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: '18',
     title: "Volantino MediaWorld: tutte le migliori offerte di Marzo",
     excerpt: '',
-    content: '',
+    content: DUMMY_CONTENT,
     category: 'Offerte',
     tags: ['Offerte', 'MediaWorld', 'Volantino'],
     imageUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=600',
