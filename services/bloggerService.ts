@@ -81,17 +81,28 @@ const forceHighResImage = (url: string): string => {
   return url;
 };
 
+const fetchWithTimeout = async (url: string, timeout = 3000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+};
+
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string): Promise<Article[]> => {
   try {
-    // 1. SAFETY CHECK: Se siamo in localhost o preview, saltiamo la fetch a Blogger per evitare errori CORS/404
-    // Questo forza l'uso dei MOCK_ARTICLES in App.tsx
     const hostname = window.location.hostname;
+    // Safety check for local/preview environments to avoid CORS/404 on feeds
     if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) {
-      console.log("Local environment detected, skipping Blogger API fetch to use Mocks.");
       return [];
     }
 
-    // 2. Tenta prima di leggere i post iniettati dal template XML
+    // Check for native posts (injected by XML)
     const nativePosts = (window as any).bloggerNativePosts;
     if (nativePosts && nativePosts.length > 0) {
       let filtered = nativePosts.map((p: any) => {
@@ -100,7 +111,6 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           const { cleanContent, dealData } = parseArticleContent(p.content || '');
           const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
 
-          // Ensure tags is an array
           const tags = Array.isArray(p.tags) ? p.tags : (p.category ? [p.category] : []);
 
           return {
@@ -115,10 +125,8 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           };
       });
 
-      // Filter in memory for native posts
       if (category && category !== 'Tutti') {
         filtered = filtered.filter((p: Article) => {
-            // Check main category OR if tags array includes the category
             return p.category === category || (p.tags && p.tags.includes(category));
         });
       }
@@ -130,13 +138,14 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       return filtered;
     }
 
-    // 3. Fallback al feed JSON relativo
+    // Fallback to JSON feed
     let feedPath = '/feeds/posts/default?alt=json&max-results=50';
     if (category && category !== 'Tutti') {
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
     }
     
-    const response = await fetch(feedPath);
+    // Use timeout to fail fast if network is slow/blocked
+    const response = await fetchWithTimeout(feedPath, 3000);
     if (!response.ok) {
       return [];
     }
@@ -159,7 +168,6 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       );
       
       let mainCategory = categories.length > 0 ? categories[0] : 'News';
-      // Logic to pick a "Display" category that isn't internal like 'Evidenza'
       const displayCategory = categories.find((c: string) => !c.toLowerCase().endsWith('inevidenza') && c !== 'Evidenza' && c !== 'Featured');
       if (displayCategory) mainCategory = displayCategory;
 
@@ -186,7 +194,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
         excerpt: cleanExcerpt,
         content: cleanContent,
         category: mainCategory,
-        tags: categories, // Store all tags
+        tags: categories,
         imageUrl,
         author: entry.author[0].name.$t,
         authorImageUrl: authorImage,
@@ -198,6 +206,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       };
     });
   } catch (error) {
+    // Return empty array on error to allow fallback to MOCK data
     return [];
   }
 };
@@ -209,7 +218,7 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       return [];
     }
 
-    const response = await fetch('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20');
+    const response = await fetchWithTimeout('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20', 3000);
     if (!response.ok) return [];
     
     const data = await response.json();
