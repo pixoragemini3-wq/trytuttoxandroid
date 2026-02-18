@@ -21,21 +21,28 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // Fetch full content on mount to ensure we have everything (fixes truncation)
   useEffect(() => {
+    // Set initial content
     setFullContent(article.content);
     
     const loadFull = async () => {
       // If we are in local dev, skip
       if (window.location.hostname.includes('localhost')) return;
       
+      // If content seems short or generic, definitely fetch full
       setIsUpdating(true);
-      const freshContent = await fetchArticleById(article.id);
-      if (freshContent && freshContent.length > (article.content?.length || 0)) {
-        setFullContent(freshContent);
+      try {
+        const freshContent = await fetchArticleById(article.id);
+        if (freshContent && freshContent.length > (article.content?.length || 0)) {
+          setFullContent(freshContent);
+        }
+      } catch(e) {
+        console.error("Failed to load full article", e);
+      } finally {
+        setIsUpdating(false);
       }
-      setIsUpdating(false);
     };
     loadFull();
-  }, [article.id, article.content]);
+  }, [article.id]);
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) {
@@ -73,98 +80,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     article.category === 'Guide' ? 'bg-cyan-600' : 
     article.category === 'Offerte' ? 'bg-yellow-500' : 
     'bg-[#e31b23]';
-
-  // --- CONTENT PARSING & INJECTION LOGIC ---
-  const contentComponents = useMemo(() => {
-    const contentToRender = fullContent || article.content;
-    if (!contentToRender) return [<p key="excerpt" className="lead">{article.excerpt}</p>];
-
-    // Parse HTML string into DOM nodes
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(contentToRender, 'text/html');
-    
-    // Convert generic NodeList to Array
-    const nodes = Array.from(doc.body.childNodes).filter(node => {
-        // Keep elements and non-empty text
-        return node.nodeType === Node.ELEMENT_NODE || (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '');
-    });
-
-    // Fallback for simple content or failed parsing
-    if (nodes.length <= 1 && contentToRender.trim().length > 0) {
-        return [<div key="raw-content" dangerouslySetInnerHTML={{ __html: contentToRender }} />];
-    }
-
-    const elements = nodes.map((node, index) => {
-      let htmlContent = '';
-      if (node.nodeType === Node.ELEMENT_NODE) {
-          htmlContent = (node as Element).outerHTML;
-      } else if (node.nodeType === Node.TEXT_NODE) {
-          htmlContent = `<p>${node.textContent}</p>`; 
-      }
-      return { html: htmlContent, index };
-    });
-
-    const totalNodes = elements.length;
-    const socialBoxIndex = Math.floor(totalNodes / 2); 
-    const secondAdIndex = Math.floor(totalNodes * 0.8);
-    
-    const output: React.ReactNode[] = [];
-
-    elements.forEach((el, i) => {
-       output.push(
-         <div key={`node-${i}`} dangerouslySetInnerHTML={{ __html: el.html }} className="mb-4 break-words" />
-       );
-
-       // INJECTION 1: RELATED ARTICLE
-       if (i === 2 && relatedArticle) {
-         output.push(
-            <div key="related-box" onClick={() => handleSuggestedClick(relatedArticle)} className="my-8 bg-gray-50 rounded-2xl p-6 border-l-4 border-[#e31b23] not-prose hover:bg-gray-100 transition-colors cursor-pointer group">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2 block">
-                Leggi anche
-              </span>
-              <div className="flex gap-4 items-center">
-                 <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-200">
-                    <img src={relatedArticle.imageUrl} className="w-full h-full object-cover" alt="" />
-                 </div>
-                 <div>
-                    <h4 className="font-bold text-sm md:text-lg leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors">
-                      {relatedArticle.title}
-                    </h4>
-                 </div>
-              </div>
-            </div>
-         );
-       }
-
-       // INJECTION 2: SOCIAL BOX
-       if (i === socialBoxIndex && totalNodes > 6) {
-          output.push(
-            <div key="social-box" className="not-prose my-10 bg-black text-white p-8 rounded-3xl relative overflow-hidden group shadow-2xl">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#e31b23] rounded-full blur-[60px] opacity-30 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative z-10 text-center md:text-left">
-                 <h4 className="font-condensed text-3xl font-black uppercase italic mb-2">Non perderti le news!</h4>
-                 <p className="text-gray-400 mb-6 text-sm font-medium">Unisciti alla nostra community per ricevere offerte e news in tempo reale.</p>
-                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                   <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#24A1DE] hover:bg-[#1d8acb] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">Telegram</a>
-                   <a href="https://whatsapp.com/channel/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebc59] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest text-black shadow-lg active:scale-95">WhatsApp</a>
-                 </div>
-              </div>
-            </div>
-          );
-       }
-
-       // INJECTION 3: AD
-       if (i === secondAdIndex && totalNodes > 10) {
-          output.push(
-            <div key="ad-2" className="not-prose my-8">
-               <AdUnit slotId="in-article-2" format="fluid" layoutKey="-fb+5w+4e-db+86" label="Annuncio" />
-            </div>
-          );
-       }
-    });
-
-    return output;
-  }, [fullContent, article.content, relatedArticle]);
 
   return (
     <div className="bg-white border-b-8 border-gray-100 last:border-0 pb-12 mb-0 relative animate-in fade-in duration-500 min-h-screen">
@@ -240,9 +155,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
            <AdUnit slotId="top-article" format="auto" className="w-full max-w-[320px] md:max-w-full" label="Sponsor" />
         </div>
 
-        {/* Content Body */}
+        {/* Content Body - Simplified to ensure full rendering */}
         <div className="prose prose-base md:prose-xl max-w-none font-medium leading-relaxed text-gray-800 space-y-4">
-          {contentComponents}
+          <div dangerouslySetInnerHTML={{ __html: fullContent || article.content }} />
+
+          {/* Social Box Injection (After content) */}
+          <div className="not-prose my-10 bg-black text-white p-8 rounded-3xl relative overflow-hidden group shadow-2xl">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#e31b23] rounded-full blur-[60px] opacity-30 group-hover:opacity-50 transition-opacity"></div>
+              <div className="relative z-10 text-center md:text-left">
+                 <h4 className="font-condensed text-3xl font-black uppercase italic mb-2">Non perderti le news!</h4>
+                 <p className="text-gray-400 mb-6 text-sm font-medium">Unisciti alla nostra community per ricevere offerte e news in tempo reale.</p>
+                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                   <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#24A1DE] hover:bg-[#1d8acb] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">Telegram</a>
+                   <a href="https://whatsapp.com/channel/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebc59] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest text-black shadow-lg active:scale-95">WhatsApp</a>
+                 </div>
+              </div>
+          </div>
 
           {article.dealData && (
              <div className="not-prose my-12 animate-in slide-in-from-bottom-5">
