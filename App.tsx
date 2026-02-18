@@ -83,10 +83,18 @@ const App: React.FC = () => {
   const getCurrentArticle = () => {
     if (!isArticle) return undefined;
     
+    // Normalize current path for comparison
+    const currentPath = decodeURIComponent(location.pathname);
+
     // 1. Try matching by exact pathname (Native URL)
     let found = articles.find(a => {
       try {
-        return new URL(a.url || '').pathname === location.pathname;
+        if (!a.url) return false;
+        const articleUrl = new URL(a.url);
+        const articlePath = decodeURIComponent(articleUrl.pathname);
+        return articlePath === currentPath || 
+               articlePath === currentPath + '/' || 
+               articlePath.replace(/\/$/, '') === currentPath;
       } catch (e) {
         return false;
       }
@@ -101,7 +109,7 @@ const App: React.FC = () => {
     
     // 3. Fallback: If we are on a single post page loaded by Blogger directly, 
     // the articles array might only contain that one post (injected via bloggerNativePosts).
-    if (!found && articles.length === 1) {
+    if (!found && articles.length === 1 && isArticle) {
        return articles[0];
     }
 
@@ -216,9 +224,11 @@ const App: React.FC = () => {
     setActiveMegaMenu(null);
     if (article.url) {
        try {
-         const path = new URL(article.url).pathname;
-         navigate(path);
+         const urlObj = new URL(article.url);
+         // Use the path from the article URL directly (supports custom domains/Blogger permalinks)
+         navigate(urlObj.pathname);
        } catch(e) {
+         // Fallback if URL parsing fails
          navigate(`/article/${article.id}`);
        }
     } else {
