@@ -56,18 +56,25 @@
       <b:widget id='Blog1' locked='true' title='Post del blog' type='Blog' visible='true'>
         <b:includable id='main'>
           <b:loop values='data:posts' var='post'>
+            <!-- Use a hidden div to safely store content without breaking JS strings -->
+            <div expr:id='"raw-content-" + data:post.id'><data:post.body/></div>
             <script>
-              window.bloggerNativePosts.push({
-                id: "<data:post.id/>",
-                title: "<data:post.title.jsEscaped/>",
-                excerpt: "<data:post.snippet.jsEscaped/>",
-                content: `<data:post.body.jsEscaped/>`,
-                category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
-                imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
-                author: "<data:post.author.name.jsEscaped/>",
-                date: "<data:post.date.date.jsEscaped/>",
-                url: "<data:post.url.canonical/>"
-              });
+              (function() {
+                var contentDiv = document.getElementById("raw-content-<data:post.id/>");
+                var rawContent = contentDiv ? contentDiv.innerHTML : "";
+                
+                window.bloggerNativePosts.push({
+                  id: "<data:post.id/>",
+                  title: "<data:post.title.jsEscaped/>",
+                  excerpt: "<data:post.snippet.jsEscaped/>",
+                  content: rawContent, 
+                  category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
+                  imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
+                  author: "<data:post.author.name.jsEscaped/>",
+                  date: "<data:post.date.date.jsEscaped/>",
+                  url: "<data:post.url.canonical/>"
+                });
+              })();
             </script>
           </b:loop>
         </b:includable>
@@ -79,11 +86,7 @@
   
   <script type='module'>
     //<![CDATA[
-    // Force a cache bust every time to avoid getting stale files
     const cacheBuster = "v" + new Date().getTime(); 
-    
-    // Importa l'applicazione principale da GitHub
-    // CDATA permette di usare "&" nell'URL senza rompere il parser XML di Blogger
     import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
     .catch(err => {
       console.error("CRITICAL ERROR LOADING APP:", err);
@@ -93,7 +96,6 @@
           <h1 style="color: #e31b23;">Errore di Caricamento</h1>
           <p>Impossibile caricare l'applicazione dal server.</p>
           <p style="font-size: 12px; color: #666;">Dettagli tecnici: ${err.message}</p>
-          <p style="margin-top: 20px; font-weight: bold;">Assicurati di aver caricato (Push) i file aggiornati su GitHub.</p>
         </div>
       `;
     });
