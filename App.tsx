@@ -309,24 +309,38 @@ const App: React.FC = () => {
     }
     
     if (activeCategory !== 'Tutti') {
-      const target = activeCategory.toLowerCase();
+      const targetCategory = activeCategory.toLowerCase().trim();
       
+      // Define keyword mappings for broader matching
+      const categoryKeywords: Record<string, string[]> = {
+        'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android'],
+        'news': ['news', 'notizie', 'novità', 'aggiornamento', 'leaks', 'rumors', 'anteprima', 'tech', 'tecnologia', 'android', 'google'],
+        'recensioni': ['recensioni', 'recensione', 'review', 'prova', 'test', 'analisi', 'opinioni'],
+        'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips'],
+        'offerte': ['offerte', 'offerta', 'sconto', 'promo', 'prezzo', 'amazon', 'ebay', 'coupon', 'black friday', 'prime day', 'volantino'],
+        'app & giochi': ['app', 'applicazione', 'giochi', 'game', 'play store', 'apk', 'whatsapp', 'instagram', 'telegram', 'facebook', 'tiktok'],
+        'modding': ['modding', 'root', 'rom', 'custom rom', 'bootloader', 'recovery', 'magisk', 'adb', 'fastboot', 'kernel'],
+        'wearable': ['wearable', 'smartwatch', 'smartband', 'cuffie', 'auricolari', 'tws', 'watch', 'fitbit', 'garmin', 'amazfit', 'galaxy watch', 'pixel watch', 'apple watch']
+      };
+
       list = list.filter(a => {
-        // Handle "App & Giochi" special case
-        if (target === 'app & giochi') {
-             return a.tags?.some(t => {
-                 const tLow = t.toLowerCase();
-                 return tLow.includes('app') || tLow.includes('giochi') || tLow.includes('games');
-             });
+        const articleTags = (a.tags || []).map(t => t.toLowerCase().trim());
+        const articleCategory = (a.category || '').toLowerCase().trim();
+        
+        // 1. Direct match on Category or Tag
+        if (articleCategory === targetCategory) return true;
+        if (articleTags.includes(targetCategory)) return true;
+
+        // 2. Keyword Mapping Match
+        const keywords = categoryKeywords[targetCategory];
+        if (keywords) {
+           // Check if any keyword appears in tags or category
+           const hasKeywordMatch = keywords.some(k => 
+             articleTags.some(t => t.includes(k)) || articleCategory.includes(k)
+           );
+           if (hasKeywordMatch) return true;
         }
-        
-        // Standard case-insensitive check
-        // Check main category
-        if (a.category && a.category.toLowerCase() === target) return true;
-        
-        // Check tags
-        if (a.tags && a.tags.some(t => t.toLowerCase() === target)) return true;
-        
+
         return false;
       });
     }
@@ -609,11 +623,18 @@ const App: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-12 mb-8">
-                        {displayArticles.slice(0, visibleNewsCount).map(item => (
-                          <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
-                        ))}
-                    </div>
+                    {displayArticles.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-12 mb-8">
+                          {displayArticles.slice(0, visibleNewsCount).map(item => (
+                            <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                        <p className="text-gray-400 font-bold uppercase tracking-widest">Nessun articolo trovato in questa categoria.</p>
+                        <button onClick={() => setActiveCategory('Tutti')} className="mt-4 text-[#e31b23] font-black uppercase underline">Vedi tutti</button>
+                      </div>
+                    )}
                     
                     {visibleNewsCount < displayArticles.length && (
                       <div className="flex justify-center mt-8">
