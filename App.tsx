@@ -515,9 +515,9 @@ const App: React.FC = () => {
                   <SmartphoneShowcase />
                 )}
 
-                {/* HERO SECTION - MODIFIED HEIGHT to 500px */}
+                {/* HERO SECTION - COMPACT FIXED HEIGHT (420px) */}
                 {isHome && activeCategory === 'Tutti' && heroArticle && (
-                  <div className="w-full h-[auto] md:h-[500px] lg:h-[550px] flex gap-2">
+                  <div className="w-full h-[auto] md:h-[420px] lg:h-[420px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.slice(1, 10)} 
