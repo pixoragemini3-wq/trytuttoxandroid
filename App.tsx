@@ -304,19 +304,22 @@ const App: React.FC = () => {
   
   const getDisplayArticles = () => {
     let list = articles;
-    if (heroArticle) {
+    const target = activeCategory.toLowerCase().trim();
+
+    // Hide Hero from list if we are in "Tutti" mode (Hero is displayed separately)
+    // If we are filtering, we might WANT the hero to appear in the list if it matches
+    if (activeCategory === 'Tutti' && heroArticle) {
       list = list.filter(a => a.id !== heroArticle.id);
     }
     
     if (activeCategory !== 'Tutti') {
-      const targetCategory = activeCategory.toLowerCase().trim();
       
-      // Define keyword mappings for broader matching
+      // Broad Keyword Matching
       const categoryKeywords: Record<string, string[]> = {
         'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android'],
         'news': ['news', 'notizie', 'novità', 'aggiornamento', 'leaks', 'rumors', 'anteprima', 'tech', 'tecnologia', 'android', 'google'],
         'recensioni': ['recensioni', 'recensione', 'review', 'prova', 'test', 'analisi', 'opinioni'],
-        'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips'],
+        'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips', 'impostare', 'nascondere'],
         'offerte': ['offerte', 'offerta', 'sconto', 'promo', 'prezzo', 'amazon', 'ebay', 'coupon', 'black friday', 'prime day', 'volantino'],
         'app & giochi': ['app', 'applicazione', 'giochi', 'game', 'play store', 'apk', 'whatsapp', 'instagram', 'telegram', 'facebook', 'tiktok'],
         'modding': ['modding', 'root', 'rom', 'custom rom', 'bootloader', 'recovery', 'magisk', 'adb', 'fastboot', 'kernel'],
@@ -327,14 +330,19 @@ const App: React.FC = () => {
         const articleTags = (a.tags || []).map(t => t.toLowerCase().trim());
         const articleCategory = (a.category || '').toLowerCase().trim();
         
-        // 1. Direct match on Category or Tag
-        if (articleCategory === targetCategory) return true;
-        if (articleTags.includes(targetCategory)) return true;
+        // 1. Direct match on Category Name or Tag
+        if (articleCategory === target) return true;
+        if (articleTags.includes(target)) return true;
+        
+        // 2. Special case for "App & Giochi"
+        if (target === 'app & giochi') {
+             if (articleTags.some(t => t.includes('app') || t.includes('giochi') || t.includes('game'))) return true;
+             if (articleCategory.includes('app') || articleCategory.includes('giochi')) return true;
+        }
 
-        // 2. Keyword Mapping Match
-        const keywords = categoryKeywords[targetCategory];
+        // 3. Keyword Mapping Match
+        const keywords = categoryKeywords[target];
         if (keywords) {
-           // Check if any keyword appears in tags or category
            const hasKeywordMatch = keywords.some(k => 
              articleTags.some(t => t.includes(k)) || articleCategory.includes(k)
            );
@@ -501,13 +509,14 @@ const App: React.FC = () => {
               />
             )}
 
-            <section className="bg-white">
+            <section className="bg-white min-h-screen">
               <div className="max-w-7xl mx-auto">
                 {isHome && activeCategory === 'Smartphone' && (
                   <SmartphoneShowcase />
                 )}
 
-                {isHome && heroArticle && (
+                {/* HERO SECTION - ONLY VISIBLE IF NOT FILTERING (ACTIVE CATEGORY IS 'TUTTI') */}
+                {isHome && activeCategory === 'Tutti' && heroArticle && (
                   <div className="w-full h-[auto] md:h-[550px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
@@ -526,19 +535,22 @@ const App: React.FC = () => {
                   </div>
                 )}
 
+                {/* FEATURED CAROUSEL */}
                 <div className="px-4 lg:px-0 py-4 lg:py-6 mt-2 lg:mt-0">
                   <div className="flex items-end justify-between mb-4 lg:mb-8">
                       <h3 className="font-condensed text-3xl lg:text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
-                          {isSearch ? `Trovati ${filteredArticles.length} risultati` : 'In Evidenza'}
+                          {isSearch ? `Trovati ${filteredArticles.length} risultati` : activeCategory === 'Tutti' ? 'In Evidenza' : activeCategory}
                       </h3>
-                      <div className="hidden lg:flex gap-2">
-                          <button onClick={() => scrollFeatured('left')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a sinistra">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
-                          </button>
-                          <button onClick={() => scrollFeatured('right')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a destra">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
-                          </button>
-                      </div>
+                      {activeCategory === 'Tutti' && (
+                        <div className="hidden lg:flex gap-2">
+                            <button onClick={() => scrollFeatured('left')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a sinistra">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <button onClick={() => scrollFeatured('right')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a destra">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                      )}
                   </div>
 
                   <div 
@@ -558,7 +570,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {isHome && (
+                {isHome && activeCategory === 'Tutti' && (
                   <div ref={staticBannerRef}>
                     <SocialBannerMobile />
                   </div>
@@ -568,7 +580,7 @@ const App: React.FC = () => {
                   <SocialBannerMobile isFixed={true} />
                 )}
 
-                {isHome && deals.length > 0 && (
+                {isHome && activeCategory === 'Tutti' && deals.length > 0 && (
                   <div className="w-full">
                     <DealsSection />
                   </div>
@@ -578,7 +590,7 @@ const App: React.FC = () => {
 
             <section 
               ref={newsSectionRef} 
-              className="py-12 bg-gray-50/50"
+              className="py-12 bg-gray-50/50 min-h-[500px]"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove} 
               onTouchEnd={handleTouchEnd} 
@@ -630,9 +642,10 @@ const App: React.FC = () => {
                           ))}
                       </div>
                     ) : (
-                      <div className="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                      <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200">
                         <p className="text-gray-400 font-bold uppercase tracking-widest">Nessun articolo trovato in questa categoria.</p>
-                        <button onClick={() => setActiveCategory('Tutti')} className="mt-4 text-[#e31b23] font-black uppercase underline">Vedi tutti</button>
+                        <p className="text-xs text-gray-300 mt-2">Prova a cercare un altro termine o torna alla home.</p>
+                        <button onClick={() => setActiveCategory('Tutti')} className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors">Vedi tutti gli articoli</button>
                       </div>
                     )}
                     
