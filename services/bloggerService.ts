@@ -81,7 +81,7 @@ const forceHighResImage = (url: string): string => {
   return url;
 };
 
-const fetchWithTimeout = async (url: string, timeout = 5000) => {
+const fetchWithTimeout = async (url: string, timeout = 8000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -162,12 +162,13 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     }
 
     // Fallback to JSON feed
-    let feedPath = '/feeds/posts/default?alt=json&max-results=50';
+    // INCREASED LIMIT TO 150 to catch older categories
+    let feedPath = '/feeds/posts/default?alt=json&max-results=150';
     if (category && category !== 'Tutti') {
-       feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=50`;
+       feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100`;
     }
     
-    const response = await fetchWithTimeout(feedPath, 5000);
+    const response = await fetchWithTimeout(feedPath, 8000);
     if (!response.ok) {
       return [];
     }
@@ -216,7 +217,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
         excerpt: cleanExcerpt,
         content: cleanContent,
         category: mainCategory,
-        tags: categories,
+        tags: categories, // Keep all tags for filtering
         imageUrl,
         author: entry.author[0].name.$t,
         authorImageUrl: authorImage,
