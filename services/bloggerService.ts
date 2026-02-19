@@ -125,9 +125,12 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       return [];
     }
 
-    // Check for native posts (injected by XML)
+    // CRITICAL FIX: Only use native posts if we have a significant amount (e.g. > 20).
+    // Otherwise, Blogger is likely paginating (showing only 7 posts), which breaks filtering.
     const nativePosts = (window as any).bloggerNativePosts;
-    if (nativePosts && nativePosts.length > 0) {
+    const shouldUseNative = nativePosts && nativePosts.length > 20;
+
+    if (shouldUseNative) {
       let filtered = nativePosts.map((p: any) => {
           const isFeatured = p.category === 'Evidenza' || p.title.includes('⭐') || (p.tags && p.tags.includes('Evidenza'));
           
@@ -161,8 +164,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       return filtered;
     }
 
-    // Fallback to JSON feed
-    // INCREASED LIMIT TO 150 to catch older categories
+    // Fallback to JSON feed to get MORE posts (150)
     let feedPath = '/feeds/posts/default?alt=json&max-results=150';
     if (category && category !== 'Tutti') {
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100`;

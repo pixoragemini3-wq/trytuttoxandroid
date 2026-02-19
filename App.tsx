@@ -515,12 +515,12 @@ const App: React.FC = () => {
                   <SmartphoneShowcase />
                 )}
 
-                {/* HERO SECTION - ONLY VISIBLE IF NOT FILTERING (ACTIVE CATEGORY IS 'TUTTI') */}
+                {/* HERO SECTION - MODIFIED HEIGHT to 500px */}
                 {isHome && activeCategory === 'Tutti' && heroArticle && (
-                  <div className="w-full h-[auto] md:h-[550px] flex gap-2">
+                  <div className="w-full h-[auto] md:h-[500px] lg:h-[550px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
-                          articles={topStories.slice(1, 5)} 
+                          articles={topStories.slice(1, 10)} 
                           onArticleClick={handleArticleClick} 
                       />
                     )}

@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-copy-of-copy-of-tuttoxandroid-pro---versione-standard-17-febbraio-v2",
+  "name": "tuttoxandroid-pro---versione-standard-18-febbraio-(limitata)",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,7 @@
     "react-dom": "^19.2.4",
     "react-router-dom": "6.22.3",
     "react-helmet-async": "2.0.4",
-    "@google/genai": "^1.40.0"
+    "@google/genai": "^1.41.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

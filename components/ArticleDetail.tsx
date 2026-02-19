@@ -19,6 +19,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Check if content appears truncated (less than 600 chars is suspicious for a full guide)
+  const isTruncated = useMemo(() => {
+     return (!fullContent || fullContent.length < 600) && article.url;
+  }, [fullContent, article.url]);
+
   // Fetch full content on mount to ensure we have everything (fixes truncation)
   useEffect(() => {
     // Set initial content
@@ -49,6 +54,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       onArticleClick(art);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleForceNativeLoad = () => {
+    if (article.url) {
+      // Force a hard navigation to the native URL to trigger XML injection
+      window.location.href = article.url;
     }
   };
 
@@ -96,7 +108,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       {isUpdating && (
          <div className="fixed top-20 right-4 z-50 bg-black text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg flex items-center gap-2 animate-pulse">
             <div className="w-2 h-2 bg-[#c0ff8c] rounded-full"></div>
-            Caricamento testo completo...
+            Ottimizzazione testo...
          </div>
       )}
 
@@ -105,7 +117,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           {article.category}
         </span>
 
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-6 md:mb-8 leading-tight md:leading-[0.95] tracking-tight break-words hyphens-auto">
+        {/* REVERTED: Tight and bold H1 */}
+        <h1 className="font-condensed text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 mb-6 md:mb-8 leading-[0.9] tracking-tight break-words hyphens-auto">
           {article.title}
         </h1>
 
@@ -155,22 +168,38 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
            <AdUnit slotId="top-article" format="auto" className="w-full max-w-[320px] md:max-w-full" label="Sponsor" />
         </div>
 
-        {/* Content Body - Simplified to ensure full rendering */}
+        {/* Content Body */}
         <div className="prose prose-base md:prose-xl max-w-none font-medium leading-relaxed text-gray-800 space-y-4">
           <div dangerouslySetInnerHTML={{ __html: fullContent || article.content }} />
+          
+          {/* TRUNCATION FALLBACK BUTTON */}
+          {isTruncated && (
+            <div className="not-prose my-8 p-8 bg-gray-50 rounded-3xl text-center border-2 border-dashed border-gray-200">
+              <h4 className="font-condensed text-2xl font-black uppercase mb-2 text-gray-400">Continua a leggere...</h4>
+              <p className="text-gray-500 mb-6 text-sm">Sembra che l'articolo non sia stato caricato completamente dal feed.</p>
+              <button 
+                onClick={handleForceNativeLoad}
+                className="bg-[#e31b23] text-white px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-black transition-colors shadow-lg animate-bounce"
+              >
+                Apri Versione Completa
+              </button>
+            </div>
+          )}
 
           {/* Social Box Injection (After content) */}
-          <div className="not-prose my-10 bg-black text-white p-8 rounded-3xl relative overflow-hidden group shadow-2xl">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#e31b23] rounded-full blur-[60px] opacity-30 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative z-10 text-center md:text-left">
-                 <h4 className="font-condensed text-3xl font-black uppercase italic mb-2">Non perderti le news!</h4>
-                 <p className="text-gray-400 mb-6 text-sm font-medium">Unisciti alla nostra community per ricevere offerte e news in tempo reale.</p>
-                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                   <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#24A1DE] hover:bg-[#1d8acb] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">Telegram</a>
-                   <a href="https://whatsapp.com/channel/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebc59] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest text-black shadow-lg active:scale-95">WhatsApp</a>
-                 </div>
-              </div>
-          </div>
+          {!isTruncated && (
+            <div className="not-prose my-10 bg-black text-white p-8 rounded-3xl relative overflow-hidden group shadow-2xl">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#e31b23] rounded-full blur-[60px] opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                <div className="relative z-10 text-center md:text-left">
+                  <h4 className="font-condensed text-3xl font-black uppercase italic mb-2">Non perderti le news!</h4>
+                  <p className="text-gray-400 mb-6 text-sm font-medium">Unisciti alla nostra community per ricevere offerte e news in tempo reale.</p>
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                    <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#24A1DE] hover:bg-[#1d8acb] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">Telegram</a>
+                    <a href="https://whatsapp.com/channel/tuttoxandroid" target="_blank" rel="noopener" className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebc59] px-6 py-3 rounded-xl transition-all font-black text-xs uppercase tracking-widest text-black shadow-lg active:scale-95">WhatsApp</a>
+                  </div>
+                </div>
+            </div>
+          )}
 
           {article.dealData && (
              <div className="not-prose my-12 animate-in slide-in-from-bottom-5">

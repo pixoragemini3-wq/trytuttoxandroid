@@ -8,24 +8,26 @@ interface DesktopSidebarProps {
 }
 
 const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClick }) => {
+  // Limitiamo a 5 articoli
+  const displayArticles = articles.slice(0, 5);
+
   return (
-    <div className="hidden lg:flex flex-col w-[280px] shrink-0 bg-[#fff200] h-full py-10 px-6 rounded-[2.5rem] relative overflow-hidden z-10">
+    <div className="hidden lg:flex flex-col w-[260px] shrink-0 bg-[#fff200] h-full py-6 px-5 rounded-[2.5rem] relative overflow-hidden z-10 justify-between">
        {/* Header */}
-       <div className="mb-6">
-          <h3 className="font-condensed text-4xl font-black uppercase leading-[0.85] tracking-tight text-black mb-3">
-            Best of<br/>the BEST
+       <div className="mb-3">
+          <h3 className="font-condensed text-5xl font-black uppercase leading-[0.85] tracking-tighter text-black mb-2">
+            BEST OF<br/>THE BEST
           </h3>
-          <p className="text-xs font-bold leading-tight text-black/80">
-            La selezione editoriale delle notizie e guide da non perdere oggi.
+          <p className="text-[10px] font-bold leading-tight text-black/70 border-l-2 border-black pl-2">
+            La selezione editoriale da non perdere.
           </p>
-          <div className="w-full h-0.5 bg-black/10 mt-6"></div>
        </div>
        
-       {/* List */}
-       <div className="flex-1 flex flex-col gap-5 overflow-y-auto no-scrollbar pr-2">
-          {articles.map((article) => (
-             <div key={article.id} onClick={() => onArticleClick(article)} className="group cursor-pointer border-b border-black/10 pb-4 last:border-0 hover:border-black transition-colors">
-                <h4 className="font-bold text-sm leading-[1.3] text-black group-hover:underline decoration-2 underline-offset-2">
+       {/* List - Compact */}
+       <div className="flex flex-col gap-3 justify-center py-2 flex-1">
+          {displayArticles.map((article, idx) => (
+             <div key={article.id} onClick={() => onArticleClick(article)} className="group cursor-pointer border-b border-black/10 pb-2 last:border-0 hover:border-black transition-colors">
+                <h4 className="font-condensed text-lg leading-[1.05] font-bold text-black group-hover:underline decoration-2 underline-offset-2 uppercase tracking-tight line-clamp-3">
                   {article.title}
                 </h4>
              </div>
@@ -33,8 +35,11 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
        </div>
 
        {/* Footer decoration */}
-       <div className="mt-auto pt-4 text-[10px] font-black uppercase tracking-widest text-black/40">
-         TuttoXAndroid Select
+       <div className="mt-auto pt-2 flex items-center justify-between">
+         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black">
+           TXA Select
+         </span>
+         <div className="w-2 h-2 bg-black rounded-full"></div>
        </div>
     </div>
   );

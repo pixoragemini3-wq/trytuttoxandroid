@@ -12,9 +12,9 @@ interface ProductPickCardProps {
 
 const ProductPickCard: React.FC<ProductPickCardProps> = ({ title, productName, price, store, imageUrl, isEditorsChoice }) => {
   return (
-    <div className="flex flex-col md:flex-row items-center gap-8 py-10 border-b border-dashed border-gray-200 group">
+    <div className="flex flex-col md:flex-row items-center gap-8 py-10 border-b border-dashed border-gray-200 group transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white hover:border-transparent hover:z-10 relative rounded-3xl px-6 -mx-6">
       <div className="w-full md:w-1/4 h-48 bg-gray-50 rounded-xl overflow-hidden p-4">
-        <img src={imageUrl} alt={productName} className="w-full h-full object-contain transition-transform group-hover:scale-105" />
+        <img src={imageUrl} alt={productName} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" />
       </div>
       
       <div className="flex-1">
@@ -26,15 +26,15 @@ const ProductPickCard: React.FC<ProductPickCardProps> = ({ title, productName, p
             <span className="text-xs font-black uppercase tracking-widest text-gray-900">Editors' Choice</span>
           </div>
         )}
-        <h3 className="font-condensed text-2xl font-black uppercase mb-1 leading-tight">{title}</h3>
+        <h3 className="font-condensed text-2xl font-black uppercase mb-1 leading-tight group-hover:text-editorial-red transition-colors">{title}</h3>
         <p className="text-sm font-medium text-gray-500 mb-4">{productName}</p>
-        <button className="text-xs font-black uppercase tracking-tighter text-gray-900 flex items-center gap-1 group-hover:text-editorial-red">
-          Jump to details <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+        <button className="text-xs font-black uppercase tracking-tighter text-gray-900 flex items-center gap-1 group-hover:text-editorial-red transition-colors">
+          Jump to details <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
         </button>
       </div>
 
       <div className="w-full md:w-auto flex flex-col items-center md:items-end gap-3">
-        <button className="w-full md:w-56 bg-[#c0ff8c] text-gray-900 py-3 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-[#a6e076] transition-all shadow-sm">
+        <button className="w-full md:w-56 bg-[#c0ff8c] text-gray-900 py-3 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-black hover:text-white transition-all shadow-sm group-hover:shadow-md">
           {price} at {store}
         </button>
       </div>

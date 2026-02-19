@@ -4,21 +4,22 @@
 <head>
 <meta charset='UTF-8' />
 <meta content='width=device-width, initial-scale=1.0' name='viewport' />
-<title><data:blog.title/></title>
+<title><data:blog.pageTitle/></title>
 
 <b:skin><![CDATA[
   #navbar-iframe { display: none !important; }
   body { margin: 0; padding: 0; background: #ffffff; -webkit-font-smoothing: antialiased; }
+  /* Loader styling */
   #root:empty::before {
     content: '';
     position: fixed;
     top: 50%;
     left: 50%;
-    width: 60px;
-    height: 60px;
-    margin: -30px 0 0 -30px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #e31b23;
+    width: 50px;
+    height: 50px;
+    margin: -25px 0 0 -25px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #e31b23;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     z-index: 9999;
@@ -27,7 +28,9 @@
 ]]></b:skin>
 
 <script>
+  // Global storage for posts
   window.bloggerNativePosts = [];
+  window.currentSinglePost = null;
 </script>
 
 <script src='https://cdn.tailwindcss.com'></script>
@@ -42,8 +45,7 @@
     "react-dom": "https://esm.sh/react-dom@18.2.0?v=fixed",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?v=fixed",
     "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom&v=fixed",
-    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&v=fixed",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0"
+    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&v=fixed"
   }
 }
 ]]>
@@ -51,32 +53,60 @@
 </head>
 <body class='bg-white'>
   
+  <!-- DATA BRIDGE SECTION -->
   <div style='display:none;'>
     <b:section id='content-bridge' name='Dati Blog' showaddelement='false'>
       <b:widget id='Blog1' locked='true' title='Post del blog' type='Blog' visible='true'>
         <b:includable id='main'>
-          <b:loop values='data:posts' var='post'>
-            <!-- Use a hidden div to safely store content without breaking JS strings -->
-            <div expr:id='"raw-content-" + data:post.id'><data:post.body/></div>
-            <script>
-              (function() {
-                var contentDiv = document.getElementById("raw-content-<data:post.id/>");
-                var rawContent = contentDiv ? contentDiv.innerHTML : "";
-                
+          
+          <!-- LOGICA PER PAGINA SINGOLO POST -->
+          <b:if cond='data:view.isPost'>
+            <b:loop values='data:posts' var='post'>
+              <!-- Usiamo una TEXTAREA per preservare l'HTML grezzo senza rompere il JS -->
+              <textarea expr:id='"single-post-body-" + data:post.id' style='display:none;'><data:post.body/></textarea>
+              
+              <script>
+                (function() {
+                  var ta = document.getElementById("single-post-body-<data:post.id/>");
+                  window.currentSinglePost = {
+                    id: "<data:post.id/>",
+                    title: "<data:post.title.jsEscaped/>",
+                    excerpt: "<data:post.snippet.jsEscaped/>",
+                    content: ta ? ta.value : "",
+                    category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
+                    tags: [<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label'> "<data:label.name.jsEscaped/>", </b:loop></b:if>],
+                    imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
+                    author: "<data:post.author.name.jsEscaped/>",
+                    date: "<data:post.date.date.jsEscaped/>",
+                    url: "<data:post.url.canonical/>"
+                  };
+                  // Also add to the main array so router can find it
+                  window.bloggerNativePosts.push(window.currentSinglePost);
+                })();
+              </script>
+            </b:loop>
+          </b:if>
+
+          <!-- LOGICA PER HOMEPAGE / ARCHIVI (Carichiamo solo snippet per performance) -->
+          <b:if cond='!data:view.isPost'>
+            <b:loop values='data:posts' var='post'>
+              <script>
                 window.bloggerNativePosts.push({
                   id: "<data:post.id/>",
                   title: "<data:post.title.jsEscaped/>",
                   excerpt: "<data:post.snippet.jsEscaped/>",
-                  content: rawContent, 
+                  content: "", /* Contento vuoto in home per non appesantire */
                   category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
+                  tags: [<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label'> "<data:label.name.jsEscaped/>", </b:loop></b:if>],
                   imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
                   author: "<data:post.author.name.jsEscaped/>",
                   date: "<data:post.date.date.jsEscaped/>",
                   url: "<data:post.url.canonical/>"
                 });
-              })();
-            </script>
-          </b:loop>
+              </script>
+            </b:loop>
+          </b:if>
+
         </b:includable>
       </b:widget>
     </b:section>
@@ -87,15 +117,15 @@
   <script type='module'>
     //<![CDATA[
     const cacheBuster = "v" + new Date().getTime(); 
+    // CHANGE THIS URL TO YOUR GITHUB PAGES URL OR HOSTING IF NOT USING LOCAL
     import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
     .catch(err => {
       console.error("CRITICAL ERROR LOADING APP:", err);
       const root = document.getElementById('root');
       root.innerHTML = `
         <div style="font-family: sans-serif; text-align: center; padding: 40px;">
-          <h1 style="color: #e31b23;">Errore di Caricamento</h1>
-          <p>Impossibile caricare l'applicazione dal server.</p>
-          <p style="font-size: 12px; color: #666;">Dettagli tecnici: ${err.message}</p>
+          <h1 style="color: #e31b23;">Caricamento in corso...</h1>
+          <p>Se vedi questo messaggio per molto tempo, ricarica la pagina.</p>
         </div>
       `;
     });
