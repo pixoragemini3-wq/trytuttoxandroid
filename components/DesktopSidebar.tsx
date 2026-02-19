@@ -12,22 +12,22 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
   const displayArticles = articles.slice(0, 4);
 
   return (
-    <div className="hidden lg:flex flex-col w-[260px] shrink-0 bg-[#fff200] h-full py-5 px-5 rounded-[2.5rem] relative overflow-hidden z-10 justify-between shadow-lg">
+    <div className="hidden lg:flex flex-col w-[260px] shrink-0 bg-[#fff200] h-full py-6 px-6 rounded-[2.5rem] relative overflow-hidden z-10 justify-between shadow-lg">
        {/* Header */}
-       <div className="mb-2">
-          <h3 className="font-condensed text-5xl font-black uppercase leading-[0.85] tracking-tighter text-black mb-1">
+       <div className="mb-4">
+          <h3 className="font-condensed text-[3.5rem] font-black uppercase leading-[0.8] tracking-[-0.05em] text-black mb-2">
             BEST OF<br/>THE BEST
           </h3>
-          <p className="text-[10px] font-bold leading-tight text-black/70 border-l-2 border-black pl-2">
+          <p className="text-[10px] font-bold leading-tight text-black/70 border-l-4 border-black pl-3 py-1">
             La selezione editoriale.
           </p>
        </div>
        
        {/* List - Compact */}
-       <div className="flex flex-col gap-2 justify-center py-1 flex-1">
+       <div className="flex flex-col gap-3 justify-center py-1 flex-1">
           {displayArticles.map((article, idx) => (
              <div key={article.id} onClick={() => onArticleClick(article)} className="group cursor-pointer border-b border-black/10 pb-2 last:border-0 hover:border-black transition-colors">
-                <h4 className="font-condensed text-lg leading-[1.05] font-bold text-black group-hover:underline decoration-2 underline-offset-2 uppercase tracking-tight line-clamp-2">
+                <h4 className="font-condensed text-lg leading-[1] font-bold text-black group-hover:underline decoration-2 underline-offset-2 uppercase tracking-tight line-clamp-2">
                   {article.title}
                 </h4>
              </div>
@@ -35,11 +35,11 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
        </div>
 
        {/* Footer decoration */}
-       <div className="mt-auto pt-1 flex items-center justify-between">
-         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black">
+       <div className="mt-auto pt-2 flex items-center justify-between border-t border-black/10">
+         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black pt-2">
            TXA Select
          </span>
-         <div className="w-2 h-2 bg-black rounded-full"></div>
+         <div className="w-2 h-2 bg-black rounded-full mt-2"></div>
        </div>
     </div>
   );

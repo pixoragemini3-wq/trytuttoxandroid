@@ -89,9 +89,17 @@ const App: React.FC = () => {
     // 2. Search in loaded articles array
     if (!isArticle) return undefined;
     
+    // Simplification for Sandbox: Match by ID first if path is /article/:id
+    if (location.pathname.startsWith('/article/')) {
+       const parts = location.pathname.split('/');
+       const id = parts[parts.length - 1];
+       const foundById = articles.find(a => a.id === id);
+       if (foundById) return foundById;
+    }
+
     const currentPath = decodeURIComponent(location.pathname);
     
-    // Match by URL Path
+    // Match by URL Path (Legacy for real blogger urls)
     let found = articles.find(a => {
       if (!a.url) return false;
       try {
@@ -99,13 +107,6 @@ const App: React.FC = () => {
         return aPath === currentPath;
       } catch(e) { return false; }
     });
-
-    // Match by ID (Legacy)
-    if (!found && location.pathname.startsWith('/article/')) {
-       const parts = location.pathname.split('/');
-       const id = parts[parts.length - 1];
-       found = articles.find(a => a.id === id);
-    }
     
     return found;
   };
@@ -216,7 +217,7 @@ const App: React.FC = () => {
   const handleArticleClick = (article: Article) => {
     if (isDragging) return;
     
-    // Deal Links
+    // Deal Links (External)
     if (article.category === 'Offerte' && article.dealData?.link) {
        window.open(article.dealData.link, '_blank');
        return;
@@ -224,17 +225,9 @@ const App: React.FC = () => {
     
     setActiveMegaMenu(null);
     
-    // NATIVE URL NAVIGATION
-    if (article.url) {
-       try {
-         const urlObj = new URL(article.url);
-         navigate(urlObj.pathname);
-       } catch(e) {
-         navigate(`/article/${article.id}`);
-       }
-    } else {
-       navigate(`/article/${article.id}`);
-    }
+    // FIX FOR SANDBOX: Always use internal ID-based routing
+    // This bypasses issues with external URL structures in the iframe
+    navigate(`/article/${article.id}`);
     window.scrollTo(0, 0);
   };
 
@@ -261,17 +254,10 @@ const App: React.FC = () => {
     setFilteredArticles(articles);
     setIsMobileMenuOpen(false);
     
+    // REMOVED SCROLL LOGIC to prevent "mini scroll fastidioso"
+    // The view simply updates the list below.
     if (!isHome) {
         navigate('/');
-        setTimeout(() => {
-           if (newsSectionRef.current) {
-             newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-           }
-        }, 100);
-    } else {
-       if (newsSectionRef.current) {
-         newsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-       }
     }
   };
 
@@ -306,14 +292,14 @@ const App: React.FC = () => {
     let list = articles;
     const target = activeCategory.toLowerCase().trim();
 
-    // Hide Hero from list if we are in "Tutti" mode (Hero is displayed separately)
-    // If we are filtering, we might WANT the hero to appear in the list if it matches
+    // In filtered view, we might include the Hero article in the list if it matches criteria, 
+    // but typically we want distinct lists.
+    // If we are in "Tutti", we exclude Hero to avoid duplication if Hero is rendered separately.
     if (activeCategory === 'Tutti' && heroArticle) {
-      list = list.filter(a => a.id !== heroArticle.id);
+       list = list.filter(a => a.id !== heroArticle.id);
     }
     
     if (activeCategory !== 'Tutti') {
-      
       // Broad Keyword Matching
       const categoryKeywords: Record<string, string[]> = {
         'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android'],
@@ -354,33 +340,50 @@ const App: React.FC = () => {
     }
     return list;
   };
+  
   const displayArticles = getDisplayArticles();
 
   const DealsSection = () => (
-    <section className="py-8 lg:py-24 bg-white border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 lg:mb-16 gap-4">
-          <div>
-            <h2 className="font-condensed text-3xl lg:text-7xl font-black uppercase tracking-tight text-gray-900 italic leading-none">Offerte del Giorno</h2>
-            <div className="mt-2 flex items-center gap-2">
-               <span className="w-2 h-2 bg-[#e31b23] rounded-full animate-pulse"></span>
-               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sconti esclusivi solo su <a href="https://t.me/tuttoxandroid" className="text-[#0088cc] underline font-black">Telegram</a></p>
-            </div>
+    <section className="py-6 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] text-white rounded-[1.5rem] mx-0 lg:mx-0 overflow-hidden shadow-2xl relative border-t-4 border-[#e31b23]">
+      {/* Abstract Background Decoration */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
+      
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+             <h2 className="font-condensed text-3xl lg:text-5xl font-black uppercase tracking-tight italic leading-none text-white drop-shadow-lg">Offerte del Giorno</h2>
+             <span className="bg-white text-[#e31b23] px-3 py-1 rounded text-xs font-black uppercase tracking-widest shadow-md animate-pulse">HOT</span>
+             
+             {/* Telegram Button - Enhanced Size & Visibility */}
+             <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-[#24A1DE] hover:bg-white pl-2 pr-6 py-2 rounded-full transition-all group shadow-xl border-2 border-white/20 ml-0 md:ml-6 hover:scale-105 hover:shadow-2xl cursor-pointer">
+                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md">
+                    <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="Icon" />
+                 </div>
+                 <div className="flex flex-col leading-none">
+                   <span className="text-[10px] font-black uppercase text-white/90 group-hover:text-[#24A1DE] mb-0.5">Canale Ufficiale</span>
+                   <span className="text-sm font-black uppercase tracking-wide text-white group-hover:text-[#24A1DE]">Offerte Italy</span>
+                 </div>
+                 <svg className="w-5 h-5 ml-2 text-white group-hover:text-[#24A1DE] opacity-80 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+             </a>
           </div>
+          <div className="hidden md:flex items-center gap-2">
+               <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_#4ade80]"></span>
+               <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Aggiornate in tempo reale</p>
+            </div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-10">
-          {deals.map(deal => (
-            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all group flex flex-col hover:-translate-y-2 lg:hover:-translate-y-4 duration-500">
-              <div className={`h-24 lg:h-64 flex items-center justify-center p-2 lg:p-12 ${deal.brandColor || 'bg-gray-50'}`}>
-                <img src={deal.imageUrl} className="max-h-full object-contain group-hover:scale-110 transition-transform duration-1000" />
+        
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Deals Cards - Now showing 4 deals */}
+          {deals.slice(0, 4).map(deal => (
+            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-lg hover:bg-black/50 transition-all group flex items-center gap-3 p-2 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50">
+              <div className="w-16 h-16 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center">
+                <img src={deal.imageUrl} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
               </div>
-              <div className="p-2 lg:p-10 text-center flex-1 flex flex-col">
-                <h4 className="font-black text-[10px] lg:text-xl text-gray-900 mb-1 lg:mb-2 leading-tight line-clamp-2">{deal.product}</h4>
-                <div className="mt-auto">
-                  <div className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-4 mb-1 lg:mb-6">
-                    <span className="text-sm lg:text-4xl font-black text-gray-900 tracking-tighter">{deal.newPrice}</span>
-                    <span className="text-[9px] lg:text-base text-gray-300 line-through font-bold">{deal.oldPrice}</span>
-                  </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-[11px] text-white mb-1 leading-tight line-clamp-2 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
+                <div className="flex items-center gap-2">
+                    <span className="text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
+                    <span className="text-[9px] text-gray-400 line-through font-bold">{deal.oldPrice}</span>
                 </div>
               </div>
             </a>
@@ -405,7 +408,6 @@ const App: React.FC = () => {
             ))}
         </div>
       </div>
-      {/* Cards removed for brevity as they are just visual links */}
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-6">
           <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
             <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay" alt="Background" />
@@ -515,8 +517,8 @@ const App: React.FC = () => {
                   <SmartphoneShowcase />
                 )}
 
-                {/* HERO SECTION - COMPACT FIXED HEIGHT (420px) */}
-                {isHome && activeCategory === 'Tutti' && heroArticle && (
+                {/* HERO SECTION - STATIC (Visible on Home regardless of sub-category filter, unless in Search) */}
+                {isHome && heroArticle && (
                   <div className="w-full h-[auto] md:h-[420px] lg:h-[420px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
@@ -535,40 +537,41 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* FEATURED CAROUSEL */}
-                <div className="px-4 lg:px-0 py-4 lg:py-6 mt-2 lg:mt-0">
-                  <div className="flex items-end justify-between mb-4 lg:mb-8">
-                      <h3 className="font-condensed text-3xl lg:text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
-                          {isSearch ? `Trovati ${filteredArticles.length} risultati` : activeCategory === 'Tutti' ? 'In Evidenza' : activeCategory}
-                      </h3>
-                      {activeCategory === 'Tutti' && (
+                {/* FEATURED CAROUSEL - STATIC (Visible on Home regardless of sub-category) */}
+                {isHome && (
+                  <div className="px-4 lg:px-0 py-2 mt-1 mb-0">
+                    <div className="flex items-end justify-between mb-2">
+                        <h3 className="font-condensed text-2xl lg:text-3xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
+                            In Evidenza
+                        </h3>
                         <div className="hidden lg:flex gap-2">
-                            <button onClick={() => scrollFeatured('left')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a sinistra">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                            <button onClick={() => scrollFeatured('left')} className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a sinistra">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
                             </button>
-                            <button onClick={() => scrollFeatured('right')} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a destra">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                            <button onClick={() => scrollFeatured('right')} className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center hover:bg-[#e31b23] transition-colors shadow-lg active:scale-90" aria-label="Scorri a destra">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
                             </button>
                         </div>
-                      )}
-                  </div>
+                    </div>
 
-                  <div 
-                    ref={featuredScrollRef} 
-                    className={`flex gap-4 lg:gap-8 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory py-8 px-2 cursor-grab active:cursor-grabbing ${isDragging ? 'snap-none' : 'snap-x'}`}
-                    onMouseDown={handleMouseDown}
-                    onMouseLeave={handleMouseLeave}
-                    onMouseUp={handleMouseUp}
-                    onMouseMove={handleMouseMove}
-                    style={{ scrollBehavior: isDragging ? 'auto' : 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                      {displayArticles.slice(0, 8).map(item => (
-                        <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[25%] lg:w-[22%] shrink-0 snap-start select-none">
-                          <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
-                        </div>
-                      ))}
+                    <div 
+                      ref={featuredScrollRef} 
+                      className={`flex gap-3 lg:gap-4 overflow-x-auto no-scrollbar scroll-container snap-x snap-mandatory py-2 px-1 cursor-grab active:cursor-grabbing ${isDragging ? 'snap-none' : 'snap-x'}`}
+                      onMouseDown={handleMouseDown}
+                      onMouseLeave={handleMouseLeave}
+                      onMouseUp={handleMouseUp}
+                      onMouseMove={handleMouseMove}
+                      style={{ scrollBehavior: isDragging ? 'auto' : 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                        {/* Always use the full article list for Featured Carousel to keep it static */}
+                        {articles.slice(0, 10).map(item => (
+                          <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
+                            <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {isHome && activeCategory === 'Tutti' && (
                   <div ref={staticBannerRef}>
@@ -581,7 +584,7 @@ const App: React.FC = () => {
                 )}
 
                 {isHome && activeCategory === 'Tutti' && deals.length > 0 && (
-                  <div className="w-full">
+                  <div className="w-full mt-2 mb-8">
                     <DealsSection />
                   </div>
                 )}
@@ -597,7 +600,9 @@ const App: React.FC = () => {
             >
               <div className="max-w-7xl mx-auto px-4">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 border-b border-gray-200 pb-4">
-                  <h3 className="font-condensed text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">Ultime Notizie</h3>
+                  <h3 className="font-condensed text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
+                     {activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory}
+                  </h3>
                   <div className="flex items-center gap-6 overflow-x-auto no-scrollbar mt-4 md:mt-0">
                     {['Tutti', ...NAV_CATEGORIES].map(cat => {
                       const activeColorClass = 

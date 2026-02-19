@@ -30,8 +30,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     setFullContent(article.content);
     
     const loadFull = async () => {
-      // If we are in local dev, skip
-      if (window.location.hostname.includes('localhost')) return;
+      // If we are in local dev or sandbox, skip completely to prevent CORS/404 errors
+      const hostname = window.location.hostname;
+      if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) return;
       
       // If content seems short or generic, definitely fetch full
       setIsUpdating(true);
@@ -117,7 +118,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           {article.category}
         </span>
 
-        {/* REVERTED: Tight and bold H1 */}
+        {/* H1 Title */}
         <h1 className="font-condensed text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 mb-6 md:mb-8 leading-[0.9] tracking-tight break-words hyphens-auto">
           {article.title}
         </h1>
@@ -168,8 +169,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
            <AdUnit slotId="top-article" format="auto" className="w-full max-w-[320px] md:max-w-full" label="Sponsor" />
         </div>
 
-        {/* Content Body */}
-        <div className="prose prose-base md:prose-xl max-w-none font-medium leading-relaxed text-gray-800 space-y-4">
+        {/* Content Body - TYPOGRAPHY UPDATE */}
+        {/* Increased base text size to text-lg and added leading-relaxed for better readability */}
+        <div className="prose prose-lg md:prose-xl max-w-none font-medium leading-relaxed text-gray-800 space-y-6">
           <div dangerouslySetInnerHTML={{ __html: fullContent || article.content }} />
           
           {/* TRUNCATION FALLBACK BUTTON */}

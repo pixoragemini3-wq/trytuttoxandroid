@@ -28,7 +28,7 @@ const getCategoryColors = (category: string, type: 'text' | 'bg') => {
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
-  // UPDATED: Fixed height handling (handled by parent mostly, but ensures content fits)
+  // Refined for 420px height and "Impact" font style
   if (article.type === 'hero') {
     return (
       <div onClick={onClick} className={`relative w-full h-full lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer overflow-hidden ${className}`}>
@@ -39,36 +39,39 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             alt={article.title}
             className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-black/5"></div>
+          <div className="absolute inset-0 bg-black/10 mix-blend-multiply"></div>
         </div>
         
         {/* Content Section - 65% Width */}
-        {/* UPDATED: Reduced padding (p-6) to be more compact */}
-        <div className="w-full md:w-[65%] p-6 md:p-6 lg:p-8 bg-[#e31b23] text-white flex flex-col justify-between transition-all duration-500 group-hover:bg-[#c0ff8c]">
+        <div className="w-full md:w-[65%] p-5 md:p-6 lg:p-8 bg-[#e31b23] text-white flex flex-col justify-between transition-all duration-500 group-hover:bg-[#c0ff8c] relative">
           
-          {/* Top: Title */}
-          <div className="flex flex-col gap-2">
-             {/* Typography: Tighter leading, max text-5xl, line-clamp-3 */}
-             <h2 className="font-condensed text-3xl md:text-4xl lg:text-5xl font-black leading-[0.9] uppercase tracking-tighter break-words hyphens-auto w-full group-hover:text-black transition-colors line-clamp-3">
+          <div className="flex flex-col items-start w-full">
+             {/* Optional Category Tag */}
+             <span className="hidden md:inline-block bg-black/20 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest mb-3 group-hover:bg-black group-hover:text-white transition-colors">
+                {article.category}
+             </span>
+
+             {/* Typography: Saira Extra Condensed, Black Weight, Tight Tracking to match Image */}
+             <h2 className="font-condensed text-4xl md:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[0.85] uppercase tracking-[-0.04em] w-full group-hover:text-black transition-colors line-clamp-3 text-left">
               {article.title}
             </h2>
             
-            {/* Excerpt: Stricter line-clamp-2 */}
-            <p className="hidden xl:block text-sm font-bold leading-tight opacity-90 group-hover:text-black transition-colors mt-2 max-w-2xl line-clamp-2">
+            {/* Excerpt - Hidden on smaller standard laptops to prioritize title impact, shown on huge screens */}
+            <p className="hidden xl:block text-sm font-bold leading-tight opacity-90 group-hover:text-black transition-colors mt-3 max-w-xl line-clamp-2">
               {article.excerpt.substring(0, 150)}...
             </p>
           </div>
           
-          {/* Bottom: Author Info (Pinned to bottom) */}
-          <div className="mt-4 md:mt-0 pt-4 border-t border-white/30 group-hover:border-black/20">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] group-hover:text-black transition-colors">
+          {/* Bottom Info */}
+          <div className="mt-4 pt-4 border-t border-white/20 w-full group-hover:border-black/10 flex justify-between items-end">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] group-hover:text-black transition-colors">
                 DI {article.author.toUpperCase()}
               </span>
-              <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest opacity-80 group-hover:text-black transition-colors">
-                {article.date.toUpperCase()}
-              </span>
             </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 group-hover:text-black transition-colors">
+               {article.date.toUpperCase()}
+            </span>
           </div>
         </div>
       </div>
@@ -94,7 +97,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
            >
              {article.category}
            </span>
-           <h3 className="text-white font-condensed text-lg lg:text-3xl font-black uppercase leading-[0.9] tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
+           <h3 className="text-white font-condensed text-xl lg:text-3xl font-black uppercase leading-[0.9] tracking-tighter group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
              {article.title}
            </h3>
         </div>
@@ -127,7 +130,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
         <span className={`${textColorClass} text-[8px] lg:text-[10px] font-black uppercase tracking-[0.15em] mb-2 lg:mb-3 block transition-colors group-hover:text-[#a6e076]`}>
           {article.category}
         </span>
-        <h3 className="font-bold text-base sm:text-xl lg:text-2xl leading-tight text-gray-900 group-hover:text-[#a6e076] transition-colors mb-3 lg:mb-4 line-clamp-3 lg:line-clamp-2">
+        <h3 className="font-bold text-base sm:text-xl lg:text-2xl leading-tight text-gray-900 group-hover:text-[#a6e076] transition-colors mb-3 lg:mb-4 line-clamp-3 lg:line-clamp-2 tracking-tight">
           {article.title}
         </h3>
         <div className="mt-auto text-[10px] lg:text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
