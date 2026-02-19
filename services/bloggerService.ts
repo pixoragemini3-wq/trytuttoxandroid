@@ -134,7 +134,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           const { cleanContent, dealData } = parseArticleContent(p.content || '');
           const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
 
-          const tags = Array.isArray(p.tags) ? p.tags : (p.category ? [p.category] : []);
+          const tags = Array.isArray(p.tags) ? p.tags.map((t: string) => t.trim()) : (p.category ? [p.category] : []);
 
           return {
             ...p,
@@ -181,7 +181,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       let rawContent = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
       const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
       
-      const categories = entry.category ? entry.category.map((c: any) => c.term) : [];
+      const categories = entry.category ? entry.category.map((c: any) => c.term.trim()) : [];
       
       const isFeatured = categories.some((c: string) => 
         c === 'Evidenza' || 
