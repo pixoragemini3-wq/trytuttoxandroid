@@ -28,12 +28,10 @@ const getCategoryColors = (category: string, type: 'text' | 'bg') => {
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
-  // FIXED: Reduced height to 500px/550px.
-  // FIXED: Changed layout ratio to 35% img / 65% text.
   if (article.type === 'hero') {
     return (
-      <div onClick={onClick} className={`relative w-full lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer min-h-[auto] md:h-[500px] lg:h-[550px] ${className}`}>
-        {/* Image Section - Reduced to 35% */}
+      <div onClick={onClick} className={`relative w-full lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer min-h-[auto] md:h-[500px] lg:h-[500px] ${className}`}>
+        {/* Image Section - 35% Width */}
         <div className="w-full md:w-[35%] h-64 md:h-full overflow-hidden relative bg-gray-50 shrink-0">
           <img 
             src={article.imageUrl} 
@@ -43,18 +41,18 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           <div className="absolute inset-0 bg-black/5"></div>
         </div>
         
-        {/* Content Section - Increased to 65% */}
+        {/* Content Section - 65% Width */}
         <div className="w-full md:w-[65%] p-6 md:p-8 lg:p-10 bg-[#e31b23] text-white flex flex-col justify-between transition-all duration-500 group-hover:bg-[#c0ff8c]">
           
           {/* Top: Title */}
           <div className="flex flex-col gap-3">
-             {/* Typography */}
-             <h2 className="font-condensed text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-black leading-[0.9] uppercase tracking-tighter break-words hyphens-auto w-full group-hover:text-black transition-colors">
+             {/* Typography: Reduced size significantly to prevent overflow. Capped at text-5xl. Added line-clamp. */}
+             <h2 className="font-condensed text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-black leading-[0.95] uppercase tracking-tighter break-words hyphens-auto w-full group-hover:text-black transition-colors line-clamp-4">
               {article.title}
             </h2>
             
             {/* Excerpt */}
-            <p className="hidden xl:block text-sm md:text-base font-bold leading-normal opacity-90 group-hover:text-black transition-colors mt-2 max-w-2xl">
+            <p className="hidden xl:block text-sm font-bold leading-normal opacity-90 group-hover:text-black transition-colors mt-2 max-w-2xl line-clamp-3">
               {article.excerpt.substring(0, 150)}...
             </p>
           </div>
