@@ -32,8 +32,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   if (article.type === 'hero') {
     return (
       <div onClick={onClick} className={`relative w-full h-full lg:rounded-[2.5rem] bg-white flex flex-col md:flex-row shadow-2xl group cursor-pointer overflow-hidden ${className}`}>
-        {/* Image Section - 35% Width */}
-        <div className="w-full md:w-[35%] h-64 md:h-full overflow-hidden relative bg-gray-50 shrink-0">
+        {/* Image Section - Responsive Aspect Ratio on Mobile, 35% Width on Desktop */}
+        <div className="w-full md:w-[35%] aspect-[4/3] md:aspect-auto md:h-full overflow-hidden relative bg-gray-50 shrink-0">
           <img 
             src={article.imageUrl} 
             alt={article.title}
@@ -105,8 +105,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     );
   }
 
-  // Stile STANDARD (Feed - Grid 2 columns on mobile)
-  const textClass = getCategoryColors(article.category, 'text');
+  // Stile STANDARD UPDATED: Horizontal Layout (Blog Style) with Hover Effects
   const textColorClass = 
     article.category === 'Smartphone' ? 'text-blue-600' : 
     article.category === 'Modding' ? 'text-orange-500' : 
@@ -118,24 +117,46 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     'text-[#e31b23]';
 
   return (
-    <div onClick={onClick} className={`flex flex-col group cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:bg-white lg:rounded-[2rem] lg:p-4 lg:-m-4 ${className}`}>
-      <div className="aspect-video overflow-hidden rounded-[1rem] lg:rounded-[1.5rem] bg-gray-100 mb-3 lg:mb-5 shadow-sm border border-gray-100">
-        <img 
-          src={article.imageUrl} 
-          alt={article.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+    <div onClick={onClick} className={`flex flex-col md:flex-row gap-5 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.01] hover:shadow-2xl rounded-[1.5rem] p-4 border border-transparent hover:border-gray-100 ${className}`}>
+      
+      {/* IMAGE CONTAINER: 35% Width on Desktop, Full on Mobile */}
+      <div className="w-full md:w-[35%] shrink-0">
+         <div className="aspect-video md:aspect-[4/3] w-full overflow-hidden rounded-2xl bg-gray-100 shadow-sm border border-gray-100 relative">
+            <img 
+              src={article.imageUrl} 
+              alt={article.title}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+            {/* Optional Overlay on Hover */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
+         </div>
       </div>
-      <div className="flex flex-col flex-1">
-        <span className={`${textColorClass} text-[8px] lg:text-[10px] font-black uppercase tracking-[0.15em] mb-2 lg:mb-3 block transition-colors group-hover:text-[#a6e076]`}>
+
+      {/* CONTENT CONTAINER: 65% Width */}
+      <div className="flex-1 flex flex-col justify-center py-1">
+        <span className={`${textColorClass} text-[9px] font-black uppercase tracking-[0.2em] mb-2 block transition-colors`}>
           {article.category}
         </span>
-        <h3 className="font-bold text-base sm:text-xl lg:text-2xl leading-tight text-gray-900 group-hover:text-[#a6e076] transition-colors mb-3 lg:mb-4 line-clamp-3 lg:line-clamp-2 tracking-tight">
+        
+        <h3 className="font-condensed text-xl md:text-2xl lg:text-3xl font-black leading-[0.95] text-gray-900 group-hover:text-[#e31b23] transition-colors mb-3 line-clamp-3 tracking-tight">
           {article.title}
         </h3>
-        <div className="mt-auto text-[10px] lg:text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full group-hover:bg-[#a6e076]"></span>
-          {article.date}
+        
+        <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-2 md:line-clamp-2 mb-4 hidden md:block">
+           {article.excerpt}
+        </p>
+
+        <div className="mt-auto flex items-center gap-3">
+           <div className="flex items-center gap-2">
+             <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden">
+                <img src={article.authorImageUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100"} className="w-full h-full object-cover" />
+             </div>
+             <span className="text-[9px] font-bold text-gray-900 uppercase">{article.author}</span>
+           </div>
+           <span className="text-[8px] text-gray-300 font-black">●</span>
+           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+             {article.date}
+           </span>
         </div>
       </div>
     </div>

@@ -37,6 +37,9 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
   const [isLoading, setIsLoading] = useState(true);
   
+  // Animation Direction State for Swipe Effect
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+  
   // Pagination
   const [visibleNewsCount, setVisibleNewsCount] = useState(6);
   
@@ -56,13 +59,17 @@ const App: React.FC = () => {
   // Swipe Logic
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null); // Added for Y-axis check
 
-  // Drag Scroll
+  // Drag Scroll (Featured)
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
   const topStories = articles.slice(0, 8);
+  
+  // Full Category List for Indexing
+  const ALL_CATEGORIES = ['Tutti', ...NAV_CATEGORIES];
 
   // --- ROUTER LOGIC ---
   const isAbout = location.pathname === '/about';
@@ -74,7 +81,6 @@ const App: React.FC = () => {
 
   // Function to extract the current article based on URL
   const getCurrentArticle = () => {
-    // 1. Priority: Check if we have a Single Post injected by the XML Template
     const injectedPost = (window as any).currentSinglePost;
     if (injectedPost && location.pathname.endsWith('.html')) {
        try {
@@ -86,20 +92,19 @@ const App: React.FC = () => {
        return injectedPost as Article;
     }
 
-    // 2. Search in loaded articles array
     if (!isArticle) return undefined;
     
-    // Simplification for Sandbox: Match by ID first if path is /article/:id
+    // Legacy ID support
     if (location.pathname.startsWith('/article/')) {
        const parts = location.pathname.split('/');
        const id = parts[parts.length - 1];
-       const foundById = articles.find(a => a.id === id);
+       const sourceArticles = articles.length > 0 ? articles : MOCK_ARTICLES;
+       const foundById = sourceArticles.find(a => a.id === id);
        if (foundById) return foundById;
     }
 
+    // Permalink support (e.g., /2025/02/post-title.html)
     const currentPath = decodeURIComponent(location.pathname);
-    
-    // Match by URL Path (Legacy for real blogger urls)
     let found = articles.find(a => {
       if (!a.url) return false;
       try {
@@ -107,7 +112,6 @@ const App: React.FC = () => {
         return aPath === currentPath;
       } catch(e) { return false; }
     });
-    
     return found;
   };
 
@@ -191,43 +195,70 @@ const App: React.FC = () => {
     featuredScrollRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  // Swipe Handlers
+  // --- SWIPE HANDLERS FOR CATEGORY NAVIGATION ---
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY); // Capture starting Y
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
+    // Don't capture End Y here to allow scrolling, just read it in End if needed, 
+    // but better to capture it here for consistency if needed, 
+    // though for simple scroll detection, we can just use the TouchEnd event properties if available,
+    // but React TouchEvent doesn't give changedTouches easily in the same way.
+    // Let's store current Y
+    const currentY = e.targetTouches[0].clientY;
+    
+    // Safety check: if Y movement is dominant, cancel potential horizontal swipe logic by invalidating start
+    if (touchStartY !== null && Math.abs(currentY - touchStartY) > 50) {
+        setTouchStart(null); // Invalidate horizontal swipe
+    }
   };
 
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
     
-    // Simple logic placeholder: could navigate categories or articles
-    if (isLeftSwipe || isRightSwipe) {
-      // Implement specific swipe action here if needed
+    const isLeftSwipe = distance > 70;  
+    const isRightSwipe = distance < -70;
+    
+    const currentIndex = ALL_CATEGORIES.indexOf(activeCategory);
+
+    if (isLeftSwipe) {
+      if (currentIndex < ALL_CATEGORIES.length - 1) {
+        handleNavClick(ALL_CATEGORIES[currentIndex + 1]);
+      }
+    } else if (isRightSwipe) {
+      if (currentIndex > 0) {
+        handleNavClick(ALL_CATEGORIES[currentIndex - 1]);
+      }
     }
   };
 
   // Navigation Logic
   const handleArticleClick = (article: Article) => {
+    setIsDragging(false); // Safety reset
     if (isDragging) return;
-    
-    // Deal Links (External)
     if (article.category === 'Offerte' && article.dealData?.link) {
        window.open(article.dealData.link, '_blank');
        return;
     }
-    
     setActiveMegaMenu(null);
     
-    // FIX FOR SANDBOX: Always use internal ID-based routing
-    // This bypasses issues with external URL structures in the iframe
-    navigate(`/article/${article.id}`);
+    // CHANGED: Use permalink if available, otherwise fallback to ID
+    if (article.url) {
+        try {
+            const path = new URL(article.url).pathname;
+            navigate(path);
+        } catch(e) {
+            navigate(`/article/${article.id}`);
+        }
+    } else {
+        navigate(`/article/${article.id}`);
+    }
+    
     window.scrollTo(0, 0);
   };
 
@@ -249,13 +280,22 @@ const App: React.FC = () => {
   };
 
   const handleNavClick = (nav: string) => {
+    // Determine animation direction
+    const currentIndex = ALL_CATEGORIES.indexOf(activeCategory);
+    const newIndex = ALL_CATEGORIES.indexOf(nav);
+    
+    if (newIndex > currentIndex) {
+      setSlideDirection('right'); // Enter from right
+    } else {
+      setSlideDirection('left'); // Enter from left
+    }
+
     setActiveCategory(nav);
     setVisibleNewsCount(6); 
-    setFilteredArticles(articles);
+    // Don't reset filteredArticles to all articles here, keep them separate.
+    // setFilteredArticles(articles); 
     setIsMobileMenuOpen(false);
     
-    // REMOVED SCROLL LOGIC to prevent "mini scroll fastidioso"
-    // The view simply updates the list below.
     if (!isHome) {
         navigate('/');
     }
@@ -292,15 +332,11 @@ const App: React.FC = () => {
     let list = articles;
     const target = activeCategory.toLowerCase().trim();
 
-    // In filtered view, we might include the Hero article in the list if it matches criteria, 
-    // but typically we want distinct lists.
-    // If we are in "Tutti", we exclude Hero to avoid duplication if Hero is rendered separately.
     if (activeCategory === 'Tutti' && heroArticle) {
        list = list.filter(a => a.id !== heroArticle.id);
     }
     
     if (activeCategory !== 'Tutti') {
-      // Broad Keyword Matching
       const categoryKeywords: Record<string, string[]> = {
         'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android'],
         'news': ['news', 'notizie', 'novità', 'aggiornamento', 'leaks', 'rumors', 'anteprima', 'tech', 'tecnologia', 'android', 'google'],
@@ -316,17 +352,14 @@ const App: React.FC = () => {
         const articleTags = (a.tags || []).map(t => t.toLowerCase().trim());
         const articleCategory = (a.category || '').toLowerCase().trim();
         
-        // 1. Direct match on Category Name or Tag
         if (articleCategory === target) return true;
         if (articleTags.includes(target)) return true;
         
-        // 2. Special case for "App & Giochi"
         if (target === 'app & giochi') {
              if (articleTags.some(t => t.includes('app') || t.includes('giochi') || t.includes('game'))) return true;
              if (articleCategory.includes('app') || articleCategory.includes('giochi')) return true;
         }
 
-        // 3. Keyword Mapping Match
         const keywords = categoryKeywords[target];
         if (keywords) {
            const hasKeywordMatch = keywords.some(k => 
@@ -341,11 +374,11 @@ const App: React.FC = () => {
     return list;
   };
   
-  const displayArticles = getDisplayArticles();
+  // FIXED: If searching, show filtered results, otherwise show category results
+  const displayArticles = isSearch ? filteredArticles : getDisplayArticles();
 
   const DealsSection = () => (
-    <section className="py-6 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] text-white rounded-[1.5rem] mx-0 lg:mx-0 overflow-hidden shadow-2xl relative border-t-4 border-[#e31b23]">
-      {/* Abstract Background Decoration */}
+    <section className="py-6 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] text-white rounded-[1.5rem] mx-0 lg:mx-0 overflow-hidden shadow-2xl relative border-t-4 border-[#e31b23] mb-4 animate-in slide-in-from-right duration-500">
       <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
       
       <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10">
@@ -354,7 +387,6 @@ const App: React.FC = () => {
              <h2 className="font-condensed text-3xl lg:text-5xl font-black uppercase tracking-tight italic leading-none text-white drop-shadow-lg">Offerte del Giorno</h2>
              <span className="bg-white text-[#e31b23] px-3 py-1 rounded text-xs font-black uppercase tracking-widest shadow-md animate-pulse">HOT</span>
              
-             {/* Telegram Button - Enhanced Size & Visibility */}
              <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-[#24A1DE] hover:bg-white pl-2 pr-6 py-2 rounded-full transition-all group shadow-xl border-2 border-white/20 ml-0 md:ml-6 hover:scale-105 hover:shadow-2xl cursor-pointer">
                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md">
                     <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="Icon" />
@@ -373,7 +405,6 @@ const App: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Deals Cards - Now showing 4 deals */}
           {deals.slice(0, 4).map(deal => (
             <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-lg hover:bg-black/50 transition-all group flex items-center gap-3 p-2 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50">
               <div className="w-16 h-16 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center">
@@ -383,7 +414,7 @@ const App: React.FC = () => {
                 <h4 className="font-bold text-[11px] text-white mb-1 leading-tight line-clamp-2 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
                 <div className="flex items-center gap-2">
                     <span className="text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
-                    <span className="text-[9px] text-gray-400 line-through font-bold">{deal.oldPrice}</span>
+                    <span className="text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>
                 </div>
               </div>
             </a>
@@ -394,8 +425,8 @@ const App: React.FC = () => {
   );
 
   const SmartphoneShowcase = () => (
-    <div className="w-full mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
-      <div className="bg-[#c0ff8c] border-y-2 border-black/5 py-4 mb-8 overflow-x-auto no-scrollbar shadow-inner">
+    <div className="w-full mb-10 animate-in fade-in slide-in-from-right duration-500">
+      <div className="bg-[#c0ff8c] border-y-2 border-black/5 py-4 mb-6 overflow-x-auto no-scrollbar shadow-inner">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center min-w-max gap-12 md:gap-0">
             {['SAMSUNG', 'XIAOMI', 'PIXEL', 'ONEPLUS', 'MOTOROLA', 'REALME', 'SONY', 'NOTHING', 'HONOR'].map(brand => (
               <button 
@@ -408,30 +439,31 @@ const App: React.FC = () => {
             ))}
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
-            <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay" alt="Background" />
-            <div className="absolute inset-0 bg-gradient-to-br from-[#0066FF]/90 to-[#0040DD]/90"></div>
-            <div className="absolute inset-0 p-8 flex flex-col justify-between z-10">
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-48 md:h-60 rounded-[2rem] overflow-hidden group shadow-xl transition-all hover:scale-[1.01]">
+            <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-blue-600/70 mix-blend-multiply"></div>
+            <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
                <div className="flex justify-between items-start">
-                  <span className="bg-white text-[#0066FF] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md">Community Ufficiale</span>
+                  <span className="bg-white/20 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm border border-white/10 backdrop-blur-sm">Community Ufficiale</span>
                </div>
-               <div className="flex flex-col items-center text-center mt-4">
-                   <h3 className="font-condensed text-6xl md:text-7xl font-black uppercase italic leading-none text-white drop-shadow-lg transform -skew-x-6">ANDROID<br/>ITALY</h3>
+               <div className="flex flex-col items-center text-center">
+                   <h3 className="font-condensed text-5xl md:text-6xl font-black uppercase italic leading-none text-white drop-shadow-lg transform -skew-x-6">ANDROID<br/>ITALY</h3>
                </div>
-               <div className="flex items-center justify-between mt-auto">
-                   <span className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest group-hover:bg-white group-hover:text-[#0066FF] transition-colors shadow-xl">Unisciti al Gruppo &rarr;</span>
+               <div className="flex items-center justify-center">
+                   <span className="bg-white text-blue-600 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-lg">Unisciti al Gruppo &rarr;</span>
                </div>
             </div>
          </a>
-         <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-64 md:h-80 rounded-[2.5rem] overflow-hidden group shadow-2xl transition-all hover:scale-[1.02]">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#333333] to-[#000000]"></div>
-            <div className="absolute inset-0 p-8 flex flex-col justify-center items-center z-10 text-center">
-               <div className="w-24 h-24 bg-white p-1 rounded-full shadow-2xl mb-6 relative group-hover:scale-110 group-hover:drop-shadow-[0_0_20px_rgba(227,27,35,0.6)] transition-all duration-500 ease-out group-hover:animate-pulse">
+         <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-48 md:h-60 rounded-[2rem] overflow-hidden group shadow-xl transition-all hover:scale-[1.01]">
+            <img src="https://i.imgur.com/GHOv30o.png" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Background" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+            <div className="absolute inset-0 p-6 flex flex-col justify-center items-center z-10 text-center">
+               <div className="w-14 h-14 bg-white p-1 rounded-full shadow-2xl mb-3 relative group-hover:scale-110 transition-transform duration-500">
                   <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo" />
                </div>
-               <h3 className="font-condensed text-5xl font-black uppercase text-white mb-2 leading-none">TuttoXAndroid</h3>
-               <span className="w-full max-w-sm bg-[#e31b23] text-white px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest group-hover:bg-white group-hover:text-[#e31b23] transition-colors shadow-lg shadow-red-900/50">Lascia un Like &rarr;</span>
+               <h3 className="font-condensed text-4xl md:text-5xl font-black uppercase text-white mb-4 leading-none drop-shadow-lg">TuttoXAndroid</h3>
+               <span className="bg-[#e31b23] text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest group-hover:bg-white group-hover:text-[#e31b23] transition-colors shadow-lg shadow-red-900/50">Segui la Pagina &rarr;</span>
             </div>
          </a>
       </div>
@@ -511,13 +543,9 @@ const App: React.FC = () => {
               />
             )}
 
-            <section className="bg-white min-h-screen">
+            <section className="bg-white pb-4">
               <div className="max-w-7xl mx-auto">
-                {isHome && activeCategory === 'Smartphone' && (
-                  <SmartphoneShowcase />
-                )}
-
-                {/* HERO SECTION - STATIC (Visible on Home regardless of sub-category filter, unless in Search) */}
+                {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && heroArticle && (
                   <div className="w-full h-[auto] md:h-[420px] lg:h-[420px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
@@ -537,7 +565,7 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* FEATURED CAROUSEL - STATIC (Visible on Home regardless of sub-category) */}
+                {/* FEATURED CAROUSEL - STATIC (Visible on Home) */}
                 {isHome && (
                   <div className="px-4 lg:px-0 py-2 mt-1 mb-0">
                     <div className="flex items-end justify-between mb-2">
@@ -563,7 +591,6 @@ const App: React.FC = () => {
                       onMouseMove={handleMouseMove}
                       style={{ scrollBehavior: isDragging ? 'auto' : 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {/* Always use the full article list for Featured Carousel to keep it static */}
                         {articles.slice(0, 10).map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
                             <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
@@ -572,39 +599,37 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 )}
-
-                {isHome && activeCategory === 'Tutti' && (
-                  <div ref={staticBannerRef}>
-                    <SocialBannerMobile />
-                  </div>
+                
+                {/* MOVED: DealsSection placed here to reduce whitespace and always show */}
+                {isHome && deals.length > 0 && !isSearch && (
+                   <div className="mt-4 px-4 lg:px-0">
+                      <DealsSection />
+                   </div>
                 )}
 
                 {isHome && showStickyBanner && (
                   <SocialBannerMobile isFixed={true} />
-                )}
-
-                {isHome && activeCategory === 'Tutti' && deals.length > 0 && (
-                  <div className="w-full mt-2 mb-8">
-                    <DealsSection />
-                  </div>
                 )}
               </div>
             </section>
 
             <section 
               ref={newsSectionRef} 
-              className="py-12 bg-gray-50/50 min-h-[500px]"
+              className="pt-4 pb-12 bg-gray-50/50 min-h-[500px]"
+              // Added Touch Listeners for Swipe
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove} 
               onTouchEnd={handleTouchEnd} 
             >
               <div className="max-w-7xl mx-auto px-4">
+                
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 border-b border-gray-200 pb-4">
                   <h3 className="font-condensed text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
-                     {activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory}
+                     {isSearch ? `Risultati per: "${searchQuery}"` : (activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory)}
                   </h3>
+                  {!isSearch && (
                   <div className="flex items-center gap-6 overflow-x-auto no-scrollbar mt-4 md:mt-0">
-                    {['Tutti', ...NAV_CATEGORIES].map(cat => {
+                    {ALL_CATEGORIES.map(cat => {
                       const activeColorClass = 
                         cat === 'Smartphone' ? 'text-blue-600 border-blue-600' : 
                         cat === 'Modding' ? 'text-orange-500 border-orange-500' : 
@@ -636,21 +661,41 @@ const App: React.FC = () => {
                       );
                     })}
                   </div>
+                  )}
                 </div>
+                
+                {/* MOVED DYNAMIC CONTENT HERE TO PREVENT SCROLL JUMP OF TABS */}
+                {isHome && activeCategory === 'Smartphone' && !isSearch && (
+                  <SmartphoneShowcase />
+                )}
+
+                {isHome && activeCategory === 'Tutti' && !isSearch && (
+                  <div ref={staticBannerRef}>
+                    <SocialBannerMobile />
+                  </div>
+                )}
+                
+                {/* END OF DYNAMIC CONTENT */}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-2 overflow-hidden">
+                    {/* ANIMATED GRID CONTAINER */}
                     {displayArticles.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-12 mb-8">
+                      <div 
+                        key={isSearch ? 'search' : activeCategory} 
+                        className={`flex flex-col gap-6 mb-8 animate-in fade-in duration-300 ${slideDirection === 'right' ? 'slide-in-from-right-12' : 'slide-in-from-left-12'}`}
+                      >
                           {displayArticles.slice(0, visibleNewsCount).map(item => (
                             <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
                           ))}
                       </div>
                     ) : (
                       <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200">
-                        <p className="text-gray-400 font-bold uppercase tracking-widest">Nessun articolo trovato in questa categoria.</p>
+                        <p className="text-gray-400 font-bold uppercase tracking-widest">
+                          {isSearch ? 'Nessun risultato trovato.' : 'Nessun articolo trovato in questa categoria.'}
+                        </p>
                         <p className="text-xs text-gray-300 mt-2">Prova a cercare un altro termine o torna alla home.</p>
-                        <button onClick={() => setActiveCategory('Tutti')} className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors">Vedi tutti gli articoli</button>
+                        <button onClick={goToHome} className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors">Torna alla Home</button>
                       </div>
                     )}
                     

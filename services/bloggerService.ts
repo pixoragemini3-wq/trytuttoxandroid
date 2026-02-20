@@ -1,5 +1,6 @@
 
 import { Article, Category, Deal, DealData } from '../types';
+import { MOCK_ARTICLES } from '../constants';
 
 // Helper per pulire HTML e decodificare entità (rimuove &nbsp;, &amp; ecc.)
 const stripHtml = (html: string): string => {
@@ -81,7 +82,23 @@ const forceHighResImage = (url: string): string => {
   return url;
 };
 
-const fetchWithTimeout = async (url: string, timeout = 8000) => {
+// --- CORS PROXY CONFIGURATION ---
+const TARGET_DOMAIN = 'https://www.tuttoxandroid.com';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+const getFetchUrl = (path: string) => {
+  const hostname = window.location.hostname;
+  // If we are in Sandbox, Localhost, or Stackblitz, use the Proxy
+  if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer') || hostname.includes('googleusercontent')) {
+    const fullTargetUrl = `${TARGET_DOMAIN}${path}`;
+    // Encode the target URL to pass it safely to the proxy
+    return `${CORS_PROXY}${encodeURIComponent(fullTargetUrl)}`;
+  }
+  // Otherwise (Production), use the relative path
+  return path;
+};
+
+const fetchWithTimeout = async (url: string, timeout = 15000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -96,14 +113,18 @@ const fetchWithTimeout = async (url: string, timeout = 8000) => {
 
 // NEW: Fetch specific article by ID to get full content
 export const fetchArticleById = async (id: string): Promise<string | null> => {
+  // SANDBOX FIX: If it's a mock ID (short string), return mock content immediately
+  // This prevents 404s when trying to fetch "1" or "2" from the real Blogger API
+  if (id.length < 5) {
+      const mock = MOCK_ARTICLES.find(a => a.id === id);
+      return mock ? mock.content : null;
+  }
+
   try {
-    const hostname = window.location.hostname;
-    if (hostname.includes('localhost') || hostname.includes('stackblitz')) {
-      return null;
-    }
+    // Modified to use getFetchUrl to bypass CORS in sandbox
+    const feedUrl = getFetchUrl(`/feeds/posts/default/${id}?alt=json`);
     
-    // We fetch the specific post JSON which usually contains full content
-    const response = await fetch(`/feeds/posts/default/${id}?alt=json`);
+    const response = await fetch(feedUrl);
     if (!response.ok) return null;
     
     const data = await response.json();
@@ -119,14 +140,9 @@ export const fetchArticleById = async (id: string): Promise<string | null> => {
 
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string): Promise<Article[]> => {
   try {
-    const hostname = window.location.hostname;
-    // Safety check for local/preview environments
-    if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) {
-      return [];
-    }
+    // Removed the "return []" block for localhost to allow Proxy fetching
 
     // CRITICAL FIX: Only use native posts if we have a significant amount (e.g. > 20).
-    // Otherwise, Blogger is likely paginating (showing only 7 posts), which breaks filtering.
     const nativePosts = (window as any).bloggerNativePosts;
     const shouldUseNative = nativePosts && nativePosts.length > 20;
 
@@ -164,14 +180,17 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       return filtered;
     }
 
-    // Fallback to JSON feed to get MORE posts (150)
+    // Fallback to JSON feed via PROXY
     let feedPath = '/feeds/posts/default?alt=json&max-results=150';
     if (category && category !== 'Tutti') {
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100`;
     }
     
-    const response = await fetchWithTimeout(feedPath, 8000);
+    // Wrap the feed path with the Proxy URL generator
+    const response = await fetchWithTimeout(getFetchUrl(feedPath), 8000);
+    
     if (!response.ok) {
+      // Return empty so App.tsx falls back to MOCK
       return [];
     }
     
@@ -231,18 +250,18 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       };
     });
   } catch (error) {
+    // Return empty so App.tsx falls back to MOCK
     return [];
   }
 };
 
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
-    const hostname = window.location.hostname;
-    if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer')) {
-      return [];
-    }
+    // Removed the "return []" block for localhost to allow Proxy fetching
 
-    const response = await fetchWithTimeout('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20', 5000);
+    // Wrap the feed path with the Proxy URL generator
+    const response = await fetchWithTimeout(getFetchUrl('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20'), 5000);
+    
     if (!response.ok) return [];
     
     const data = await response.json();
