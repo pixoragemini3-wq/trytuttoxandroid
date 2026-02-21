@@ -27,29 +27,21 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   }, [fullContent, article.url]);
 
   // --- CONTENT SPLITTER LOGIC ---
-  // Dividiamo il contenuto HTML in parti per iniettare i blocchi "Leggi Anche"
   const contentParts = useMemo(() => {
     const content = fullContent || article.content;
     if (!content) return [];
     
-    // Proviamo a dividere per paragrafi
     const splitByParagraph = content.split('</p>');
     
-    if (splitByParagraph.length < 3) return [content]; // Troppo corto, nessun split
+    if (splitByParagraph.length < 3) return [content]; 
     
-    // Prima parte: Primi 2 paragrafi (o meno se corto)
     const part1 = splitByParagraph.slice(0, 2).join('</p>') + '</p>';
-    
-    // Seconda parte: Dal 3° al 5°
     const part2 = splitByParagraph.slice(2, 6).join('</p>') + '</p>';
-    
-    // Terza parte: Il resto
     const part3 = splitByParagraph.slice(6).join('</p>');
     
     return [part1, part2, part3].filter(p => p.length > 0 && p !== '</p>');
   }, [fullContent, article.content]);
 
-  // Fetch full content on mount
   useEffect(() => {
     setFullContent(article.content);
     
@@ -69,25 +61,31 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     loadFull();
   }, [article.id]);
 
-  // --- RE-ACTIVATE LEGACY JS LOGIC ---
   useEffect(() => {
-    // This runs every time the content changes/renders
     if (!contentRef.current) return;
 
-    // 1. Expandable Tables Logic (Cascading FAQ)
+    // --- EXPANDABLE ROW LOGIC FIX ---
+    // Select all potential rows. Note: Blogger HTML often puts class on TR.
     const expandableRows = contentRef.current.querySelectorAll('tr.expandable-row');
     
-    const handleRowClick = function(this: HTMLElement) {
-      this.classList.toggle('expanded');
+    const handleRowClick = function(this: HTMLElement, e: Event) {
+      // Prevent default to ensure smooth toggle
+      e.stopPropagation(); 
+      // Toggle class for CSS animation
+      if (this.classList.contains('expanded')) {
+        this.classList.remove('expanded');
+      } else {
+        this.classList.add('expanded');
+      }
     };
 
     expandableRows.forEach(row => {
-      // Remove old listeners to avoid duplicates if re-rendering
+      // Clean up old listener to prevent duplicates
       row.removeEventListener('click', handleRowClick as EventListener);
+      // Add fresh listener
       row.addEventListener('click', handleRowClick as EventListener);
     });
 
-    // 2. Add target="_blank" to external links for better UX
     const links = contentRef.current.querySelectorAll('a');
     links.forEach(link => {
       if (link.hostname !== window.location.hostname && !link.href.startsWith('javascript')) {
@@ -101,7 +99,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
         row.removeEventListener('click', handleRowClick as EventListener);
       });
     };
-  }, [fullContent, contentParts]); // Depend on contentParts as well
+  }, [fullContent, contentParts]); 
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) {
@@ -146,7 +144,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     article.category === 'Offerte' ? 'bg-yellow-500' : 
     'bg-[#e31b23]';
 
-  // Combine articles for "Most Read" simulation
   const mostReadArticles = [...offerNews, ...moreArticles].slice(0, 5);
 
   const ReadAlsoBlock = ({ article }: { article: Article }) => (
@@ -244,10 +241,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
                 {/* AD UNIT - Reduced Whitespace */}
                 <div className="not-prose mb-4 flex justify-center">
-                    <AdUnit slotId="5116585729" format="auto" className="w-full" label="Sponsor" />
+                    <AdUnit slotId="2551109589" format="auto" className="w-full" label="Sponsor" />
                 </div>
 
-                {/* Content Body - IMPROVED READABILITY */}
+                {/* Content Body */}
                 <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto [&_span]:!font-inherit [&_span]:!text-inherit [&_span]:!leading-inherit [&_p]:mb-6 marker:text-gray-800">
                     {/* Render Part 1 */}
                     <div dangerouslySetInnerHTML={{ __html: contentParts[0] }} />
@@ -343,15 +340,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
             <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
                 
                 {/* 1. AD UNIT TOP */}
-                <AdUnit slotId="5116585729" format="rectangle" label="Sponsor" />
+                <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
 
-                {/* 2. TELEGRAM PROMO BANNER (High Visibility & FIXED CONTRAST) */}
+                {/* 2. TELEGRAM PROMO BANNER */}
                 <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-[2rem] p-6 text-center text-white shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md text-[#24A1DE]">
                       <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg>
                    </div>
-                   {/* FIXED CONTRAST: White text on Blue BG, with Yellow accent */}
                    <h3 className="font-condensed text-2xl font-black uppercase italic mb-1 leading-none text-white drop-shadow-md">Canale Offerte</h3>
                    <p className="text-xs font-bold text-yellow-300 mb-4 px-2">Errori di prezzo e sconti esclusivi in tempo reale.</p>
                    <span className="inline-block bg-white text-[#24A1DE] px-8 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black hover:text-white transition-colors">Unisciti Ora</span>
@@ -380,20 +376,24 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                    </div>
                 </div>
                 
-                {/* 5. FLASH OFFERS (Mini Deals) */}
+                {/* 5. FLASH OFFERS (Mini Deals) - UPDATED LAYOUT */}
                 {deals.length > 0 && (
                   <div className="bg-black text-white p-6 rounded-[2rem] shadow-lg">
-                    <h3 className="font-condensed text-xl font-black uppercase italic mb-4 text-[#c0ff8c]">Offerte Lampo</h3>
+                    <h3 className="font-condensed text-xl font-black uppercase italic mb-4 text-white">Offerte Lampo</h3>
                     <div className="space-y-4">
                       {deals.slice(0, 3).map(deal => (
                         <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 group">
                            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center p-1 shrink-0">
                               <img src={deal.imageUrl} className="max-w-full max-h-full object-contain" />
                            </div>
-                           <div>
-                              <div className="text-[10px] font-bold text-gray-400 line-through">{deal.oldPrice}</div>
-                              <div className="text-lg font-black text-[#c0ff8c] leading-none">{deal.newPrice}</div>
-                              <div className="text-[9px] font-medium text-gray-300 line-clamp-1 group-hover:text-white transition-colors">{deal.product}</div>
+                           <div className="flex flex-col justify-center">
+                              {/* Product Name First - White */}
+                              <div className="text-[10px] font-bold text-gray-200 leading-tight mb-1 line-clamp-2 group-hover:text-white transition-colors">{deal.product}</div>
+                              {/* Prices Below - Yellow (No Green) */}
+                              <div className="flex items-center gap-2">
+                                 <span className="text-lg font-black text-yellow-400 leading-none">{deal.newPrice}</span>
+                                 <span className="text-[10px] font-bold text-gray-500 line-through">{deal.oldPrice}</span>
+                              </div>
                            </div>
                         </a>
                       ))}
@@ -430,7 +430,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                         </button>
                     </div>
                     
-                    <AdUnit slotId="sidebar-bottom" format="rectangle" label="Sponsor" />
+                    <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
                 </div>
             </div>
         </div>

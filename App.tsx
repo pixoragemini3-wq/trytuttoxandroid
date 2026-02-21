@@ -252,10 +252,12 @@ const App: React.FC = () => {
     const currentIndex = ALL_CATEGORIES.indexOf(activeCategory);
 
     if (isLeftSwipe) {
+      // Swipe Left -> Next Category
       if (currentIndex < ALL_CATEGORIES.length - 1) {
         handleNavClick(ALL_CATEGORIES[currentIndex + 1]);
       }
     } else if (isRightSwipe) {
+      // Swipe Right -> Previous Category
       if (currentIndex > 0) {
         handleNavClick(ALL_CATEGORIES[currentIndex - 1]);
       }
@@ -614,10 +616,14 @@ const App: React.FC = () => {
                       <DealsSection />
                    </div>
                 )}
-
-                {isHome && showStickyBanner && (
-                  <SocialBannerMobile isFixed={true} />
+                
+                {/* MOVED: Social Banner placed EXTERNALLY above the News Section Content */}
+                {isHome && activeCategory === 'Tutti' && !isSearch && (
+                  <div ref={staticBannerRef} className="px-4 lg:px-0 mt-6 mb-2">
+                    <SocialBannerMobile />
+                  </div>
                 )}
+
               </div>
             </section>
 
@@ -674,20 +680,14 @@ const App: React.FC = () => {
                 {isHome && activeCategory === 'Smartphone' && !isSearch && (
                   <SmartphoneShowcase />
                 )}
-
-                {isHome && activeCategory === 'Tutti' && !isSearch && (
-                  <div ref={staticBannerRef}>
-                    <SocialBannerMobile />
-                  </div>
-                )}
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   <div className="lg:col-span-2 overflow-hidden">
-                    {/* ANIMATED GRID CONTAINER */}
+                    {/* ANIMATED GRID CONTAINER - Key ensures re-render and animation triggers on swipe */}
                     {displayArticles.length > 0 ? (
                       <div 
                         key={isSearch ? 'search' : activeCategory} 
-                        className={`flex flex-col gap-6 mb-8 animate-in fade-in duration-300 ${slideDirection === 'right' ? 'slide-in-from-right-12' : 'slide-in-from-left-12'}`}
+                        className={`flex flex-col gap-6 mb-8 animate-in fade-in duration-500 ${slideDirection === 'right' ? 'slide-in-from-right-20' : 'slide-in-from-left-20'}`}
                       >
                           {displayArticles.slice(0, visibleNewsCount).map(item => (
                             <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
@@ -716,9 +716,9 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="hidden lg:block space-y-12">
-                      <AdUnit slotId="5116585729" format="rectangle" label="Sponsor" />
+                      <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
                       <SocialSidebar />
-                      <AdUnit slotId="sidebar-ad-2" format="rectangle" label="Sponsor" />
+                      <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
                   </div>
                 </div>
               </div>

@@ -98,54 +98,93 @@
         box-shadow: 0 0 10px 0 #ffe25a;
       }
 
-      /* --- EXPANDABLE TABLE (FAQ Cascading Effect) --- */
+      /* --- EXPANDABLE TABLE (FAQ Cascading Effect) - UPDATED --- */
       table.expandable-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate; 
+          border-spacing: 0 10px; /* Space between rows */
           margin-bottom: 20px;
-          border: 1px solid #eee;
-      }
-      table.expandable-table th,
-      table.expandable-table td {
-          border: 1px solid #ccc;
-          padding: 12px;
-          text-align: left;
+          border: none;
       }
       table.expandable-table th {
-        background-color: #f4f4f4;
-        font-weight: 700;
+          display: none; /* Hide headers for cleaner look */
       }
-      /* Stile delle righe espandibili */
+      table.expandable-table td {
+          border: none;
+          padding: 0;
+      }
+      
+      /* Row Styling */
       tr.expandable-row {
           cursor: pointer;
-          background-color: #fff;
-          transition: background-color 0.2s;
+          display: block;
+          background: #fff;
+          border-radius: 8px;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+          overflow: hidden;
+          transition: all 0.3s ease;
+          border: 1px solid #eee;
       }
       tr.expandable-row:hover {
-        background-color: #f9f9f9;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
       }
-      /* Stile della colonna espandibile */
+
+      /* Question Part (First TD) */
+      tr.expandable-row td:first-child {
+          display: block;
+          padding: 15px;
+          font-weight: 700;
+          color: #2f3239;
+          position: relative;
+          padding-right: 40px; /* Space for arrow */
+          font-family: 'Inter', sans-serif;
+      }
+      /* Arrow indicator */
+      tr.expandable-row td:first-child::after {
+          content: '▼';
+          position: absolute;
+          right: 15px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 12px;
+          color: #ccc;
+          transition: transform 0.3s ease;
+      }
+      tr.expandable-row.expanded td:first-child::after {
+          transform: translateY(-50%) rotate(180deg);
+          color: #e31b23;
+      }
+      tr.expandable-row.expanded td:first-child {
+          color: #e31b23;
+      }
+
+      /* Answer Part (Second TD - Cascading Text) */
       td.expandable-description {
-          display: block; /* Necessary for max-height transition */
+          display: block;
           overflow: hidden;
-          max-height: 50px; /* Altezza iniziale chiusa */
-          transition: max-height 0.5s ease;
-          border: none; /* Hide border on the expandable part to look cleaner */
-          padding-top: 0;
+          max-height: 0; /* Starts closed */
+          opacity: 0;
+          transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out, padding 0.5s ease;
+          background-color: #fcfcfc;
+          border-top: 1px solid transparent;
+          font-size: 15px;
+          line-height: 1.6;
+          color: #555;
       }
-      /* Classe aggiunta via JS */
+      
+      /* Open State */
       tr.expandable-row.expanded td.expandable-description {
-          max-height: 500px; /* Altezza massima aperta */
-          padding-bottom: 15px;
+          max-height: 1000px; /* Large enough to fit content */
+          opacity: 1;
+          padding: 15px;
+          border-top: 1px solid #eee;
       }
       
       /* Mobile override for table */
       @media (max-width: 768px) {
-          table.expandable-table th:first-child,
-          table.expandable-table td:first-child {
-              background-color: #fff200;
-              font-weight: bold;
-              color: black;
+          table.expandable-table {
+              width: 100% !important;
           }
       }
 
