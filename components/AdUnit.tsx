@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 
 interface AdUnitProps {
@@ -12,8 +11,12 @@ interface AdUnitProps {
 const AdUnit: React.FC<AdUnitProps> = ({ slotId, format = 'auto', layoutKey, className = '', label = 'Sponsor' }) => {
   useEffect(() => {
     try {
-      // @ts-ignore
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      // Safety check: ensure push is available
+      if (typeof window !== 'undefined') {
+        // Fix for TS error: Property 'adsbygoogle' does not exist on type 'Window & typeof globalThis'.
+        const ads = ((window as any).adsbygoogle = (window as any).adsbygoogle || []);
+        ads.push({});
+      }
     } catch (e) {
       console.error("AdSense error", e);
     }

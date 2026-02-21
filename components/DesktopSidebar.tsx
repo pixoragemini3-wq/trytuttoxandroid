@@ -25,7 +25,7 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
              <span className="w-1.5 h-1.5 bg-black rounded-full"></span>
              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black/70">La Selezione</span>
           </div>
-          <h3 className="font-condensed text-[2.75rem] font-black uppercase leading-[0.85] tracking-tight text-black">
+          <h3 className="font-condensed text-[2.5rem] font-black uppercase leading-[0.9] tracking-tight text-black">
             Best of<br/>The Best
           </h3>
           <div className="w-12 h-1 bg-black mt-3"></div>
@@ -36,13 +36,13 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
           {displayArticles.map((article, idx) => (
              <div key={article.id} onClick={() => onArticleClick(article)} className="group cursor-pointer flex gap-3 items-start">
                 {/* Numero */}
-                <span className="font-condensed text-3xl font-black text-black/20 group-hover:text-black transition-colors leading-[0.8]">
+                <span className="font-condensed text-2xl font-black text-black/20 group-hover:text-black transition-colors leading-[0.8] mt-0.5">
                   0{idx + 1}
                 </span>
                 
                 {/* Testo */}
-                <div className="pt-1 border-t border-black/5 w-full">
-                  <h4 className="font-condensed text-base leading-tight font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all line-clamp-3">
+                <div className="pt-0.5 border-t border-black/5 w-full">
+                  <h4 className="font-condensed text-sm leading-tight font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all line-clamp-3">
                     {article.title}
                   </h4>
                 </div>

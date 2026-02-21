@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
 import { Helmet } from 'react-helmet-async';
@@ -19,11 +19,35 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Check if content appears truncated
   const isTruncated = useMemo(() => {
      return (!fullContent || fullContent.length < 600) && article.url;
   }, [fullContent, article.url]);
+
+  // --- CONTENT SPLITTER LOGIC ---
+  // Dividiamo il contenuto HTML in parti per iniettare i blocchi "Leggi Anche"
+  const contentParts = useMemo(() => {
+    const content = fullContent || article.content;
+    if (!content) return [];
+    
+    // Proviamo a dividere per paragrafi
+    const splitByParagraph = content.split('</p>');
+    
+    if (splitByParagraph.length < 3) return [content]; // Troppo corto, nessun split
+    
+    // Prima parte: Primi 2 paragrafi (o meno se corto)
+    const part1 = splitByParagraph.slice(0, 2).join('</p>') + '</p>';
+    
+    // Seconda parte: Dal 3° al 5°
+    const part2 = splitByParagraph.slice(2, 6).join('</p>') + '</p>';
+    
+    // Terza parte: Il resto
+    const part3 = splitByParagraph.slice(6).join('</p>');
+    
+    return [part1, part2, part3].filter(p => p.length > 0 && p !== '</p>');
+  }, [fullContent, article.content]);
 
   // Fetch full content on mount
   useEffect(() => {
@@ -44,6 +68,40 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     };
     loadFull();
   }, [article.id]);
+
+  // --- RE-ACTIVATE LEGACY JS LOGIC ---
+  useEffect(() => {
+    // This runs every time the content changes/renders
+    if (!contentRef.current) return;
+
+    // 1. Expandable Tables Logic (Cascading FAQ)
+    const expandableRows = contentRef.current.querySelectorAll('tr.expandable-row');
+    
+    const handleRowClick = function(this: HTMLElement) {
+      this.classList.toggle('expanded');
+    };
+
+    expandableRows.forEach(row => {
+      // Remove old listeners to avoid duplicates if re-rendering
+      row.removeEventListener('click', handleRowClick as EventListener);
+      row.addEventListener('click', handleRowClick as EventListener);
+    });
+
+    // 2. Add target="_blank" to external links for better UX
+    const links = contentRef.current.querySelectorAll('a');
+    links.forEach(link => {
+      if (link.hostname !== window.location.hostname && !link.href.startsWith('javascript')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
+
+    return () => {
+      expandableRows.forEach(row => {
+        row.removeEventListener('click', handleRowClick as EventListener);
+      });
+    };
+  }, [fullContent, contentParts]); // Depend on contentParts as well
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) {
@@ -90,29 +148,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // Combine articles for "Most Read" simulation
   const mostReadArticles = [...offerNews, ...moreArticles].slice(0, 5);
-
-  // --- CONTENT SPLITTER LOGIC ---
-  // Dividiamo il contenuto HTML in parti per iniettare i blocchi "Leggi Anche"
-  const contentParts = useMemo(() => {
-    const content = fullContent || article.content;
-    if (!content) return [];
-    
-    // Proviamo a dividere per paragrafi
-    const splitByParagraph = content.split('</p>');
-    
-    if (splitByParagraph.length < 3) return [content]; // Troppo corto, nessun split
-    
-    // Prima parte: Primi 2 paragrafi (o meno se corto)
-    const part1 = splitByParagraph.slice(0, 2).join('</p>') + '</p>';
-    
-    // Seconda parte: Dal 3° al 5°
-    const part2 = splitByParagraph.slice(2, 6).join('</p>') + '</p>';
-    
-    // Terza parte: Il resto
-    const part3 = splitByParagraph.slice(6).join('</p>');
-    
-    return [part1, part2, part3].filter(p => p.length > 0 && p !== '</p>');
-  }, [fullContent, article.content]);
 
   const ReadAlsoBlock = ({ article }: { article: Article }) => (
     <div onClick={() => handleSuggestedClick(article)} className="not-prose my-6 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors group">
@@ -212,8 +247,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     <AdUnit slotId="5116585729" format="auto" className="w-full" label="Sponsor" />
                 </div>
 
-                {/* Content Body - UPDATED WITH SPLIT INJECTION */}
-                <div className="prose prose-base md:prose-lg max-w-none font-normal leading-8 text-gray-700 text-justify">
+                {/* Content Body - IMPROVED READABILITY */}
+                <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto [&_span]:!font-inherit [&_span]:!text-inherit [&_span]:!leading-inherit [&_p]:mb-6 marker:text-gray-800">
                     {/* Render Part 1 */}
                     <div dangerouslySetInnerHTML={{ __html: contentParts[0] }} />
 

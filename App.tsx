@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL } from './constants';
 import ArticleCard from './components/ArticleCard';
@@ -14,6 +14,16 @@ import AdUnit from './components/AdUnit';
 import DesktopSidebar from './components/DesktopSidebar'; 
 import { AboutPage, CollabPage } from './components/StaticPages'; 
 import Layout from './components/Layout';
+
+// Utility per mescolare l'array (Fisher-Yates shuffle)
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
 
 const App: React.FC = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
@@ -115,6 +125,29 @@ const App: React.FC = () => {
   };
 
   const currentArticle = getCurrentArticle();
+
+  // Genera articoli correlati mescolati per evitare ripetizioni
+  const getShuffledRelatedArticles = (current: Article | undefined) => {
+    if (!current || articles.length === 0) return [];
+    
+    // Escludi l'articolo corrente
+    const candidates = articles.filter(a => a.id !== current.id);
+    
+    // Priorità: Stessa Categoria
+    const sameCategory = candidates.filter(a => a.category === current.category);
+    // Backup: Altre categorie
+    const otherCategories = candidates.filter(a => a.category !== current.category);
+    
+    // Unisci dando priorità ma mescolando il tutto per varietà
+    const pool = [...shuffleArray(sameCategory), ...shuffleArray(otherCategories)];
+    
+    // Ritorna i primi 12
+    return pool.slice(0, 12);
+  };
+
+  const shuffledMoreArticles = useMemo(() => {
+    return getShuffledRelatedArticles(currentArticle);
+  }, [currentArticle?.id, articles]); // Ricalcola solo se cambia articolo o lista
 
   // Load Initial Content
   const loadContent = async () => {
@@ -495,7 +528,7 @@ const App: React.FC = () => {
                 <ArticleDetail 
                   article={currentArticle} 
                   relatedArticle={articles.find(a => a.category === currentArticle.category && a.id !== currentArticle.id) || articles[0]}
-                  moreArticles={articles.filter(a => a.id !== currentArticle.id).slice(0, 10)} 
+                  moreArticles={shuffledMoreArticles} 
                   deals={deals}
                   offerNews={articles.filter(a => a.category === 'Offerte' && a.id !== currentArticle.id).slice(0, 4)}
                   onArticleClick={handleArticleClick}

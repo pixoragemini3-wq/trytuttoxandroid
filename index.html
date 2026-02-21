@@ -5,6 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TuttoXAndroid | Il Portale Tech Moderno</title>
+    
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8927124953064334" crossorigin="anonymous"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +20,7 @@
         -webkit-font-smoothing: antialiased;
       }
       .font-condensed {
-        font-family: 'Saira Extra Condensed', sans-serif;
+        font-family: 'Saira Extra Condensed', 'Impact', 'Arial Narrow', sans-serif !important;
       }
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -36,6 +40,162 @@
         animation: spin 1s linear infinite;
         margin: 20px auto;
       }
+
+      /* --- LEGACY BLOGGER STYLES (Porting) --- */
+      
+      /* Blockquotes */
+      blockquote {
+        font-style: italic;
+        color: #555;
+        border-left: 5px solid #e31b23;
+        margin-left: 0;
+        padding: 10px 15px;
+        background: #f9f9f9;
+        margin-bottom: 15px;
+      }
+
+      /* Alert Messages */
+      .alert-message {
+        position: relative;
+        display: block;
+        background-color: #FAFAFA;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+        color: #2f3239;
+        border: 1px solid #eee;
+        font-size: 14px;
+      }
+      .alert-message.success { background-color: #f1f9f7; border-color: #e0f1e9; color: #1d9d74; }
+      .alert-message.alert { background-color: #DAEFFF; border-color: #8ED2FF; color: #378FFF; }
+      .alert-message.warning { background-color: #fcf8e3; border-color: #faebcc; color: #8a6d3b; }
+      .alert-message.error { background-color: #FFD7D2; border-color: #FF9494; color: #F55D5D; }
+
+      /* Buttons & Highlights */
+      .telegram-button {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #24A1DE;
+        transition: background-color 0.3s ease;
+        text-align: center;
+        line-height: 50px;
+        color: white;
+      }
+      .telegram-button:hover { background-color: #1c88be; } 
+
+      .highlight {
+        background-color: #ffd305;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        transition: all 0.3s ease-in-out;
+        display: block;
+      }
+      .highlight:hover {
+        background-color: #ffe25a;
+        box-shadow: 0 0 10px 0 #ffe25a;
+      }
+
+      /* --- EXPANDABLE TABLE (FAQ Cascading Effect) --- */
+      table.expandable-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
+          border: 1px solid #eee;
+      }
+      table.expandable-table th,
+      table.expandable-table td {
+          border: 1px solid #ccc;
+          padding: 12px;
+          text-align: left;
+      }
+      table.expandable-table th {
+        background-color: #f4f4f4;
+        font-weight: 700;
+      }
+      /* Stile delle righe espandibili */
+      tr.expandable-row {
+          cursor: pointer;
+          background-color: #fff;
+          transition: background-color 0.2s;
+      }
+      tr.expandable-row:hover {
+        background-color: #f9f9f9;
+      }
+      /* Stile della colonna espandibile */
+      td.expandable-description {
+          display: block; /* Necessary for max-height transition */
+          overflow: hidden;
+          max-height: 50px; /* Altezza iniziale chiusa */
+          transition: max-height 0.5s ease;
+          border: none; /* Hide border on the expandable part to look cleaner */
+          padding-top: 0;
+      }
+      /* Classe aggiunta via JS */
+      tr.expandable-row.expanded td.expandable-description {
+          max-height: 500px; /* Altezza massima aperta */
+          padding-bottom: 15px;
+      }
+      
+      /* Mobile override for table */
+      @media (max-width: 768px) {
+          table.expandable-table th:first-child,
+          table.expandable-table td:first-child {
+              background-color: #fff200;
+              font-weight: bold;
+              color: black;
+          }
+      }
+
+      /* --- LUNA SLIDER (CSS Only Interactive) --- */
+      .luna-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin: 20px 0;
+      }
+      .luna-box {
+          background-color: #6a0dad;
+          padding: 20px;
+          border-radius: 15px;
+          text-align: center;
+          width: 300px;
+          overflow: hidden;
+          position: relative;
+          color: white;
+          font-family: Arial, sans-serif;
+          box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      }
+      .luna-slider {
+          position: relative;
+          width: 100%;
+          height: 200px;
+          overflow: hidden;
+          margin-bottom: 15px;
+      }
+      .luna-slider img {
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+          border-radius: 10px;
+          position: absolute;
+          top: 0;
+          left: 0;
+          transition: transform 0.5s ease;
+      }
+      /* Positioning images */
+      .luna-slider img:nth-child(2) { transform: translateX(100%); }
+      .luna-slider img:nth-child(3) { transform: translateX(200%); }
+
+      /* Hover Effects */
+      .luna-box:hover .luna-slider img:nth-child(1) { transform: translateX(-100%); }
+      .luna-box:hover .luna-slider img:nth-child(2) { transform: translateX(0); }
+      .luna-box:hover .luna-slider img:nth-child(3) { transform: translateX(100%); }
+
+      .luna-description { margin-top: 10px; font-size: 14px; }
+      .amazon-logo { width: 80px; margin-bottom: 10px; display: inline-block; }
     </style>
     <script type="importmap">
 {
