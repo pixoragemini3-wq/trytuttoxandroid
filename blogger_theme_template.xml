@@ -6,7 +6,7 @@
 <meta content='width=device-width, initial-scale=1.0' name='viewport' />
 <title><data:blog.pageTitle/></title>
 
-<!-- --- SEO & SOCIAL META TAGS (Server Side) --- -->
+<!-- SEO & SOCIAL META TAGS (Server Side) -->
 <b:if cond='data:view.isPost'>
   <!-- Open Graph for Facebook/WhatsApp/LinkedIn -->
   <meta expr:content='data:blog.pageName' property='og:title'/>
@@ -45,7 +45,7 @@
 
 <meta content='TuttoXAndroid' property='og:site_name'/>
 <meta content='it_IT' property='og:locale'/>
-<!-- -------------------------------------------- -->
+<!-- ============================================ -->
 
 <b:skin><![CDATA[
   #navbar-iframe { display: none !important; }
