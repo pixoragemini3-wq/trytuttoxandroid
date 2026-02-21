@@ -31,13 +31,14 @@ const TopStoriesMobile: React.FC<TopStoriesMobileProps> = ({ articles, onArticle
   const prevIndex = (currentIndex - 1 + displayArticles.length) % displayArticles.length;
 
   return (
-    <div className="lg:hidden bg-yellow-400 h-12 sticky top-0 z-[60] shadow-md border-b border-black/10 flex items-center overflow-hidden">
+    // UPDATED: z-[9999] to ensure it stays ABOVE Adsense Auto Ads
+    <div className="lg:hidden bg-yellow-400 h-12 sticky top-0 z-[9999] shadow-md border-b border-black/10 flex items-center overflow-hidden">
       {/* Menu Trigger & Brand Tag */}
-      <div className="flex items-center h-full px-4 border-r border-black/5 gap-3 shrink-0 bg-black/5 relative z-10">
+      <div className="flex items-center h-full px-4 border-r border-black/5 gap-3 shrink-0 bg-black/5 relative z-50">
         {!hideMenuButton && (
           <button 
-            onClick={onMenuToggle}
-            className="p-1 text-black hover:scale-110 active:scale-90 transition-transform"
+            onClick={(e) => { e.stopPropagation(); onMenuToggle(); }}
+            className="p-1 text-black hover:scale-110 active:scale-90 transition-transform relative z-50 pointer-events-auto"
             aria-label="Apri Menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,18 +52,15 @@ const TopStoriesMobile: React.FC<TopStoriesMobileProps> = ({ articles, onArticle
       </div>
 
       {/* Vertical Ticker Wrapper */}
-      <div className="flex-1 h-full relative bg-yellow-400">
+      <div className="flex-1 h-full relative bg-yellow-400 z-10">
         {displayArticles.map((item, idx) => {
           // Logica per animazione circolare
-          // Default: sotto (pronto a entrare)
           let positionClass = 'translate-y-full opacity-0 pointer-events-none'; 
           
           if (idx === currentIndex) {
-             // Corrente: visibile al centro
-             positionClass = 'translate-y-0 opacity-100 z-10'; 
+             positionClass = 'translate-y-0 opacity-100 z-20 pointer-events-auto'; 
           } else if (idx === prevIndex) {
-             // Precedente: scivola via verso l'alto
-             positionClass = '-translate-y-full opacity-0 z-0'; 
+             positionClass = '-translate-y-full opacity-0 z-0 pointer-events-none'; 
           }
 
           return (
@@ -72,7 +70,7 @@ const TopStoriesMobile: React.FC<TopStoriesMobileProps> = ({ articles, onArticle
             >
               <button
                 onClick={() => onArticleClick(item)}
-                className="text-[10px] font-black uppercase tracking-tight text-black text-left line-clamp-1 w-full truncate"
+                className="text-[10px] font-black uppercase tracking-tight text-black text-left line-clamp-1 w-full truncate relative z-30"
               >
                 <span className="inline-block w-1.5 h-1.5 bg-black/20 rounded-full mr-2 align-middle"></span>
                 {item.title}
