@@ -3,13 +3,13 @@ import React, { useEffect } from 'react';
 
 interface AdUnitProps {
   slotId: string;
-  format?: 'auto' | 'fluid' | 'rectangle';
+  format?: 'auto' | 'fluid' | 'rectangle' | 'link';
   layoutKey?: string; // Per annunci In-Feed
   className?: string;
   label?: string; // Etichetta es. "Sponsor"
 }
 
-const AdUnit: React.FC<AdUnitProps> = ({ slotId, format = 'auto', layoutKey, className = '', label = 'Advertisement' }) => {
+const AdUnit: React.FC<AdUnitProps> = ({ slotId, format = 'auto', layoutKey, className = '', label = 'Sponsor' }) => {
   useEffect(() => {
     try {
       // @ts-ignore
@@ -19,14 +19,13 @@ const AdUnit: React.FC<AdUnitProps> = ({ slotId, format = 'auto', layoutKey, cla
     }
   }, []);
 
-  // NOTA: Sostituire data-ad-client con il tuo ID Publisher reale (es. ca-pub-XXXXXXXXXXXXXXXX)
-  // Per ora usiamo un placeholder o ca-pub-0000000000000000 per evitare errori
-  const AD_CLIENT = "ca-pub-0000000000000000"; 
+  // ID Publisher Ufficiale dell'utente
+  const AD_CLIENT = "ca-pub-8927124953064334"; 
 
   return (
-    <div className={`ad-container my-6 flex flex-col items-center justify-center bg-gray-50/50 p-2 rounded-lg ${className}`}>
-      <span className="text-[9px] text-gray-400 uppercase tracking-widest mb-1">{label}</span>
-      <div className="w-full overflow-hidden flex justify-center min-h-[100px] bg-gray-100 rounded">
+    <div className={`ad-container flex flex-col items-center justify-center bg-transparent ${className}`}>
+      {label && <span className="text-[9px] text-gray-300 uppercase tracking-widest mb-1 self-start ml-2">{label}</span>}
+      <div className="w-full overflow-hidden flex justify-center min-h-[50px] bg-gray-50 rounded-lg">
         <ins className="adsbygoogle"
              style={{ display: 'block', width: '100%' }}
              data-ad-client={AD_CLIENT}

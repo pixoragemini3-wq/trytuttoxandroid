@@ -91,6 +91,41 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   // Combine articles for "Most Read" simulation
   const mostReadArticles = [...offerNews, ...moreArticles].slice(0, 5);
 
+  // --- CONTENT SPLITTER LOGIC ---
+  // Dividiamo il contenuto HTML in parti per iniettare i blocchi "Leggi Anche"
+  const contentParts = useMemo(() => {
+    const content = fullContent || article.content;
+    if (!content) return [];
+    
+    // Proviamo a dividere per paragrafi
+    const splitByParagraph = content.split('</p>');
+    
+    if (splitByParagraph.length < 3) return [content]; // Troppo corto, nessun split
+    
+    // Prima parte: Primi 2 paragrafi (o meno se corto)
+    const part1 = splitByParagraph.slice(0, 2).join('</p>') + '</p>';
+    
+    // Seconda parte: Dal 3° al 5°
+    const part2 = splitByParagraph.slice(2, 6).join('</p>') + '</p>';
+    
+    // Terza parte: Il resto
+    const part3 = splitByParagraph.slice(6).join('</p>');
+    
+    return [part1, part2, part3].filter(p => p.length > 0 && p !== '</p>');
+  }, [fullContent, article.content]);
+
+  const ReadAlsoBlock = ({ article }: { article: Article }) => (
+    <div onClick={() => handleSuggestedClick(article)} className="not-prose my-6 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors group">
+      <h4 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Leggi Anche</h4>
+      <div className="flex gap-3 items-center">
+        <div className="w-16 h-12 bg-gray-200 shrink-0 overflow-hidden rounded">
+          <img src={article.imageUrl} className="w-full h-full object-cover" />
+        </div>
+        <h5 className="text-sm font-bold leading-tight group-hover:text-[#e31b23] transition-colors">{article.title}</h5>
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
       <Helmet>
@@ -172,14 +207,35 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                   {article.excerpt}
                 </div>
 
-                {/* AD UNIT */}
-                <div className="not-prose mb-6 flex justify-center">
-                    <AdUnit slotId="top-article" format="auto" className="w-full" label="Sponsor" />
+                {/* AD UNIT - Reduced Whitespace */}
+                <div className="not-prose mb-4 flex justify-center">
+                    <AdUnit slotId="5116585729" format="auto" className="w-full" label="Sponsor" />
                 </div>
 
-                {/* Content Body - UPDATED TYPOGRAPHY FOR READABILITY */}
+                {/* Content Body - UPDATED WITH SPLIT INJECTION */}
                 <div className="prose prose-base md:prose-lg max-w-none font-normal leading-8 text-gray-700 text-justify">
-                    <div dangerouslySetInnerHTML={{ __html: fullContent || article.content }} />
+                    {/* Render Part 1 */}
+                    <div dangerouslySetInnerHTML={{ __html: contentParts[0] }} />
+
+                    {/* Insert First 'Read Also' if more content exists */}
+                    {!isTruncated && contentParts.length > 1 && moreArticles.length > 0 && (
+                      <ReadAlsoBlock article={moreArticles[0]} />
+                    )}
+
+                    {/* Render Part 2 */}
+                    {contentParts.length > 1 && (
+                      <div dangerouslySetInnerHTML={{ __html: contentParts[1] }} />
+                    )}
+
+                    {/* Insert Second 'Read Also' if content is long enough */}
+                    {!isTruncated && contentParts.length > 2 && moreArticles.length > 1 && (
+                       <ReadAlsoBlock article={moreArticles[1]} />
+                    )}
+
+                    {/* Render Part 3 (Rest of content) */}
+                    {contentParts.length > 2 && (
+                       <div dangerouslySetInnerHTML={{ __html: contentParts[2] }} />
+                    )}
                     
                     {/* TRUNCATION FALLBACK BUTTON */}
                     {isTruncated && (
@@ -191,23 +247,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                         >
                             Leggi Tutto
                         </button>
-                        </div>
-                    )}
-
-                    {/* IN-CONTENT READ ALSO */}
-                    {!isTruncated && moreArticles.length > 0 && (
-                        <div className="not-prose my-8 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg">
-                            <h4 className="text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Leggi Anche</h4>
-                            <div className="flex flex-col gap-3">
-                                {moreArticles.slice(0, 2).map(art => (
-                                    <div key={art.id} onClick={() => handleSuggestedClick(art)} className="flex gap-3 cursor-pointer group items-center">
-                                        <div className="w-16 h-12 bg-gray-200 shrink-0 overflow-hidden rounded">
-                                            <img src={art.imageUrl} className="w-full h-full object-cover" />
-                                        </div>
-                                        <h5 className="text-sm font-bold leading-tight group-hover:text-[#e31b23] transition-colors">{art.title}</h5>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     )}
 
@@ -249,7 +288,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 <div className="lg:hidden mt-8">
                     <h3 className="font-condensed text-xl font-black uppercase mb-4 text-gray-900 border-b border-gray-200 pb-2">Potrebbe Interessarti</h3>
                     <div className="grid grid-cols-1 gap-4">
-                        {moreArticles.slice(0, 3).map(art => (
+                        {moreArticles.slice(2, 5).map(art => (
                             <div key={art.id} onClick={() => handleSuggestedClick(art)} className="flex gap-4 cursor-pointer group">
                                 <div className="w-24 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                                     <img src={art.imageUrl} className="w-full h-full object-cover" />
@@ -269,16 +308,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
             <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
                 
                 {/* 1. AD UNIT TOP */}
-                <AdUnit slotId="sidebar-top" format="rectangle" label="Sponsor" />
+                <AdUnit slotId="5116585729" format="rectangle" label="Sponsor" />
 
-                {/* 2. TELEGRAM PROMO BANNER (High Visibility) */}
+                {/* 2. TELEGRAM PROMO BANNER (High Visibility & FIXED CONTRAST) */}
                 <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-[2rem] p-6 text-center text-white shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md text-[#24A1DE]">
                       <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg>
                    </div>
-                   <h3 className="font-condensed text-2xl font-black uppercase italic mb-1 leading-none">Canale Offerte</h3>
-                   <p className="text-xs font-medium text-blue-100 mb-4 px-2">Errori di prezzo e sconti esclusivi in tempo reale.</p>
+                   {/* FIXED CONTRAST: White text on Blue BG, with Yellow accent */}
+                   <h3 className="font-condensed text-2xl font-black uppercase italic mb-1 leading-none text-white drop-shadow-md">Canale Offerte</h3>
+                   <p className="text-xs font-bold text-yellow-300 mb-4 px-2">Errori di prezzo e sconti esclusivi in tempo reale.</p>
                    <span className="inline-block bg-white text-[#24A1DE] px-8 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black hover:text-white transition-colors">Unisciti Ora</span>
                 </a>
 
@@ -330,7 +370,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
                     <h3 className="font-condensed text-xl font-black uppercase italic mb-4 text-gray-900">Correlati</h3>
                     <div className="flex flex-col gap-4">
-                        {moreArticles.slice(0, 3).map(art => (
+                        {moreArticles.slice(2, 5).map(art => (
                             <div key={art.id} onClick={() => handleSuggestedClick(art)} className="bg-white p-3 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer group flex gap-3 items-start">
                                 <div className="w-14 h-14 rounded-lg bg-gray-200 overflow-hidden shrink-0">
                                     <img src={art.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />

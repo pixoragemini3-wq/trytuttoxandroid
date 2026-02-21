@@ -7,7 +7,7 @@ import { Article, Deal } from './types';
 import { fetchBloggerPosts, fetchBloggerDeals } from './services/bloggerService';
 import SocialSidebar from './components/SocialSidebar';
 import SocialSection from './components/SocialSection';
-import TopStoriesMobile from './components/TopStoriesMobile';
+// TopStoriesMobile removed here, moved to Layout
 import SocialBannerMobile from './components/SocialBannerMobile';
 import ArticleDetail from './components/ArticleDetail';
 import AdUnit from './components/AdUnit'; 
@@ -59,7 +59,7 @@ const App: React.FC = () => {
   // Swipe Logic
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null); // Added for Y-axis check
+  const [touchStartY, setTouchStartY] = useState<number | null>(null); 
 
   // Drag Scroll (Featured)
   const [isDragging, setIsDragging] = useState(false);
@@ -74,7 +74,6 @@ const App: React.FC = () => {
   // --- ROUTER LOGIC ---
   const isAbout = location.pathname === '/about';
   const isCollab = location.pathname === '/collab';
-  // Article detection: Ends with .html OR starts with /article/ (legacy)
   const isArticle = location.pathname.endsWith('.html') || location.pathname.startsWith('/article/');
   const isSearch = location.pathname === '/search';
   const isHome = !isAbout && !isCollab && !isArticle && !isSearch;
@@ -103,7 +102,7 @@ const App: React.FC = () => {
        if (foundById) return foundById;
     }
 
-    // Permalink support (e.g., /2025/02/post-title.html)
+    // Permalink support
     const currentPath = decodeURIComponent(location.pathname);
     let found = articles.find(a => {
       if (!a.url) return false;
@@ -199,21 +198,14 @@ const App: React.FC = () => {
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
-    setTouchStartY(e.targetTouches[0].clientY); // Capture starting Y
+    setTouchStartY(e.targetTouches[0].clientY); 
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
-    // Don't capture End Y here to allow scrolling, just read it in End if needed, 
-    // but better to capture it here for consistency if needed, 
-    // though for simple scroll detection, we can just use the TouchEnd event properties if available,
-    // but React TouchEvent doesn't give changedTouches easily in the same way.
-    // Let's store current Y
     const currentY = e.targetTouches[0].clientY;
-    
-    // Safety check: if Y movement is dominant, cancel potential horizontal swipe logic by invalidating start
     if (touchStartY !== null && Math.abs(currentY - touchStartY) > 50) {
-        setTouchStart(null); // Invalidate horizontal swipe
+        setTouchStart(null); 
     }
   };
 
@@ -237,9 +229,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Navigation Logic
   const handleArticleClick = (article: Article) => {
-    setIsDragging(false); // Safety reset
+    setIsDragging(false); 
     if (isDragging) return;
     if (article.category === 'Offerte' && article.dealData?.link) {
        window.open(article.dealData.link, '_blank');
@@ -247,7 +238,6 @@ const App: React.FC = () => {
     }
     setActiveMegaMenu(null);
     
-    // CHANGED: Use permalink if available, otherwise fallback to ID
     if (article.url) {
         try {
             const path = new URL(article.url).pathname;
@@ -280,20 +270,17 @@ const App: React.FC = () => {
   };
 
   const handleNavClick = (nav: string) => {
-    // Determine animation direction
     const currentIndex = ALL_CATEGORIES.indexOf(activeCategory);
     const newIndex = ALL_CATEGORIES.indexOf(nav);
     
     if (newIndex > currentIndex) {
-      setSlideDirection('right'); // Enter from right
+      setSlideDirection('right'); 
     } else {
-      setSlideDirection('left'); // Enter from left
+      setSlideDirection('left'); 
     }
 
     setActiveCategory(nav);
     setVisibleNewsCount(6); 
-    // Don't reset filteredArticles to all articles here, keep them separate.
-    // setFilteredArticles(articles); 
     setIsMobileMenuOpen(false);
     
     if (!isHome) {
@@ -319,7 +306,6 @@ const App: React.FC = () => {
     setVisibleNewsCount(prev => prev + 6);
   };
 
-  // Hero Logic
   const getHeroArticle = (): Article | undefined => {
     const featured = articles.find(a => a.featured === true);
     if (featured) return { ...featured, type: 'hero' };
@@ -374,7 +360,6 @@ const App: React.FC = () => {
     return list;
   };
   
-  // FIXED: If searching, show filtered results, otherwise show category results
   const displayArticles = isSearch ? filteredArticles : getDisplayArticles();
 
   const DealsSection = () => (
@@ -398,23 +383,20 @@ const App: React.FC = () => {
                  <svg className="w-5 h-5 ml-2 text-white group-hover:text-[#24A1DE] opacity-80 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
              </a>
           </div>
-          <div className="hidden md:flex items-center gap-2">
-               <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_#4ade80]"></span>
-               <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Aggiornate in tempo reale</p>
-            </div>
         </div>
         
+        {/* Mobile Friendly Grid for Deals - Improved spacing and font sizing */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {deals.slice(0, 4).map(deal => (
-            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-lg hover:bg-black/50 transition-all group flex items-center gap-3 p-2 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50">
-              <div className="w-16 h-16 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center">
+            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-lg hover:bg-black/50 transition-all group flex flex-col sm:flex-row items-center sm:items-start gap-3 p-3 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50">
+              <div className="w-16 h-16 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center self-center sm:self-start">
                 <img src={deal.imageUrl} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-[11px] text-white mb-1 leading-tight line-clamp-2 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
-                <div className="flex items-center gap-2">
-                    <span className="text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
-                    <span className="text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>
+              <div className="flex-1 min-w-0 text-center sm:text-left w-full">
+                <h4 className="font-bold text-[10px] sm:text-[11px] text-white mb-1 leading-tight line-clamp-2 group-hover:text-yellow-400 transition-colors h-8">{deal.product}</h4>
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="text-sm sm:text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
+                    <span className="text-xs sm:text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>
                 </div>
               </div>
             </a>
@@ -513,7 +495,7 @@ const App: React.FC = () => {
                 <ArticleDetail 
                   article={currentArticle} 
                   relatedArticle={articles.find(a => a.category === currentArticle.category && a.id !== currentArticle.id) || articles[0]}
-                  moreArticles={articles.filter(a => a.id !== currentArticle.id).slice(0, 4)}
+                  moreArticles={articles.filter(a => a.id !== currentArticle.id).slice(0, 10)} 
                   deals={deals}
                   offerNews={articles.filter(a => a.category === 'Offerte' && a.id !== currentArticle.id).slice(0, 4)}
                   onArticleClick={handleArticleClick}
@@ -535,13 +517,7 @@ const App: React.FC = () => {
         {/* --- HOME / SEARCH / CATEGORY VIEW --- */}
         {(isHome || isSearch) && !isArticle && (
           <>
-            {isHome && layoutConfig.showTicker && (
-              <TopStoriesMobile 
-                articles={topStories} 
-                onArticleClick={handleArticleClick} 
-                onMenuToggle={() => setIsMobileMenuOpen(true)}
-              />
-            )}
+            {/* TopStoriesMobile was here, removed. */}
 
             <section className="bg-white pb-4">
               <div className="max-w-7xl mx-auto">
@@ -600,7 +576,6 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {/* MOVED: DealsSection placed here to reduce whitespace and always show */}
                 {isHome && deals.length > 0 && !isSearch && (
                    <div className="mt-4 px-4 lg:px-0">
                       <DealsSection />
@@ -616,7 +591,6 @@ const App: React.FC = () => {
             <section 
               ref={newsSectionRef} 
               className="pt-4 pb-12 bg-gray-50/50 min-h-[500px]"
-              // Added Touch Listeners for Swipe
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove} 
               onTouchEnd={handleTouchEnd} 
@@ -664,7 +638,6 @@ const App: React.FC = () => {
                   )}
                 </div>
                 
-                {/* MOVED DYNAMIC CONTENT HERE TO PREVENT SCROLL JUMP OF TABS */}
                 {isHome && activeCategory === 'Smartphone' && !isSearch && (
                   <SmartphoneShowcase />
                 )}
@@ -675,8 +648,6 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {/* END OF DYNAMIC CONTENT */}
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   <div className="lg:col-span-2 overflow-hidden">
                     {/* ANIMATED GRID CONTAINER */}
@@ -712,7 +683,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="hidden lg:block space-y-12">
-                      <AdUnit slotId="sidebar-ad-1" format="rectangle" label="Sponsor" />
+                      <AdUnit slotId="5116585729" format="rectangle" label="Sponsor" />
                       <SocialSidebar />
                       <AdUnit slotId="sidebar-ad-2" format="rectangle" label="Sponsor" />
                   </div>

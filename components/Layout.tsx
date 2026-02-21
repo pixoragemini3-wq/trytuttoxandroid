@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Article } from '../types';
 import MegaMenu from './MegaMenu';
 import CookieConsent from './CookieConsent';
+import TopStoriesMobile from './TopStoriesMobile';
 import { LOGO_URL, NAV_CATEGORIES } from '../constants';
 
 interface LayoutProps {
@@ -84,6 +85,9 @@ const Layout: React.FC<LayoutProps> = ({
       default: return 'bg-[#e31b23]';
     }
   };
+
+  // Filter top stories for the ticker
+  const topStories = articles.slice(0, 10);
 
   return (
     <div className={`min-h-screen flex flex-col bg-white font-inter ${boxedLayout ? 'max-w-[1600px] mx-auto shadow-2xl border-x border-gray-100' : ''}`}>
@@ -183,6 +187,13 @@ const Layout: React.FC<LayoutProps> = ({
           />
         )}
       </header>
+      
+      {/* MOBILE TICKER - PERSISTENT ON ALL PAGES */}
+      <TopStoriesMobile 
+        articles={topStories} 
+        onArticleClick={handleArticleClick} 
+        onMenuToggle={() => setIsMobileMenuOpen(true)}
+      />
 
       {/* MAIN CONTENT WRAPPER */}
       <main className="flex-1 lg:mt-2 animate-in fade-in duration-500">
