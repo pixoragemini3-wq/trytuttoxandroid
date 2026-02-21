@@ -716,9 +716,9 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="hidden lg:block space-y-12">
-                      <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
+                      <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                       <SocialSidebar />
-                      <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
+                      <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                   </div>
                 </div>
               </div>

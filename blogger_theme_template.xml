@@ -6,6 +6,47 @@
 <meta content='width=device-width, initial-scale=1.0' name='viewport' />
 <title><data:blog.pageTitle/></title>
 
+<!-- --- SEO & SOCIAL META TAGS (Server Side) --- -->
+<b:if cond='data:view.isPost'>
+  <!-- Open Graph for Facebook/WhatsApp/LinkedIn -->
+  <meta expr:content='data:blog.pageName' property='og:title'/>
+  <meta content='article' property='og:type'/>
+  <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
+  <!-- Description: Use Meta Description if available, else snippet -->
+  <b:if cond='data:blog.metaDescription'>
+    <meta expr:content='data:blog.metaDescription' property='og:description'/>
+  <b:else/>
+    <meta expr:content='data:post.snippet' property='og:description'/>
+  </b:if>
+  <!-- Featured Image -->
+  <b:if cond='data:post.featuredImage'>
+    <meta expr:content='data:post.featuredImage' property='og:image'/>
+  <b:else/>
+    <b:if cond='data:post.thumbnailUrl'>
+      <meta expr:content='data:post.thumbnailUrl' property='og:image'/>
+    </b:if>
+  </b:if>
+  
+  <!-- Twitter Cards -->
+  <meta content='summary_large_image' name='twitter:card'/>
+  <meta expr:content='data:blog.pageName' name='twitter:title'/>
+  <b:if cond='data:post.featuredImage'>
+    <meta expr:content='data:post.featuredImage' name='twitter:image'/>
+  </b:if>
+
+<b:else/>
+  <!-- Homepage Meta -->
+  <meta expr:content='data:blog.title' property='og:title'/>
+  <meta content='website' property='og:type'/>
+  <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
+  <meta expr:content='data:blog.metaDescription' property='og:description'/>
+  <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+</b:if>
+
+<meta content='TuttoXAndroid' property='og:site_name'/>
+<meta content='it_IT' property='og:locale'/>
+<!-- -------------------------------------------- -->
+
 <b:skin><![CDATA[
   #navbar-iframe { display: none !important; }
   body { margin: 0; padding: 0; background: #ffffff; -webkit-font-smoothing: antialiased; }

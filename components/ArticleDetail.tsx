@@ -31,6 +31,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     const content = fullContent || article.content;
     if (!content) return [];
     
+    // Improved splitting to avoid breaking HTML tags
     const splitByParagraph = content.split('</p>');
     
     if (splitByParagraph.length < 3) return [content]; 
@@ -61,17 +62,21 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     loadFull();
   }, [article.id]);
 
+  // --- HYDRATION LOGIC (Ripristino funzioni JS perse) ---
   useEffect(() => {
     if (!contentRef.current) return;
 
-    // --- EXPANDABLE ROW LOGIC FIX ---
-    // Select all potential rows. Note: Blogger HTML often puts class on TR.
-    const expandableRows = contentRef.current.querySelectorAll('tr.expandable-row');
+    const container = contentRef.current;
+
+    // 1. GESTIONE TABELLA ESPANDIBILE (FAQ / CASCATA)
+    // Updated logic to robustly handle both TR and DIV elements
+    const expandableRows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
     
     const handleRowClick = function(this: HTMLElement, e: Event) {
-      // Prevent default to ensure smooth toggle
       e.stopPropagation(); 
-      // Toggle class for CSS animation
+      e.preventDefault();
+      
+      // Toggle current
       if (this.classList.contains('expanded')) {
         this.classList.remove('expanded');
       } else {
@@ -80,20 +85,82 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     };
 
     expandableRows.forEach(row => {
-      // Clean up old listener to prevent duplicates
+      // Ensure we remove old listeners to prevent stacking
       row.removeEventListener('click', handleRowClick as EventListener);
-      // Add fresh listener
       row.addEventListener('click', handleRowClick as EventListener);
     });
 
-    const links = contentRef.current.querySelectorAll('a');
-    links.forEach(link => {
-      if (link.hostname !== window.location.hostname && !link.href.startsWith('javascript')) {
-        link.setAttribute('target', '_blank');
-        link.setAttribute('rel', 'noopener noreferrer');
-      }
+    // 2. AGGIUNTA FUNZIONE "COPIA" AI BLOCCHI DI CODICE (<pre>)
+    const preBlocks = container.querySelectorAll('pre');
+    preBlocks.forEach((pre) => {
+        if (pre.querySelector('.copy-code-btn')) return;
+
+        if (getComputedStyle(pre).position === 'static') {
+            pre.style.position = 'relative';
+        }
+
+        const btn = document.createElement('button');
+        btn.innerText = 'Copia';
+        btn.className = 'copy-code-btn';
+        
+        btn.onclick = async (e) => {
+            e.stopPropagation(); 
+            e.preventDefault();
+            try {
+                const code = pre.querySelector('code')?.innerText || pre.innerText;
+                const textToCopy = code.replace('Copia', '').replace('Copiato!', '').trim();
+                
+                await navigator.clipboard.writeText(textToCopy);
+                
+                btn.innerText = 'Copiato!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerText = 'Copia';
+                    btn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                console.error('Errore copia', err);
+                btn.innerText = 'Errore';
+            }
+        };
+
+        pre.appendChild(btn);
     });
 
+    // 3. TABLE OF CONTENTS GENERATION
+    const tocContainer = container.querySelector('.all-questions');
+    if (tocContainer) {
+       const headers = container.querySelectorAll('h3'); 
+       if (headers.length > 0) {
+          let tocHtml = `<nav class='table-of-contents' role='navigation'>
+                           <h2>Indice della pagina:</h2>
+                           <ul>`;
+          
+          headers.forEach((header, index) => {
+             const id = header.id || `section-${index}`;
+             header.id = id;
+             const title = header.textContent;
+             if (title) {
+                tocHtml += `<li><a href="#${id}" onclick="document.getElementById('${id}').scrollIntoView({behavior: 'smooth'}); return false;">${title}</a></li>`;
+             }
+          });
+          
+          tocHtml += `</ul></nav>`;
+          tocContainer.innerHTML = tocHtml;
+       }
+    }
+
+    // 4. IMAGE LIGHTBOX / NEW TAB
+    const images = container.querySelectorAll('.post-body img');
+    images.forEach((img) => {
+        const imageEl = img as HTMLImageElement;
+        imageEl.style.cursor = 'zoom-in';
+        imageEl.onclick = () => {
+            window.open(imageEl.src, '_blank');
+        };
+    });
+
+    // Cleanup
     return () => {
       expandableRows.forEach(row => {
         row.removeEventListener('click', handleRowClick as EventListener);
@@ -158,15 +225,43 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     </div>
   );
 
+  // --- STRUCTURED DATA (Schema.org) ---
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": article.title,
+    "image": [article.imageUrl],
+    "datePublished": article.date, // In production, convert this to ISO 8601
+    "author": [{
+      "@type": "Person",
+      "name": article.author,
+      "url": "https://www.tuttoxandroid.com"
+    }],
+    "publisher": {
+      "@type": "Organization",
+      "name": "TuttoXAndroid",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://i.imgur.com/l7YwbQe.png"
+      }
+    },
+    "description": article.excerpt
+  };
+
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
       <Helmet>
         <title>{article.title} - TuttoXAndroid</title>
         <meta name="description" content={article.excerpt} />
+        {/* Open Graph Tags for client-side routing (fallback) */}
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={article.excerpt} />
         <meta property="og:image" content={article.imageUrl} />
         <meta property="og:type" content="article" />
+        {/* Schema.org Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
       </Helmet>
 
       {/* Loading Indicator */}
@@ -241,7 +336,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
                 {/* AD UNIT - Reduced Whitespace */}
                 <div className="not-prose mb-4 flex justify-center">
-                    <AdUnit slotId="2551109589" format="auto" className="w-full" label="Sponsor" />
+                    <AdUnit slotId="5244362740" format="auto" className="w-full" label="Sponsor" />
                 </div>
 
                 {/* Content Body */}
@@ -340,7 +435,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
             <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
                 
                 {/* 1. AD UNIT TOP */}
-                <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
+                <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
 
                 {/* 2. TELEGRAM PROMO BANNER */}
                 <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-[2rem] p-6 text-center text-white shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
@@ -430,7 +525,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                         </button>
                     </div>
                     
-                    <AdUnit slotId="2551109589" format="rectangle" label="Sponsor" />
+                    <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                 </div>
             </div>
         </div>

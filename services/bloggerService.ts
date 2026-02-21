@@ -257,43 +257,146 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
 
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
-    // Removed the "return []" block for localhost to allow Proxy fetching
+    // 1. Fetch from Native Blogger Feed (Existing logic)
+    const bloggerPromise = (async () => {
+        try {
+            const response = await fetchWithTimeout(getFetchUrl('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20'), 5000);
+            if (!response.ok) return [];
+            const data = await response.json();
+            const entries = data.feed.entry || [];
+            const generatedDeals: Deal[] = [];
+            
+            entries.forEach((entry: any, index: number) => {
+                const content = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
+                const title = stripHtml(entry.title.$t); 
+                const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
+                const id = entry.id.$t;
+                let imageUrl = 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400';
+                if (entry.media$thumbnail) imageUrl = entry.media$thumbnail.url;
+                else {
+                    const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
+                    if (imgMatch) imageUrl = imgMatch[1];
+                }
+                const deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
+                if (deal) generatedDeals.push(deal);
+            });
+            return generatedDeals;
+        } catch(e) { return []; }
+    })();
 
-    // Wrap the feed path with the Proxy URL generator
-    const response = await fetchWithTimeout(getFetchUrl('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20'), 5000);
+    // 2. Fetch from Telegram Public View (New logic)
+    const telegramPromise = fetchTelegramDeals();
+
+    const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
     
-    if (!response.ok) return [];
+    // Merge: Telegram deals first (they are usually fresher)
+    const allDeals = [...telegramDeals, ...bloggerDeals];
     
-    const data = await response.json();
-    const entries = data.feed.entry || [];
-    const generatedDeals: Deal[] = [];
+    // Assign brand colors cyclically
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
-
-    entries.forEach((entry: any, index: number) => {
-      const content = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
-      const title = stripHtml(entry.title.$t); 
-      const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
-      const id = entry.id.$t;
-      
-      let imageUrl = 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400';
-      if (entry.media$thumbnail) {
-        imageUrl = entry.media$thumbnail.url;
-      } else {
-         const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
-         if (imgMatch) imageUrl = imgMatch[1];
-      }
-      imageUrl = forceHighResImage(imageUrl);
-
-      const deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
-      if (deal) {
-        deal.brandColor = dealColors[index % dealColors.length];
-        generatedDeals.push(deal);
-      }
-    });
-
-    return generatedDeals.length > 0 ? generatedDeals.slice(0, 4) : [];
+    return allDeals.map((deal, idx) => ({
+        ...deal,
+        brandColor: dealColors[idx % dealColors.length]
+    })).slice(0, 4); // Keep top 4
     
   } catch (error) {
     return [];
   }
+};
+
+// NEW: Function to scrape the public Telegram Channel view with better Parsing
+export const fetchTelegramDeals = async (): Promise<Deal[]> => {
+    try {
+        // We use allorigins to bypass CORS and fetch the HTML of the public channel
+        // t.me/s/tuttoxandroid is the lightweight web view of the channel
+        const telegramUrl = 'https://t.me/s/tuttoxandroid';
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}&timestamp=${new Date().getTime()}`;
+        
+        const response = await fetchWithTimeout(proxyUrl, 5000);
+        if (!response.ok) return [];
+        
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        
+        const messages = doc.querySelectorAll('.tgme_widget_message');
+        const deals: Deal[] = [];
+        
+        // Iterate backwards (newest first)
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i];
+            const textContent = msg.querySelector('.tgme_widget_message_text')?.textContent || '';
+            const htmlContent = msg.innerHTML;
+            
+            // Check for Link (Amazon/eBay) and Price
+            const hasLink = htmlContent.includes('amzn.to') || htmlContent.includes('amazon.it') || htmlContent.includes('ebay.it');
+            
+            if (hasLink) {
+                 // 1. Extract Link (Regex for Amazon/eBay)
+                 const linkMatch = htmlContent.match(/href="(https?:\/\/(?:amzn\.to|www\.amazon\.it|bit\.ly|www\.ebay\.it)[^"]+)"/);
+                 const link = linkMatch ? linkMatch[1] : '#';
+                 if (link === '#') continue;
+
+                 // 2. Extract Title (First line that isn't empty)
+                 const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                 let product = lines[0] || 'Offerta Tech';
+                 // Clean up Emojis from start of title
+                 product = product.replace(/^[\p{Emoji}\s]+/gu, '');
+                 if (product.length > 55) product = product.substring(0, 55) + '...';
+
+                 // 3. Extract Price Smartly (Find numbers with €)
+                 const priceRegex = /€?\s?(\d+[.,]\d{0,2})\s?€?/g;
+                 const pricesFound: number[] = [];
+                 let match;
+                 while ((match = priceRegex.exec(textContent)) !== null) {
+                    const val = parseFloat(match[1].replace(',', '.'));
+                    if (!isNaN(val)) pricesFound.push(val);
+                 }
+
+                 let newPrice = 'OFFERTA';
+                 let oldPrice = '';
+
+                 if (pricesFound.length > 0) {
+                    // Logic: If multiple prices, min is new, max is old
+                    const minP = Math.min(...pricesFound);
+                    const maxP = Math.max(...pricesFound);
+                    
+                    newPrice = minP.toFixed(2).replace('.', ',') + '€';
+                    if (pricesFound.length > 1 && maxP > minP) {
+                         oldPrice = maxP.toFixed(2).replace('.', ',') + '€';
+                    }
+                 } else {
+                    if (textContent.toLowerCase().includes('gratis')) newPrice = 'GRATIS';
+                 }
+
+                 // 4. Extract Image
+                 let imageUrl = 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=200';
+                 const photoWrap = msg.querySelector('.tgme_widget_message_photo_wrap');
+                 if (photoWrap) {
+                     const style = photoWrap.getAttribute('style');
+                     const bgMatch = style?.match(/background-image:url\('([^']+)'\)/);
+                     if (bgMatch) imageUrl = bgMatch[1];
+                 }
+                 
+                 // Create Deal Object
+                 deals.push({
+                     id: `tg-${i}`,
+                     product: product,
+                     oldPrice: oldPrice, 
+                     newPrice: newPrice,
+                     saveAmount: 'Telegram',
+                     link: link,
+                     imageUrl: imageUrl,
+                     brandColor: 'bg-[#24A1DE]' // Telegram Blue
+                 });
+                 
+                 if (deals.length >= 4) break; 
+            }
+        }
+        
+        return deals;
+    } catch (e) {
+        console.error("Error scraping Telegram:", e);
+        return [];
+    }
 };

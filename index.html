@@ -41,200 +41,194 @@
         margin: 20px auto;
       }
 
-      /* --- LEGACY BLOGGER STYLES (Porting) --- */
-      
-      /* Blockquotes */
-      blockquote {
-        font-style: italic;
-        color: #555;
-        border-left: 5px solid #e31b23;
-        margin-left: 0;
-        padding: 10px 15px;
-        background: #f9f9f9;
-        margin-bottom: 15px;
-      }
-
-      /* Alert Messages */
-      .alert-message {
-        position: relative;
-        display: block;
-        background-color: #FAFAFA;
-        padding: 15px;
-        margin: 20px 0;
-        border-radius: 4px;
-        color: #2f3239;
-        border: 1px solid #eee;
-        font-size: 14px;
-      }
-      .alert-message.success { background-color: #f1f9f7; border-color: #e0f1e9; color: #1d9d74; }
-      .alert-message.alert { background-color: #DAEFFF; border-color: #8ED2FF; color: #378FFF; }
-      .alert-message.warning { background-color: #fcf8e3; border-color: #faebcc; color: #8a6d3b; }
-      .alert-message.error { background-color: #FFD7D2; border-color: #FF9494; color: #F55D5D; }
-
-      /* Buttons & Highlights */
-      .telegram-button {
-        display: inline-block;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: #24A1DE;
-        transition: background-color 0.3s ease;
-        text-align: center;
-        line-height: 50px;
-        color: white;
-      }
-      .telegram-button:hover { background-color: #1c88be; } 
-
-      .highlight {
-        background-color: #ffd305;
-        padding: 10px;
-        margin: 10px 0;
-        border-radius: 5px;
-        transition: all 0.3s ease-in-out;
-        display: block;
-      }
-      .highlight:hover {
-        background-color: #ffe25a;
-        box-shadow: 0 0 10px 0 #ffe25a;
-      }
-
-      /* --- EXPANDABLE TABLE (FAQ Cascading Effect) - UPDATED --- */
-      table.expandable-table {
-          width: 100%;
-          border-collapse: separate; 
-          border-spacing: 0 10px; /* Space between rows */
-          margin-bottom: 20px;
-          border: none;
-      }
-      table.expandable-table th {
-          display: none; /* Hide headers for cleaner look */
-      }
-      table.expandable-table td {
-          border: none;
-          padding: 0;
-      }
-      
-      /* Row Styling */
-      tr.expandable-row {
+      /* --- EXPANDABLE ROW (Accordion/Cascata) FIXED --- */
+      /* Generic container for both TR and DIV implementations */
+      .expandable-row {
           cursor: pointer;
-          display: block;
+          display: block; 
           background: #fff;
           border-radius: 8px;
           box-shadow: 0 2px 5px rgba(0,0,0,0.05);
           overflow: hidden;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           border: 1px solid #eee;
+          margin-bottom: 12px;
+          position: relative;
       }
-      tr.expandable-row:hover {
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        transform: translateY(-1px);
+      
+      /* Specific override for TABLE rows to behave like cards */
+      tr.expandable-row {
+          width: 100%;
+      }
+      tr.expandable-row td {
+          display: block;
+          width: 100%;
+          border: none;
+          padding: 0;
       }
 
-      /* Question Part (First TD) */
-      tr.expandable-row td:first-child {
+      .expandable-row:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+        border-color: #ddd;
+      }
+
+      /* Title Area (First child or specific class) */
+      .expandable-row > td:first-child,
+      .expandable-row > .expandable-title,
+      .expandable-row > div:first-child:not(.expandable-description) {
           display: block;
-          padding: 15px;
+          padding: 18px 50px 18px 20px; /* Space for arrow */
           font-weight: 700;
           color: #2f3239;
           position: relative;
-          padding-right: 40px; /* Space for arrow */
           font-family: 'Inter', sans-serif;
+          font-size: 16px;
+          line-height: 1.4;
+          user-select: none;
+          background: white;
       }
+
+      /* Green Accent Bar (Visual Flair from screenshot) */
+      .expandable-row::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: #c0ff8c; /* Tech Green */
+          opacity: 0;
+          transition: opacity 0.2s;
+      }
+      .expandable-row:hover::before,
+      .expandable-row.expanded::before {
+          opacity: 1;
+      }
+
       /* Arrow indicator */
-      tr.expandable-row td:first-child::after {
+      .expandable-row > td:first-child::after,
+      .expandable-row > .expandable-title::after,
+      .expandable-row > div:first-child:not(.expandable-description)::after {
           content: '▼';
           position: absolute;
-          right: 15px;
+          right: 20px;
           top: 50%;
           transform: translateY(-50%);
-          font-size: 12px;
-          color: #ccc;
-          transition: transform 0.3s ease;
+          font-size: 10px;
+          color: #999;
+          transition: transform 0.3s ease, color 0.3s;
       }
-      tr.expandable-row.expanded td:first-child::after {
+
+      /* Expanded State Styles */
+      .expandable-row.expanded > td:first-child,
+      .expandable-row.expanded > .expandable-title,
+      .expandable-row.expanded > div:first-child:not(.expandable-description) {
+          color: #e31b23;
+          background-color: #fff; /* Keep white for cleaner look */
+      }
+      
+      .expandable-row.expanded > td:first-child::after,
+      .expandable-row.expanded > .expandable-title::after,
+      .expandable-row.expanded > div:first-child:not(.expandable-description)::after {
           transform: translateY(-50%) rotate(180deg);
           color: #e31b23;
       }
-      tr.expandable-row.expanded td:first-child {
-          color: #e31b23;
-      }
 
-      /* Answer Part (Second TD - Cascading Text) */
-      td.expandable-description {
+      /* Description / Content Area */
+      .expandable-description {
           display: block;
           overflow: hidden;
-          max-height: 0; /* Starts closed */
+          max-height: 0;
           opacity: 0;
-          transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out, padding 0.5s ease;
-          background-color: #fcfcfc;
-          border-top: 1px solid transparent;
+          transition: max-height 0.3s ease-out, opacity 0.3s ease, padding 0.3s ease;
+          background-color: #fafafa;
           font-size: 15px;
           line-height: 1.6;
           color: #555;
+          padding: 0 20px;
+          border-top: 1px solid transparent;
       }
       
-      /* Open State */
-      tr.expandable-row.expanded td.expandable-description {
-          max-height: 1000px; /* Large enough to fit content */
+      .expandable-row.expanded .expandable-description {
+          max-height: 2000px; 
           opacity: 1;
-          padding: 15px;
+          padding: 20px;
           border-top: 1px solid #eee;
       }
-      
-      /* Mobile override for table */
-      @media (max-width: 768px) {
-          table.expandable-table {
-              width: 100% !important;
-          }
-      }
 
-      /* --- LUNA SLIDER (CSS Only Interactive) --- */
-      .luna-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          margin: 20px 0;
-      }
-      .luna-box {
-          background-color: #6a0dad;
+      /* --- TABLE OF CONTENTS (ToC) --- */
+      .table-of-contents {
+          background: #f8f9fa;
+          border-left: 4px solid #e31b23;
           padding: 20px;
-          border-radius: 15px;
-          text-align: center;
-          width: 300px;
-          overflow: hidden;
-          position: relative;
-          color: white;
-          font-family: Arial, sans-serif;
-          box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+          margin: 20px 0;
+          border-radius: 0 8px 8px 0;
       }
-      .luna-slider {
-          position: relative;
-          width: 100%;
-          height: 200px;
-          overflow: hidden;
-          margin-bottom: 15px;
+      .table-of-contents h2, .table-of-contents h3 {
+          font-family: 'Saira Extra Condensed', sans-serif;
+          text-transform: uppercase;
+          font-weight: 800;
+          font-size: 18px;
+          margin-bottom: 10px;
+          color: #222;
       }
-      .luna-slider img {
-          width: 100%;
-          height: 200px;
-          object-fit: cover;
-          border-radius: 10px;
+      .table-of-contents ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+      }
+      .table-of-contents li {
+          margin-bottom: 8px;
+          position: relative;
+          padding-left: 15px;
+      }
+      .table-of-contents li::before {
+          content: '•';
+          color: #e31b23;
           position: absolute;
-          top: 0;
           left: 0;
-          transition: transform 0.5s ease;
+          font-weight: bold;
       }
-      /* Positioning images */
-      .luna-slider img:nth-child(2) { transform: translateX(100%); }
-      .luna-slider img:nth-child(3) { transform: translateX(200%); }
+      .table-of-contents a {
+          text-decoration: none;
+          color: #555;
+          font-weight: 500;
+          font-size: 14px;
+          transition: color 0.2s;
+      }
+      .table-of-contents a:hover {
+          color: #e31b23;
+          text-decoration: underline;
+      }
 
-      /* Hover Effects */
-      .luna-box:hover .luna-slider img:nth-child(1) { transform: translateX(-100%); }
-      .luna-box:hover .luna-slider img:nth-child(2) { transform: translateX(0); }
-      .luna-box:hover .luna-slider img:nth-child(3) { transform: translateX(100%); }
-
-      .luna-description { margin-top: 10px; font-size: 14px; }
-      .amazon-logo { width: 80px; margin-bottom: 10px; display: inline-block; }
+      /* --- COPY CODE BUTTON --- */
+      .copy-code-btn {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          background: #333;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 4px 10px;
+          font-size: 12px;
+          font-family: sans-serif;
+          cursor: pointer;
+          opacity: 0.7;
+          transition: opacity 0.2s, background 0.2s;
+          z-index: 10;
+      }
+      .copy-code-btn:hover {
+          opacity: 1;
+          background: #e31b23;
+      }
+      .copy-code-btn.copied {
+          background: #22c55e;
+      }
+      pre {
+          position: relative;
+      }
     </style>
     <script type="importmap">
 {
