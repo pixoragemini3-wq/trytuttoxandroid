@@ -282,16 +282,16 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
         
         const messages = doc.querySelectorAll('.tgme_widget_message');
         const deals: Deal[] = [];
-        const validKeywords = ['smartphone', 'telefono', 'cellulare', 'tablet', 'ipad', 'tab', 'samsung', 'xiaomi', 'redmi', 'poco', 'realme', 'oppo', 'pixel', 'iphone', 'motorola', 'honor', 'oneplus', 'galaxy'];
         
+        // Iteriamo al contrario per prendere gli ultimi
         for (let i = messages.length - 1; i >= 0; i--) {
             const msg = messages[i];
             const textContent = msg.querySelector('.tgme_widget_message_text')?.textContent || '';
             const htmlContent = msg.innerHTML;
             const textLower = textContent.toLowerCase();
 
-            const isDevice = validKeywords.some(keyword => textLower.includes(keyword));
-            if (!isDevice) continue;
+            // CHECK 1: Must contain #offerte hashtag
+            if (!textLower.includes('#offerte')) continue;
 
             const hasLink = htmlContent.includes('amzn.to') || htmlContent.includes('amazon.it') || htmlContent.includes('ebay.it');
             
@@ -301,8 +301,10 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                  if (link === '#') continue;
 
                  const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-                 let product = lines[0] || 'Offerta Smartphone';
-                 product = product.replace(/^[\p{Emoji}\s]+/gu, '');
+                 let product = lines[0] || 'Offerta Tech';
+                 
+                 // Clean up product title
+                 product = product.replace(/^[\p{Emoji}\s]+/gu, '').replace(/#\w+/g, '').trim();
                  if (product.length > 55) product = product.substring(0, 55) + '...';
 
                  const priceRegex = /€?\s?(\d+[.,]\d{0,2})\s?€?/g;
