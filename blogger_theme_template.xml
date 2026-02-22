@@ -7,23 +7,29 @@
 <title><data:blog.pageTitle/></title>
 
 <!-- SEO & SOCIAL META TAGS (Server Side) -->
+<!-- FIX: WhatsApp requires images > 300px. Blogger default thumbnails are too small. -->
 <b:if cond='data:view.isPost'>
   <!-- Open Graph for Facebook/WhatsApp/LinkedIn -->
   <meta expr:content='data:blog.pageName' property='og:title'/>
   <meta content='article' property='og:type'/>
   <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
-  <!-- Description: Use Meta Description if available, else snippet -->
+  
+  <!-- Description -->
   <b:if cond='data:blog.metaDescription'>
     <meta expr:content='data:blog.metaDescription' property='og:description'/>
   <b:else/>
     <meta expr:content='data:post.snippet' property='og:description'/>
   </b:if>
-  <!-- Featured Image -->
+  
+  <!-- Image Handling: Prioritize High Res using resizeImage operator -->
   <b:if cond='data:post.featuredImage'>
-    <meta expr:content='data:post.featuredImage' property='og:image'/>
+    <meta expr:content='resizeImage(data:post.featuredImage, 1200)' property='og:image'/>
   <b:else/>
-    <b:if cond='data:post.thumbnailUrl'>
-      <meta expr:content='data:post.thumbnailUrl' property='og:image'/>
+    <b:if cond='data:post.firstImageUrl'>
+      <meta expr:content='resizeImage(data:post.firstImageUrl, 1200)' property='og:image'/>
+    <b:else/>
+       <!-- Fallback Image if no image in post -->
+       <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
     </b:if>
   </b:if>
   
@@ -31,7 +37,11 @@
   <meta content='summary_large_image' name='twitter:card'/>
   <meta expr:content='data:blog.pageName' name='twitter:title'/>
   <b:if cond='data:post.featuredImage'>
-    <meta expr:content='data:post.featuredImage' name='twitter:image'/>
+    <meta expr:content='resizeImage(data:post.featuredImage, 1200)' name='twitter:image'/>
+  <b:else/>
+     <b:if cond='data:post.firstImageUrl'>
+        <meta expr:content='resizeImage(data:post.firstImageUrl, 1200)' name='twitter:image'/>
+     </b:if>
   </b:if>
 
 <b:else/>

@@ -66,8 +66,9 @@ const forceHighResImage = (url: string): string => {
 const getFirstImageFromContent = (htmlContent: string): string | null => {
     try {
         const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
-        const img = doc.querySelector('img');
-        return img ? img.src : null;
+        // Prioritize images inside figure or standard img tags
+        const img = doc.querySelector('figure img, img');
+        return img ? img.getAttribute('src') : null;
     } catch (e) {
         return null;
     }
@@ -255,6 +256,7 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
 
     const telegramPromise = fetchTelegramDeals();
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
+    // Prioritizziamo Telegram se disponibile
     const allDeals = [...telegramDeals, ...bloggerDeals];
     
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
@@ -271,6 +273,7 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     try {
         const telegramUrl = 'https://t.me/s/tuttoxandroid';
+        // Add timestamp to prevent aggressive caching
         const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}&timestamp=${new Date().getTime()}`;
         
         const response = await fetchWithTimeout(proxyUrl, 5000);
@@ -283,36 +286,39 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
         const messages = doc.querySelectorAll('.tgme_widget_message');
         const deals: Deal[] = [];
         
-        // Iteriamo al contrario per prendere gli ultimi
+        // Iteriamo al contrario per prendere gli ultimi messaggi
         for (let i = messages.length - 1; i >= 0; i--) {
             const msg = messages[i];
             const textContent = msg.querySelector('.tgme_widget_message_text')?.textContent || '';
-            const htmlContent = msg.innerHTML;
             const textLower = textContent.toLowerCase();
 
-            // CHECK 1: Must contain #offerte hashtag
+            // CHECK 1: Deve contenere #offerte
             if (!textLower.includes('#offerte')) continue;
 
-            const hasLink = htmlContent.includes('amzn.to') || htmlContent.includes('amazon.it') || htmlContent.includes('ebay.it');
+            // CHECK 2: Deve contenere un link valido (Amazon, eBay, ecc.)
+            // Usiamo querySelector per essere più precisi delle Regex su tutto l'HTML
+            const linkNode = msg.querySelector('a[href*="amzn.to"], a[href*="amazon.it"], a[href*="ebay.it"], a[href*="bit.ly"]');
             
-            if (hasLink) {
-                 const linkMatch = htmlContent.match(/href="(https?:\/\/(?:amzn\.to|www\.amazon\.it|bit\.ly|www\.ebay\.it)[^"]+)"/);
-                 const link = linkMatch ? linkMatch[1] : '#';
-                 if (link === '#') continue;
+            if (linkNode) {
+                 const link = linkNode.getAttribute('href');
+                 if (!link) continue;
 
                  const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 2);
                  let product = lines[0] || 'Offerta Tech';
                  
-                 // Clean up product title
+                 // Pulizia Titolo: Rimuovi emoji iniziali e hashtag
                  product = product.replace(/^[\p{Emoji}\s]+/gu, '').replace(/#\w+/g, '').trim();
                  if (product.length > 55) product = product.substring(0, 55) + '...';
 
+                 // Estrazione Prezzo Robustezza
                  const priceRegex = /€?\s?(\d+[.,]\d{0,2})\s?€?/g;
                  const pricesFound: number[] = [];
                  let match;
                  while ((match = priceRegex.exec(textContent)) !== null) {
+                    // Sostituisci virgola con punto per il parsing
                     const val = parseFloat(match[1].replace(',', '.'));
-                    if (!isNaN(val)) pricesFound.push(val);
+                    // Filtra numeri che sembrano date o quantità (es. > 1 e < 5000)
+                    if (!isNaN(val) && val > 1) pricesFound.push(val);
                  }
 
                  let newPrice = 'OFFERTA';
@@ -329,6 +335,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                     if (textLower.includes('gratis')) newPrice = 'GRATIS';
                  }
 
+                 // Estrazione Immagine background
                  let imageUrl = 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=200';
                  const photoWrap = msg.querySelector('.tgme_widget_message_photo_wrap');
                  if (photoWrap) {
@@ -352,6 +359,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
         }
         return deals;
     } catch (e) {
+        console.error("Telegram fetch error", e);
         return [];
     }
 };
