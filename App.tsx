@@ -25,6 +25,22 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
+// SKELETON LOADER COMPONENT
+const SkeletonLoader = () => (
+  <div className="flex flex-col md:flex-row gap-4 h-full p-3 rounded-2xl border border-gray-100 bg-white animate-pulse">
+    <div className="w-full md:w-[35%] shrink-0">
+       <div className="aspect-video md:aspect-[4/3] w-full rounded-xl bg-gray-200"></div>
+    </div>
+    <div className="flex-1 flex flex-col justify-center py-2 space-y-3">
+      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+      <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+      <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+      <div className="h-3 bg-gray-200 rounded w-full mt-2"></div>
+      <div className="h-3 bg-gray-200 rounded w-full"></div>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,7 +61,9 @@ const App: React.FC = () => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Split loading states to prevent blocking UI
+  const [isArticlesLoading, setIsArticlesLoading] = useState(true);
   
   // Animation Direction State for Swipe Effect
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
@@ -76,7 +94,7 @@ const App: React.FC = () => {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  const topStories = articles.slice(0, 8);
+  const topStories = articles.length > 0 ? articles.slice(0, 8) : MOCK_ARTICLES.slice(0, 8);
   
   // Full Category List for Indexing
   const ALL_CATEGORIES = ['Tutti', ...NAV_CATEGORIES];
@@ -129,52 +147,45 @@ const App: React.FC = () => {
   // Genera articoli correlati mescolati per evitare ripetizioni
   const getShuffledRelatedArticles = (current: Article | undefined) => {
     if (!current || articles.length === 0) return [];
-    
-    // Escludi l'articolo corrente
     const candidates = articles.filter(a => a.id !== current.id);
-    
-    // Priorità: Stessa Categoria
     const sameCategory = candidates.filter(a => a.category === current.category);
-    // Backup: Altre categorie
     const otherCategories = candidates.filter(a => a.category !== current.category);
-    
-    // Unisci dando priorità ma mescolando il tutto per varietà
     const pool = [...shuffleArray(sameCategory), ...shuffleArray(otherCategories)];
-    
-    // Ritorna i primi 12
     return pool.slice(0, 12);
   };
 
   const shuffledMoreArticles = useMemo(() => {
     return getShuffledRelatedArticles(currentArticle);
-  }, [currentArticle?.id, articles]); // Ricalcola solo se cambia articolo o lista
+  }, [currentArticle?.id, articles]);
 
-  // Load Initial Content
-  const loadContent = async () => {
-    setIsLoading(true);
-    try {
-      const [bloggerPosts, bloggerDeals] = await Promise.all([
-        fetchBloggerPosts(),
-        fetchBloggerDeals()
-      ]);
-      
-      const finalArticles = bloggerPosts.length > 0 ? bloggerPosts : MOCK_ARTICLES;
-      const finalDeals = bloggerDeals.length > 0 ? bloggerDeals : MOCK_DEALS;
-      
-      setArticles(finalArticles);
-      setDeals(finalDeals);
-      setFilteredArticles(finalArticles); 
-    } catch (error) {
-      console.error("Errore caricamento:", error);
-      setArticles(MOCK_ARTICLES);
-      setDeals(MOCK_DEALS);
-      setFilteredArticles(MOCK_ARTICLES);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Load Content - SEPARATED FETCHING
+  useEffect(() => {
+    const init = async () => {
+      // 1. Fetch Articles FIRST (Critical for UI)
+      setIsArticlesLoading(true);
+      try {
+         const posts = await fetchBloggerPosts();
+         const finalPosts = posts.length > 0 ? posts : MOCK_ARTICLES;
+         setArticles(finalPosts);
+         setFilteredArticles(finalPosts);
+      } catch (e) {
+         setArticles(MOCK_ARTICLES);
+         setFilteredArticles(MOCK_ARTICLES);
+      } finally {
+         setIsArticlesLoading(false);
+      }
 
-  useEffect(() => { loadContent(); }, []);
+      // 2. Fetch Deals SECOND (Background - doesn't block UI)
+      try {
+         const dealsData = await fetchBloggerDeals();
+         setDeals(dealsData.length > 0 ? dealsData : MOCK_DEALS);
+      } catch (e) {
+         setDeals(MOCK_DEALS);
+      }
+    };
+
+    init();
+  }, []);
 
   // Scroll handlers
   useEffect(() => {
@@ -511,8 +522,8 @@ const App: React.FC = () => {
       searchInputRef={searchInputRef}
       boxedLayout={layoutConfig.boxedLayout}
     >
-        {/* Loading */}
-        {isLoading && articles.length === 0 && !currentArticle && (
+        {/* Loading for Articles - Only shows if no articles available */}
+        {isArticlesLoading && articles.length === 0 && !currentArticle && (
           <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-white">
             <div className="loader mb-4"></div>
             <p className="text-gray-400 text-xs font-black uppercase tracking-widest animate-pulse">Caricamento...</p>
@@ -561,7 +572,7 @@ const App: React.FC = () => {
                   <div className="w-full h-[auto] md:h-[420px] lg:h-[420px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
-                          articles={topStories.slice(1, 10)} 
+                          articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 
                           onArticleClick={handleArticleClick} 
                       />
                     )}
@@ -602,7 +613,7 @@ const App: React.FC = () => {
                       onMouseMove={handleMouseMove}
                       style={{ scrollBehavior: isDragging ? 'auto' : 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {articles.slice(0, 10).map(item => (
+                        {(articles.length > 0 ? articles : MOCK_ARTICLES).slice(0, 10).map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
                             <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                           </div>
@@ -611,7 +622,7 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {isHome && deals.length > 0 && !isSearch && (
+                {isHome && !isSearch && (
                    <div className="mt-4 px-4 lg:px-0">
                       <DealsSection />
                    </div>
@@ -684,7 +695,13 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   <div className="lg:col-span-2 overflow-hidden">
                     {/* ANIMATED GRID CONTAINER - Key ensures re-render and animation triggers on swipe */}
-                    {displayArticles.length > 0 ? (
+                    {isArticlesLoading ? (
+                        <div className="space-y-6">
+                            <SkeletonLoader />
+                            <SkeletonLoader />
+                            <SkeletonLoader />
+                        </div>
+                    ) : displayArticles.length > 0 ? (
                       <div 
                         key={isSearch ? 'search' : activeCategory} 
                         className={`flex flex-col gap-6 mb-8 animate-in fade-in duration-500 ${slideDirection === 'right' ? 'slide-in-from-right-20' : 'slide-in-from-left-20'}`}
@@ -703,7 +720,7 @@ const App: React.FC = () => {
                       </div>
                     )}
                     
-                    {visibleNewsCount < displayArticles.length && (
+                    {!isArticlesLoading && visibleNewsCount < displayArticles.length && (
                       <div className="flex justify-center mt-8">
                         <button 
                             onClick={loadMoreNews}
@@ -733,7 +750,7 @@ const App: React.FC = () => {
         )}
 
         {/* 404 Fallback */}
-        {isArticle && !currentArticle && !isLoading && !location.pathname.endsWith('.html') && (
+        {isArticle && !currentArticle && !isArticlesLoading && !location.pathname.endsWith('.html') && (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
               <h2 className="text-3xl font-black uppercase mb-4">Articolo non trovato</h2>
               <button onClick={goToHome} className="bg-[#e31b23] text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest">

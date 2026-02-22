@@ -31,8 +31,8 @@ const TopStoriesMobile: React.FC<TopStoriesMobileProps> = ({ articles, onArticle
   const prevIndex = (currentIndex - 1 + displayArticles.length) % displayArticles.length;
 
   return (
-    // UPDATED: z-[9999] to ensure it stays ABOVE Adsense Auto Ads
-    <div className="lg:hidden bg-yellow-400 h-12 sticky top-0 z-[9999] shadow-md border-b border-black/10 flex items-center overflow-hidden">
+    // UPDATED: z-[100001] to ensure it stays ABOVE standard Adsense Anchor Ads which usually sit at 1000-2000 range.
+    <div className="lg:hidden bg-yellow-400 h-12 sticky top-0 z-[100001] shadow-md border-b border-black/10 flex items-center overflow-hidden">
       {/* Menu Trigger & Brand Tag */}
       <div className="flex items-center h-full px-4 border-r border-black/5 gap-3 shrink-0 bg-black/5 relative z-50">
         {!hideMenuButton && (

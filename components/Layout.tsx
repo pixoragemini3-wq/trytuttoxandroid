@@ -91,9 +91,9 @@ const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={`min-h-screen flex flex-col bg-white font-inter ${boxedLayout ? 'max-w-[1600px] mx-auto shadow-2xl border-x border-gray-100' : ''}`}>
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay - SUPER HIGH Z-INDEX TO BEAT ADSENSE */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black z-[100] flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-black z-[2147483647] flex flex-col animate-in fade-in duration-300">
            <div className="p-6 flex justify-between items-center border-b border-white/10">
               <img src={LOGO_URL} className="h-12 w-auto" alt="Logo" />
               <button onClick={() => setIsMobileMenuOpen(false)} className="text-white p-2">
