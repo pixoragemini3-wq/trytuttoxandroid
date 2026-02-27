@@ -91,33 +91,7 @@ const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={`min-h-screen flex flex-col bg-white font-inter ${boxedLayout ? 'max-w-[1600px] mx-auto shadow-2xl border-x border-gray-100' : ''}`}>
-      {/* Mobile Menu Overlay - SUPER HIGH Z-INDEX TO BEAT ADSENSE */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black z-[2147483647] flex flex-col animate-in fade-in duration-300">
-           <div className="p-6 flex justify-between items-center border-b border-white/10">
-              <img src={LOGO_URL} className="h-12 w-auto" alt="Logo" />
-              <button onClick={() => setIsMobileMenuOpen(false)} className="text-white p-2">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-           </div>
-           <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              {NAV_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => handleNavClick(cat)} className="block w-full text-left font-condensed text-4xl font-black uppercase text-white hover:text-red-500 transition-colors">
-                  {cat}
-                </button>
-              ))}
-              <div className="border-t border-white/10 pt-6 mt-6">
-                 <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 mb-4 hover:text-white">Chi Siamo</button>
-                 <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 hover:text-white">Collabora</button>
-              </div>
-           </div>
-           <div className="p-8 bg-[#e31b23] text-center">
-              <p className="text-white font-black uppercase text-[10px] tracking-widest mb-4">Iscriviti alla community</p>
-              <a href="https://t.me/tuttoxandroid" className="inline-block bg-white text-[#e31b23] px-10 py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl">Telegram</a>
-           </div>
-        </div>
-      )}
-
+      
       {/* HEADER */}
       <header className="bg-black text-white relative shadow-2xl z-50">
         <div className="hidden md:flex justify-start items-center px-4 lg:px-8 py-2 absolute top-0 left-0 w-full z-20">
@@ -228,6 +202,33 @@ const Layout: React.FC<LayoutProps> = ({
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" /></svg>
         </button>
+      )}
+
+      {/* Mobile Menu Overlay - MOVED TO BOTTOM TO FIX Z-INDEX STACKING & INCREASED LOGO SIZE */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black z-[2147483647] flex flex-col animate-in fade-in duration-300">
+           <div className="p-6 flex justify-between items-center border-b border-white/10">
+              <img src={LOGO_URL} className="h-20 w-auto object-contain" alt="Logo" />
+              <button onClick={() => setIsMobileMenuOpen(false)} className="text-white p-2">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+           </div>
+           <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {NAV_CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => handleNavClick(cat)} className="block w-full text-left font-condensed text-4xl font-black uppercase text-white hover:text-red-500 transition-colors">
+                  {cat}
+                </button>
+              ))}
+              <div className="border-t border-white/10 pt-6 mt-6">
+                 <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 mb-4 hover:text-white">Chi Siamo</button>
+                 <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="block w-full text-left text-sm font-bold uppercase text-gray-400 hover:text-white">Collabora</button>
+              </div>
+           </div>
+           <div className="p-8 bg-[#e31b23] text-center">
+              <p className="text-white font-black uppercase text-[10px] tracking-widest mb-4">Iscriviti alla community</p>
+              <a href="https://t.me/tuttoxandroid" className="inline-block bg-white text-[#e31b23] px-10 py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl">Telegram</a>
+           </div>
+        </div>
       )}
 
       <CookieConsent />

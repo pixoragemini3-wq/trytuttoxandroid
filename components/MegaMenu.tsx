@@ -13,6 +13,22 @@ interface MegaMenuProps {
 const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArticleClick }) => {
   const [showAllYears, setShowAllYears] = useState(false);
   const [priceRange, setPriceRange] = useState(1); // 0: <100, 1: <200, 2: <300, 3: <400, 4: <500
+  
+  // Newsletter Logic
+  const [email, setEmail] = useState('');
+  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'success'>('idle');
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.includes('@')) return;
+    
+    // TODO: Qui dovresti integrare la chiamata API a Mailchimp, Brevo o Google Forms.
+    // Esempio: fetch('https://api.newsletter.com/subscribe', { method: 'POST', body: JSON.stringify({ email }) })
+    
+    setSubscribeStatus('success');
+    setEmail('');
+    setTimeout(() => setSubscribeStatus('idle'), 3000);
+  };
 
   // 1. Get the latest article for this category (Highlight)
   // LOGIC UPDATE: Prioritize 'featured' articles within the specific category.
@@ -605,9 +621,26 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                
                <div className="mt-8 bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
                   <p className="text-[10px] font-bold text-gray-500 mb-3">Non perdere nessuna notizia</p>
-                  <button className="bg-black text-white w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#e31b23] transition-colors">
-                    Iscriviti alla Newsletter
-                  </button>
+                  
+                  {subscribeStatus === 'success' ? (
+                     <div className="bg-green-100 text-green-700 py-3 rounded-lg text-[10px] font-black uppercase animate-in fade-in">
+                        Iscritto con successo!
+                     </div>
+                  ) : (
+                    <form onSubmit={handleSubscribe} className="flex flex-col gap-2">
+                       <input 
+                         type="email" 
+                         value={email}
+                         onChange={(e) => setEmail(e.target.value)}
+                         placeholder="La tua email" 
+                         className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-[#e31b23]"
+                         required
+                       />
+                       <button type="submit" className="bg-black text-white w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#e31b23] transition-colors">
+                         Iscriviti alla Newsletter
+                       </button>
+                    </form>
+                  )}
                </div>
             </div>
           </>

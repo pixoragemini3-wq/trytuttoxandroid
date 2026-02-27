@@ -260,10 +260,12 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const allDeals = [...telegramDeals, ...bloggerDeals];
     
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
+    
+    // INCREASED LIMIT TO 12 to support mobile carousel scrolling (at least 10 items)
     return allDeals.map((deal, idx) => ({
         ...deal,
         brandColor: dealColors[idx % dealColors.length]
-    })).slice(0, 4); 
+    })).slice(0, 12); 
     
   } catch (error) {
     return [];
@@ -271,7 +273,11 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-    // 1. Definiamo la logica di parsing in una funzione riutilizzabile
+    const CACHE_KEY = 'txa_telegram_deals';
+    const CACHE_TIME_KEY = 'txa_telegram_deals_time';
+    const CACHE_EXPIRY = 1000 * 60 * 15; // 15 minutes cache
+
+    // 1. Define Parser
     const parseDealsFromHtml = (htmlText: string): Deal[] => {
         try {
             const parser = new DOMParser();
@@ -279,40 +285,54 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
             const messages = doc.querySelectorAll('.tgme_widget_message');
             const deals: Deal[] = [];
             
-            // Iteriamo al contrario per prendere gli ultimi messaggi
+            // Iterate backwards to get latest messages
             for (let i = messages.length - 1; i >= 0; i--) {
                 const msg = messages[i];
                 const textContent = msg.querySelector('.tgme_widget_message_text')?.textContent || '';
                 const textLower = textContent.toLowerCase();
 
-                // CHECK 1: Deve contenere #offerte (case insensitive)
-                if (!textLower.includes('offerte')) continue;
-
-                // CHECK 2: Deve contenere un link valido
-                const linkNode = msg.querySelector('a[href*="amzn.to"], a[href*="amazon.it"], a[href*="ebay.it"], a[href*="bit.ly"]');
-                if (!linkNode) continue;
+                // CHECK 2: Link logic (Prioritized)
+                let link = '';
+                const allLinks = Array.from(msg.querySelectorAll('a'));
+                const storeLink = allLinks.find(a => {
+                    const href = a.getAttribute('href') || '';
+                    return /amzn|amazon|ebay|unieuro|mediaworld|bit\.ly/i.test(href);
+                });
                 
-                const link = linkNode.getAttribute('href');
+                if (storeLink) link = storeLink.getAttribute('href') || '';
+                else if (allLinks.length > 0) link = allLinks[0].getAttribute('href') || ''; // Fallback
+                
                 if (!link) continue;
 
-                // Clean raw text to get title
-                const cleanText = textContent.replace(/http\S+/g, '').trim(); 
+                // CHECK 1: Filter Logic - RELAXED
+                // We allow it if it has a valid store link even without explicit hashtag, 
+                // OR if it has the hashtags.
+                const hasTag = /#offerte|#offerta|#sconto|#promo|#amazon/i.test(textContent);
+                const hasPrice = /€|euro|gratis|free/i.test(textContent);
+                const isAmazonLink = /amzn|amazon/i.test(link);
+                
+                // If it looks like a deal (link + price OR tag), accept it.
+                if (!hasTag && !hasPrice && !isAmazonLink) continue;
+
+                // Title Cleanup
+                let cleanText = textContent.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim(); 
+                // Remove tags from title
+                cleanText = cleanText.replace(/#\w+/g, '').trim();
+                
                 const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 2);
                 let product = lines[0] || 'Offerta Tech';
                 
-                // Pulizia Titolo: Rimuovi emoji iniziali e hashtag
-                product = product.replace(/^[\p{Emoji}\s]+/gu, '').replace(/#\w+/g, '').trim();
-                // If title is too short, try second line
-                if (product.length < 5 && lines[1]) product = lines[1];
-                if (product.length > 55) product = product.substring(0, 55) + '...';
+                // Remove initial emojis
+                product = product.replace(/^[\p{Emoji}\s]+/gu, '').trim();
+                if (product.length > 65) product = product.substring(0, 65) + '...';
 
-                // Estrazione Prezzo Robustezza
-                const priceRegex = /€?\s?(\d+[.,]\d{0,2})\s?€?/g;
+                // Price Extraction - Improved
+                const priceRegex = /(\d+[.,]\d{0,2})\s?€/g;
                 const pricesFound: number[] = [];
                 let match;
                 while ((match = priceRegex.exec(textContent)) !== null) {
                     const val = parseFloat(match[1].replace(',', '.'));
-                    if (!isNaN(val) && val > 1 && val < 5000) pricesFound.push(val);
+                    if (!isNaN(val)) pricesFound.push(val);
                 }
 
                 let newPrice = 'OFFERTA';
@@ -322,14 +342,14 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                     const minP = Math.min(...pricesFound);
                     const maxP = Math.max(...pricesFound);
                     newPrice = minP.toFixed(2).replace('.', ',') + '€';
-                    if (pricesFound.length > 1 && maxP > minP * 1.1) {
+                    if (pricesFound.length > 1 && maxP > minP) {
                          oldPrice = maxP.toFixed(2).replace('.', ',') + '€';
                     }
                 } else {
                     if (textLower.includes('gratis') || textLower.includes('free')) newPrice = 'GRATIS';
                 }
 
-                // Estrazione Immagine background
+                // Image Extraction
                 let imageUrl = 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=200';
                 const photoWrap = msg.querySelector('.tgme_widget_message_photo_wrap');
                 if (photoWrap) {
@@ -339,7 +359,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 }
                  
                 deals.push({
-                     id: `tg-${i}`,
+                     id: `tg-${i}-${Date.now()}`,
                      product: product,
                      oldPrice: oldPrice, 
                      newPrice: newPrice,
@@ -348,7 +368,8 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                      imageUrl: imageUrl,
                      brandColor: 'bg-[#24A1DE]' 
                 });
-                if (deals.length >= 4) break; 
+                
+                if (deals.length >= 12) break;
             }
             return deals;
         } catch(e) {
@@ -357,32 +378,47 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
         }
     };
 
-    // 2. Strategia di Fetch con Fallback (Primary + Backup Proxy)
+    // 2. CACHE CHECK
+    const cachedData = sessionStorage.getItem(CACHE_KEY);
+    const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+    if (cachedData && cachedTime) {
+        if (Date.now() - parseInt(cachedTime) < CACHE_EXPIRY) {
+            return JSON.parse(cachedData);
+        }
+    }
+
+    // 3. FETCH STRATEGY - UPDATED PROXIES
     const telegramUrl = 'https://t.me/s/tuttoxandroid';
     
-    // Lista di proxy da provare in sequenza
+    // Optimized proxy order
     const proxyList = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}&timestamp=${Date.now()}`,
-        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`
+        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
+        `https://thingproxy.freeboard.io/fetch/${telegramUrl}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`
     ];
 
     for (const proxyUrl of proxyList) {
         try {
-            const response = await fetchWithTimeout(proxyUrl, 4000); // 4 secondi timeout per tentativo
+            const response = await fetchWithTimeout(proxyUrl, 6000); 
             if (response.ok) {
                 const htmlText = await response.text();
                 const deals = parseDealsFromHtml(htmlText);
                 if (deals.length > 0) {
-                    return deals; // Successo!
+                    // Save to Cache on Success
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
+                    sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+                    return deals;
                 }
             }
         } catch (e) {
             console.warn(`Telegram fetch failed with proxy ${proxyUrl}`, e);
-            // Continua con il prossimo proxy
         }
     }
 
-    // Se tutti i proxy falliscono
-    console.error("All Telegram proxies failed.");
+    // Fallback: Use stale cache if available
+    if (cachedData) {
+        return JSON.parse(cachedData);
+    }
+
     return [];
 };

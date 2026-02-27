@@ -4,56 +4,114 @@
 <head>
 <meta charset='UTF-8' />
 <meta content='width=device-width, initial-scale=1.0' name='viewport' />
-<title><data:blog.pageTitle/></title>
 
-<!-- SEO & SOCIAL META TAGS (Server Side) -->
-<!-- FIX: Correctly access post data in head using b:with -->
+<!-- DYNAMIC TITLE SEO -->
+<b:if cond='data:view.isPost'>
+  <title><data:blog.pageName/> - TuttoXAndroid</title>
+<b:elseif cond='data:view.isHomepage'/>
+  <title><data:blog.title/></title>
+<b:else/>
+  <title><data:blog.pageName/> - TuttoXAndroid</title>
+</b:if>
+
+<!-- CANONICAL URL (Crucial for SEO) -->
+<link expr:href='data:view.url.canonical' rel='canonical'/>
+
+<!-- META DESCRIPTION & ROBOTS -->
+<b:if cond='data:view.isPost'>
+  <b:if cond='data:blog.metaDescription'>
+    <meta expr:content='data:blog.metaDescription' name='description'/>
+  <b:else/>
+    <meta expr:content='data:post.snippet' name='description'/>
+  </b:if>
+  <meta content='index, follow, max-image-preview:large' name='robots'/>
+<b:else/>
+  <meta expr:content='data:blog.metaDescription' name='description'/>
+  <meta content='index, follow' name='robots'/>
+</b:if>
+
+<!-- OPEN GRAPH & TWITTER CARDS -->
+<meta content='TuttoXAndroid' property='og:site_name'/>
+<meta content='it_IT' property='og:locale'/>
+<meta content='summary_large_image' name='twitter:card'/>
+
 <b:if cond='data:view.isPost'>
   <b:with value='data:widgets.Blog1.posts.first' var='post'>
-      <!-- Open Graph for Facebook/WhatsApp/LinkedIn -->
       <meta expr:content='data:post.title' property='og:title'/>
       <meta content='article' property='og:type'/>
-      <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
+      <meta expr:content='data:post.url.canonical' property='og:url'/>
       
-      <!-- Description -->
       <b:if cond='data:post.snippet'>
         <meta expr:content='data:post.snippet' property='og:description'/>
-      <b:elseif cond='data:blog.metaDescription'/>
-        <meta expr:content='data:blog.metaDescription' property='og:description'/>
       </b:if>
       
-      <!-- Image Handling: Prioritize High Res -->
+      <!-- Image Handling -->
       <b:if cond='data:post.featuredImage'>
         <meta expr:content='resizeImage(data:post.featuredImage, 1200, "1200:630")' property='og:image'/>
         <meta expr:content='resizeImage(data:post.featuredImage, 1200, "1200:630")' name='twitter:image'/>
       <b:elseif cond='data:post.firstImageUrl'/>
         <meta expr:content='resizeImage(data:post.firstImageUrl, 1200, "1200:630")' property='og:image'/>
-        <meta expr:content='resizeImage(data:post.firstImageUrl, 1200, "1200:630")' name='twitter:image'/>
-      <b:elseif cond='data:blog.postImageUrl'/>
-        <meta expr:content='resizeImage(data:blog.postImageUrl, 1200, "1200:630")' property='og:image'/>
-        <meta expr:content='resizeImage(data:blog.postImageUrl, 1200, "1200:630")' name='twitter:image'/>
       <b:else/>
-         <!-- Fallback Image -->
          <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
       </b:if>
       
-      <!-- Twitter Cards -->
-      <meta content='summary_large_image' name='twitter:card'/>
-      <meta expr:content='data:post.title' name='twitter:title'/>
+      <meta expr:content='data:post.date.iso8601' property='article:published_time'/>
+      <meta expr:content='data:post.author.name' name='author'/>
   </b:with>
-
 <b:else/>
-  <!-- Homepage Meta -->
   <meta expr:content='data:blog.title' property='og:title'/>
   <meta content='website' property='og:type'/>
   <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
-  <meta expr:content='data:blog.metaDescription' property='og:description'/>
   <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
 </b:if>
 
-<meta content='TuttoXAndroid' property='og:site_name'/>
-<meta content='it_IT' property='og:locale'/>
-<!-- ============================================ -->
+<!-- STRUCTURED DATA (JSON-LD) FOR GOOGLE -->
+<script type='application/ld+json'>
+<b:if cond='data:view.isPost'>
+  <b:with value='data:widgets.Blog1.posts.first' var='post'>
+  {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "<data:post.url.canonical/>"
+    },
+    "headline": "<data:post.title.jsEscaped/>",
+    "image": [
+      "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.firstImageUrl'><data:post.firstImageUrl/><b:else/>https://i.imgur.com/l7YwbQe.png</b:if></b:if>"
+    ],
+    "datePublished": "<data:post.date.iso8601/>",
+    "dateModified": "<data:post.lastUpdated.iso8601/>",
+    "author": {
+      "@type": "Person",
+      "name": "<data:post.author.name.jsEscaped/>",
+      "url": "<data:post.author.profileUrl/>"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "TuttoXAndroid",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://i.imgur.com/l7YwbQe.png"
+      }
+    },
+    "description": "<data:post.snippet.jsEscaped/>"
+  }
+  </b:with>
+<b:else/>
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "TuttoXAndroid",
+    "url": "<data:blog.homepageUrl/>",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "<data:blog.homepageUrl/>search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+</b:if>
+</script>
 
 <b:skin><![CDATA[
   #navbar-iframe { display: none !important; }
@@ -74,10 +132,21 @@
     z-index: 9999;
   }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  /* SEO FALLBACK HIDDEN VISUALLY BUT VISIBLE TO BOTS */
+  .seo-fallback {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+  }
 ]]></b:skin>
 
 <script>
-  // Global storage for posts
   window.bloggerNativePosts = [];
   window.currentSinglePost = null;
 </script>
@@ -103,18 +172,28 @@
 </head>
 <body class='bg-white'>
   
-  <!-- DATA BRIDGE SECTION -->
+  <!-- DATA BRIDGE & SEO FALLBACK CONTENT -->
   <div style='display:none;'>
     <b:section id='content-bridge' name='Dati Blog' showaddelement='false'>
       <b:widget id='Blog1' locked='true' title='Post del blog' type='Blog' visible='true'>
         <b:includable id='main'>
           
-          <!-- LOGICA PER PAGINA SINGOLO POST -->
           <b:if cond='data:view.isPost'>
             <b:loop values='data:posts' var='post'>
-              <!-- Usiamo una TEXTAREA per preservare l'HTML grezzo senza rompere il JS -->
+              <!-- 1. TEXTAREA for React Hydration -->
               <textarea expr:id='"single-post-body-" + data:post.id' style='display:none;'><data:post.body/></textarea>
               
+              <!-- 2. NOSCRIPT FALLBACK FOR CRAWLERS (CRITICAL FOR SEO) -->
+              <!-- This puts the full article content in the HTML so Google sees it immediately -->
+              <noscript>
+                  <article>
+                      <h1><data:post.title/></h1>
+                      <div class='post-body'>
+                          <data:post.body/>
+                      </div>
+                  </article>
+              </noscript>
+
               <script>
                 (function() {
                   var ta = document.getElementById("single-post-body-<data:post.id/>");
@@ -130,22 +209,25 @@
                     date: "<data:post.date.date.jsEscaped/>",
                     url: "<data:post.url.canonical/>"
                   };
-                  // Also add to the main array so router can find it
                   window.bloggerNativePosts.push(window.currentSinglePost);
                 })();
               </script>
             </b:loop>
           </b:if>
 
-          <!-- LOGICA PER HOMEPAGE / ARCHIVI (Carichiamo solo snippet per performance) -->
           <b:if cond='!data:view.isPost'>
             <b:loop values='data:posts' var='post'>
+              <!-- Crawler Links for Homepage -->
+              <noscript>
+                  <h3><a expr:href='data:post.url'><data:post.title/></a></h3>
+                  <p><data:post.snippet/></p>
+              </noscript>
               <script>
                 window.bloggerNativePosts.push({
                   id: "<data:post.id/>",
                   title: "<data:post.title.jsEscaped/>",
                   excerpt: "<data:post.snippet.jsEscaped/>",
-                  content: "", /* Contento vuoto in home per non appesantire */
+                  content: "", 
                   category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
                   tags: [<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label'> "<data:label.name.jsEscaped/>", </b:loop></b:if>],
                   imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
@@ -167,7 +249,6 @@
   <script type='module'>
     //<![CDATA[
     const cacheBuster = "v" + new Date().getTime(); 
-    // CHANGE THIS URL TO YOUR GITHUB PAGES URL OR HOSTING IF NOT USING LOCAL
     import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
     .catch(err => {
       console.error("CRITICAL ERROR LOADING APP:", err);
@@ -175,7 +256,6 @@
       root.innerHTML = `
         <div style="font-family: sans-serif; text-align: center; padding: 40px;">
           <h1 style="color: #e31b23;">Caricamento in corso...</h1>
-          <p>Se vedi questo messaggio per molto tempo, ricarica la pagina.</p>
         </div>
       `;
     });
