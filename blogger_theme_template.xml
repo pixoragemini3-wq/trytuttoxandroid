@@ -5,19 +5,24 @@
 <meta charset='UTF-8' />
 <meta content='width=device-width, initial-scale=1.0' name='viewport' />
 
-<!-- DYNAMIC TITLE SEO -->
+<!-- DYNAMIC TITLE SEO IMPROVED -->
 <b:if cond='data:view.isPost'>
-  <title><data:blog.pageName/> - TuttoXAndroid</title>
+  <title><data:blog.pageName/> | TuttoXAndroid</title>
 <b:elseif cond='data:view.isHomepage'/>
-  <title><data:blog.title/></title>
+  <title><data:blog.title/> - News, Recensioni e Offerte Tech</title>
 <b:else/>
   <title><data:blog.pageName/> - TuttoXAndroid</title>
 </b:if>
 
-<!-- CANONICAL URL (Crucial for SEO) -->
+<!-- CANONICAL URL -->
 <link expr:href='data:view.url.canonical' rel='canonical'/>
 
-<!-- META DESCRIPTION & ROBOTS -->
+<!-- META INFO -->
+<meta content='TuttoXAndroid' name='author'/>
+<meta content='technology, android, smartphone, reviews, news, tech deals, recensioni, offerte, samsung, xiaomi, google pixel' name='keywords'/>
+<meta content='#e31b23' name='theme-color'/>
+
+<!-- ROBOTS & DESCRIPTION -->
 <b:if cond='data:view.isPost'>
   <b:if cond='data:blog.metaDescription'>
     <meta expr:content='data:blog.metaDescription' name='description'/>
@@ -30,29 +35,49 @@
   <meta content='index, follow' name='robots'/>
 </b:if>
 
-<!-- OPEN GRAPH & TWITTER CARDS -->
+<!-- SOCIAL MEDIA META TAGS (FIXED FOR PREVIEWS) -->
 <meta content='TuttoXAndroid' property='og:site_name'/>
 <meta content='it_IT' property='og:locale'/>
+
+<!-- TWITTER CARDS GLOBAL -->
 <meta content='summary_large_image' name='twitter:card'/>
+<meta content='@tuttoxandroid' name='twitter:site'/>
+<meta content='@tuttoxandroid' name='twitter:creator'/>
 
 <b:if cond='data:view.isPost'>
   <b:with value='data:widgets.Blog1.posts.first' var='post'>
       <meta expr:content='data:post.title' property='og:title'/>
+      <meta expr:content='data:post.title' name='twitter:title'/>
+      
       <meta content='article' property='og:type'/>
       <meta expr:content='data:post.url.canonical' property='og:url'/>
       
       <b:if cond='data:post.snippet'>
         <meta expr:content='data:post.snippet' property='og:description'/>
+        <meta expr:content='data:post.snippet' name='twitter:description'/>
+      <b:else/>
+        <meta expr:content='data:blog.metaDescription' property='og:description'/>
+        <meta expr:content='data:blog.metaDescription' name='twitter:description'/>
       </b:if>
       
-      <!-- Image Handling -->
+      <!-- CRITICAL IMAGE FIX: Force 1200x630 for Facebook/Twitter -->
       <b:if cond='data:post.featuredImage'>
         <meta expr:content='resizeImage(data:post.featuredImage, 1200, "1200:630")' property='og:image'/>
         <meta expr:content='resizeImage(data:post.featuredImage, 1200, "1200:630")' name='twitter:image'/>
+        <meta content='1200' property='og:image:width'/>
+        <meta content='630' property='og:image:height'/>
+        <meta content='image/jpeg' property='og:image:type'/>
       <b:elseif cond='data:post.firstImageUrl'/>
         <meta expr:content='resizeImage(data:post.firstImageUrl, 1200, "1200:630")' property='og:image'/>
+        <meta expr:content='resizeImage(data:post.firstImageUrl, 1200, "1200:630")' name='twitter:image'/>
+        <meta content='1200' property='og:image:width'/>
+        <meta content='630' property='og:image:height'/>
+        <meta content='image/jpeg' property='og:image:type'/>
       <b:else/>
          <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+         <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
+         <meta content='600' property='og:image:width'/>
+         <meta content='600' property='og:image:height'/>
       </b:if>
       
       <meta expr:content='data:post.date.iso8601' property='article:published_time'/>
@@ -60,9 +85,13 @@
   </b:with>
 <b:else/>
   <meta expr:content='data:blog.title' property='og:title'/>
+  <meta expr:content='data:blog.title' name='twitter:title'/>
   <meta content='website' property='og:type'/>
   <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
   <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+  <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
+  <meta content='600' property='og:image:width'/>
+  <meta content='600' property='og:image:height'/>
 </b:if>
 
 <!-- STRUCTURED DATA (JSON-LD) FOR GOOGLE -->

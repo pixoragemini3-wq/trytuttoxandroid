@@ -126,19 +126,15 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     'text-[#e31b23]';
 
   return (
-    <div onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.005] hover:shadow-lg rounded-2xl p-3 border border-transparent hover:border-gray-100 ${className}`}>
+    <div onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.02] hover:shadow-2xl rounded-2xl p-3 border border-transparent hover:border-gray-100 ${className}`}>
       
-      {/* IMAGE CONTAINER: 35% Width on Desktop */}
-      <div className="w-full md:w-[35%] shrink-0">
-         <div className="aspect-video md:aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100 shadow-sm border border-gray-100 relative">
-            <img 
-              src={article.imageUrl} 
-              alt={article.title}
-              onError={handleImageError}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-         </div>
-      </div>
+      {/* IMAGE - Directly styled with img selector as requested (35% width, proportional height/aspect) */}
+      <img 
+        src={article.imageUrl} 
+        alt={article.title}
+        onError={handleImageError}
+        className="w-full md:w-[35%] aspect-video md:aspect-[4/3] rounded-xl object-cover bg-gray-100 shadow-sm border border-gray-100 shrink-0 transition-transform duration-500 group-hover:brightness-95"
+      />
 
       {/* CONTENT CONTAINER: 65% Width */}
       <div className="flex-1 flex flex-col justify-center py-0.5">

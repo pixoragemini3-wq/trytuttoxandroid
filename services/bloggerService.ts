@@ -304,15 +304,13 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 
                 if (!link) continue;
 
-                // CHECK 1: Filter Logic - RELAXED
-                // We allow it if it has a valid store link even without explicit hashtag, 
-                // OR if it has the hashtags.
-                const hasTag = /#offerte|#offerta|#sconto|#promo|#amazon/i.test(textContent);
-                const hasPrice = /€|euro|gratis|free/i.test(textContent);
-                const isAmazonLink = /amzn|amazon/i.test(link);
+                // CHECK 1: Filter Logic - UPDATED
+                // User request: "selezionare solo le offerte che hanno hashtag"
+                const hasHashtag = /#\w+/i.test(textContent);
                 
-                // If it looks like a deal (link + price OR tag), accept it.
-                if (!hasTag && !hasPrice && !isAmazonLink) continue;
+                if (!hasHashtag) {
+                    continue; 
+                }
 
                 // Title Cleanup
                 let cleanText = textContent.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim(); 

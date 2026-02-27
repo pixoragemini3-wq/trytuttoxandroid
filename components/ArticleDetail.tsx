@@ -21,7 +21,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [isUpdating, setIsUpdating] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Newsletter Sidebar Logic
+  // Newsletter Logic
   const [sidebarEmail, setSidebarEmail] = useState('');
   const [sidebarSubscribeStatus, setSidebarSubscribeStatus] = useState<'idle' | 'success'>('idle');
 
@@ -99,12 +99,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     loadFull();
   }, [article.id]);
 
-  // --- HYDRATION LOGIC (Disqus & JS) ---
+  // --- HYDRATION & LINK FIXER LOGIC ---
   useEffect(() => {
     if (!contentRef.current) return;
     const container = contentRef.current;
 
-    // Expandable Rows
+    // 1. Fix External Links (Force new tab to prevent Sandbox "Connection Refused")
+    const links = container.querySelectorAll('a');
+    links.forEach(link => {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+      link.style.textDecoration = 'underline';
+      link.style.color = '#e31b23';
+      link.style.fontWeight = '700';
+    });
+
+    // 2. Expandable Rows
     const expandableRows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
     const handleRowClick = function(this: HTMLElement, e: Event) {
       e.stopPropagation(); e.preventDefault();
@@ -115,15 +125,38 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       row.addEventListener('click', handleRowClick as EventListener);
     });
 
-    // Disqus Injection
-    if (window && document) {
-        const disqusContainer = document.getElementById('disqus_thread');
-        if (disqusContainer) {
-            disqusContainer.innerHTML = '';
-            const d = document, s = d.createElement('script');
-            s.src = 'https://tuttoxandroid.disqus.com/embed.js'; 
+    // 3. Disqus Injection (SPA Compatible)
+    if (typeof window !== 'undefined' && document) {
+        const shortname = 'tuttoxandroid-com'; 
+        const identifier = article.id;
+        const url = article.url || window.location.href;
+        
+        if ((window as any).DISQUS) {
+            (window as any).DISQUS.reset({
+                reload: true,
+                config: function () {
+                    this.page.identifier = identifier;
+                    this.page.url = url;
+                    this.page.title = article.title;
+                }
+            });
+        } else {
+            const d = document;
+            const s = d.createElement('script');
+            s.src = `https://${shortname}.disqus.com/embed.js`;
             s.setAttribute('data-timestamp', new Date().toString());
-            (d.head || d.body).appendChild(s);
+            
+            (window as any).disqus_config = function () {
+                this.page.identifier = identifier;
+                this.page.url = url;
+                this.page.title = article.title;
+            };
+            
+            const disqusContainer = document.getElementById('disqus_thread');
+            if (disqusContainer && !document.getElementById('disqus_script')) {
+               s.id = 'disqus_script';
+               (d.head || d.body).appendChild(s);
+            }
         }
     }
 
@@ -138,7 +171,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   };
 
   const handleForceNativeLoad = () => {
-    if (article.url) window.location.href = article.url;
+    if (article.url) window.open(article.url, '_blank');
   };
 
   const handleShare = (platform: string) => {
@@ -164,32 +197,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     setShowShareMenu(false);
   };
   
-  const catBgClass = 
-    article.category === 'Smartphone' ? 'bg-blue-600' : 
-    article.category === 'Modding' ? 'bg-orange-500' : 
-    article.category === 'App & Giochi' ? 'bg-green-500' : 
-    article.category === 'Recensioni' ? 'bg-purple-600' : 
-    article.category === 'Guide' ? 'bg-cyan-600' : 
-    article.category === 'Offerte' ? 'bg-yellow-500' : 
-    'bg-[#e31b23]';
-
-  // Articles for the 4-grid at bottom
-  const recommendedGrid = moreArticles.slice(0, 4);
-  
-  const mostReadArticles = [...offerNews, ...moreArticles].slice(0, 5);
-
-  const ReadAlsoBlock = ({ article }: { article: Article }) => (
-    <div onClick={() => handleSuggestedClick(article)} className="not-prose my-6 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors group">
-      <h4 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Leggi Anche</h4>
-      <div className="flex gap-3 items-center">
-        <div className="w-16 h-12 bg-gray-200 shrink-0 overflow-hidden rounded">
-          <img src={article.imageUrl} className="w-full h-full object-cover" />
-        </div>
-        <h5 className="text-sm font-bold leading-tight group-hover:text-[#e31b23] transition-colors">{article.title}</h5>
-      </div>
-    </div>
-  );
-
   // --- SUB-COMPONENTS FOR DEALS ---
   const MobileDealsCarousel = () => (
     <div className="lg:hidden not-prose my-8 py-6 bg-gradient-to-r from-gray-50 to-white border-y border-gray-100 -mx-4 px-4 shadow-inner">
@@ -250,15 +257,26 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     </div>
   );
 
+  const ReadAlsoBlock = ({ article }: { article: Article }) => (
+    <div onClick={() => handleSuggestedClick(article)} className="not-prose my-6 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors group">
+      <h4 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Leggi Anche</h4>
+      <div className="flex gap-3 items-center">
+        <div className="w-16 h-12 bg-gray-200 shrink-0 overflow-hidden rounded">
+          <img src={article.imageUrl} className="w-full h-full object-cover" />
+        </div>
+        <h5 className="text-sm font-bold leading-tight group-hover:text-[#e31b23] transition-colors">{article.title}</h5>
+      </div>
+    </div>
+  );
+
   // --- STRUCTURED DATA ---
-  // Improved Schema to include specific "NewsArticle" fields
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     "headline": article.title,
     "image": [article.imageUrl],
     "datePublished": article.date, 
-    "dateModified": article.date, // Assuming modified is same for now, or update if available
+    "dateModified": article.date,
     "author": [{ "@type": "Person", "name": article.author, "url": "https://www.tuttoxandroid.com" }],
     "publisher": { 
         "@type": "Organization", 
@@ -272,12 +290,23 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     }
   };
 
+  const catBgClass = 
+    article.category === 'Smartphone' ? 'bg-blue-600' : 
+    article.category === 'Modding' ? 'bg-orange-500' : 
+    article.category === 'App & Giochi' ? 'bg-green-500' : 
+    article.category === 'Recensioni' ? 'bg-purple-600' : 
+    article.category === 'Guide' ? 'bg-cyan-600' : 
+    article.category === 'Offerte' ? 'bg-yellow-500' : 
+    'bg-[#e31b23]';
+
+  const recommendedGrid = moreArticles.slice(0, 4);
+  const mostReadArticles = [...offerNews, ...moreArticles].slice(0, 5);
+
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
       <Helmet>
-        <title>{article.title} - TuttoXAndroid</title>
+        <title>{article.title} | TuttoXAndroid</title>
         <meta name="description" content={article.excerpt} />
-        {/* Canonical is Critical for SEO recovery */}
         {article.url && <link rel="canonical" href={article.url} />}
         
         {/* Open Graph / Social */}
@@ -287,7 +316,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
         <meta property="og:type" content="article" />
         <meta property="og:url" content={article.url || window.location.href} />
         <meta property="article:published_time" content={article.date} />
+        
+        {/* Twitter Cards */}
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@tuttoxandroid" />
+        <meta name="twitter:creator" content="@tuttoxandroid" />
         <meta name="twitter:title" content={article.title} />
         <meta name="twitter:description" content={article.excerpt} />
         <meta name="twitter:image" content={article.imageUrl} />
@@ -339,7 +372,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     {showShareMenu && (
                         <div className="absolute right-0 top-full mt-2 bg-white shadow-2xl rounded-xl p-4 grid grid-cols-4 gap-3 border border-gray-100 z-50 w-64 animate-in fade-in slide-in-from-top-2">
                              <button onClick={() => handleShare('copy')} className="flex flex-col items-center gap-1 hover:scale-105 transition-transform"><div className="w-10 h-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg></div><span className="text-[8px] font-bold uppercase">Copy</span></button>
-                             {/* Other buttons hidden for brevity */}
                         </div>
                     )}
                 </div>
