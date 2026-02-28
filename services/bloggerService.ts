@@ -35,6 +35,11 @@ const extractDealWidgetData = (content: string, defaultLink: string, defaultTitl
   return null;
 };
 
+const stripInlineStyles = (html: string): string => {
+  if (!html) return "";
+  return html.replace(/\sstyle="[^"]*"/gi, '');
+};
+
 const parseArticleContent = (rawContent: string): { cleanContent: string; dealData: DealData | null } => {
   const dealRegex = /\[DEAL\s+old="([^"]*)"\s+new="([^"]*)"\s+link="([^"]*)"\]/i;
   const match = rawContent.match(dealRegex);
@@ -45,6 +50,10 @@ const parseArticleContent = (rawContent: string): { cleanContent: string; dealDa
     dealData = { oldPrice: match[1], newPrice: match[2], link: match[3] };
     cleanContent = rawContent.replace(dealRegex, '');
   }
+  
+  // Clean inline styles to prevent layout breakage
+  cleanContent = stripInlineStyles(cleanContent);
+  
   return { cleanContent, dealData };
 };
 
@@ -220,6 +229,33 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     });
   } catch (error) {
     return [];
+  }
+};
+
+export const fetchArticleByUrl = async (url: string): Promise<Article | null> => {
+  try {
+    // 1. Extract slug/keywords from URL
+    // Example: /2015/09/ipmart-forum-italia.html -> ipmart forum italia
+    const slugMatch = url.match(/\/([^/]+)\.html$/);
+    if (!slugMatch) return null;
+    
+    const slug = slugMatch[1];
+    const keywords = slug.replace(/-/g, ' ');
+    
+    // 2. Search for the article
+    const results = await fetchBloggerPosts(undefined, keywords);
+    
+    // 3. Find exact match or best candidate
+    // We check if the result's URL contains the slug
+    const match = results.find(p => p.url.includes(slug));
+    
+    if (match) return match;
+    
+    // Fallback: Return first result if highly relevant (optional, maybe risky)
+    return results.length > 0 ? results[0] : null;
+  } catch (e) {
+    console.error("Error fetching by URL", e);
+    return null;
   }
 };
 

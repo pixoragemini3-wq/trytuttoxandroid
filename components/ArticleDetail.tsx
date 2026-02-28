@@ -40,7 +40,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // Check if content appears truncated
   const isTruncated = useMemo(() => {
-     return (!fullContent || fullContent.length < 600) && article.url;
+     const hasMoreTag = fullContent?.includes('<!--more-->') || fullContent?.includes('name="more"');
+     return ((!fullContent || fullContent.length < 600) || hasMoreTag) && article.url;
   }, [fullContent, article.url]);
 
   const catColor = 
@@ -403,7 +404,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 </div>
 
                 {/* Content Body */}
-                <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto [&_span]:!font-inherit [&_span]:!text-inherit [&_span]:!leading-inherit [&_p]:mb-6 marker:text-gray-800">
+                <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto [&_span]:!font-inherit [&_span]:!text-inherit [&_span]:!leading-inherit [&_p]:mb-6 [&_div]:mb-4 marker:text-gray-800">
                     
                     {/* Part 1 */}
                     <div dangerouslySetInnerHTML={{ __html: contentParts[0] }} />

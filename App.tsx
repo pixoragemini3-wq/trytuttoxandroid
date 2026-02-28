@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL } from './constants';
 import ArticleCard from './components/ArticleCard';
 import { Article, Deal } from './types';
-import { fetchBloggerPosts, fetchBloggerDeals } from './services/bloggerService';
+import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl } from './services/bloggerService';
 import SocialSidebar from './components/SocialSidebar';
 import SocialSection from './components/SocialSection';
 // TopStoriesMobile removed here, moved to Layout
@@ -64,6 +65,7 @@ const App: React.FC = () => {
   
   // Split loading states to prevent blocking UI
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
+  const [isResolvingUrl, setIsResolvingUrl] = useState(false);
   
   // Animation Direction State for Swipe Effect
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
@@ -186,6 +188,36 @@ const App: React.FC = () => {
 
     init();
   }, []);
+
+  // EFFECT: Handle Direct URL Access (Deep Linking) for Old Articles
+  useEffect(() => {
+    const handleDeepLink = async () => {
+      const path = location.pathname;
+      // Check if it looks like a blog post URL (ends in .html) and we don't have the article
+      if (path.endsWith('.html') && !currentArticle && !isResolvingUrl) {
+        setIsResolvingUrl(true);
+        try {
+           const found = await fetchArticleByUrl(path);
+           if (found) {
+             setCurrentArticle(found);
+             // Also add to articles list to prevent re-fetching if navigating back
+             setArticles(prev => {
+                if (prev.find(a => a.id === found.id)) return prev;
+                return [found, ...prev];
+             });
+           }
+        } catch (e) {
+           console.error("Failed to resolve deep link", e);
+        } finally {
+           setIsResolvingUrl(false);
+        }
+      }
+    };
+    
+    if (articles.length > 0 || isArticlesLoading === false) {
+        handleDeepLink();
+    }
+  }, [location.pathname, currentArticle, articles.length, isArticlesLoading]);
 
   // Scroll handlers
   useEffect(() => {
@@ -328,6 +360,11 @@ const App: React.FC = () => {
     setActiveCategory(nav);
     setVisibleNewsCount(6); 
     setIsMobileMenuOpen(false);
+    
+    // Scroll to news section
+    setTimeout(() => {
+        newsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
     
     if (!isHome) {
         navigate('/');
@@ -522,6 +559,35 @@ const App: React.FC = () => {
       searchInputRef={searchInputRef}
       boxedLayout={layoutConfig.boxedLayout}
     >
+        <Helmet>
+            <title>{activeCategory !== 'Tutti' ? `${activeCategory} | TuttoXAndroid` : 'TuttoXAndroid | Il Portale Tech Moderno'}</title>
+            <meta name="description" content="Il portale di riferimento per Android in Italia. News in tempo reale, recensioni smartphone, guide modding, migliori app e offerte tech esclusive." />
+            <meta name="keywords" content="android, smartphone, recensioni, news, modding, guide, offerte, samsung, xiaomi, pixel" />
+            <link rel="canonical" href="https://www.tuttoxandroid.com/" />
+            
+            {/* Open Graph */}
+            <meta property="og:type" content="website" />
+            <meta property="og:url" content="https://www.tuttoxandroid.com/" />
+            <meta property="og:title" content="TuttoXAndroid | Il Portale Tech Moderno" />
+            <meta property="og:description" content="News, recensioni e guide sul mondo Android e Tech." />
+            <meta property="og:image" content={LOGO_URL} />
+
+            {/* Structured Data for WebSite */}
+            <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "TuttoXAndroid",
+              "url": "https://www.tuttoxandroid.com/",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://www.tuttoxandroid.com/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })}
+            </script>
+        </Helmet>
+
         {/* Loading for Articles - Only shows if no articles available */}
         {isArticlesLoading && articles.length === 0 && !currentArticle && (
           <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-white">
@@ -622,7 +688,7 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {isHome && !isSearch && (
+                {isHome && !isSearch && deals.length > 0 && (
                    <div className="mt-4 px-4 lg:px-0">
                       <DealsSection />
                    </div>
