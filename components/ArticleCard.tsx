@@ -37,8 +37,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   if (article.type === 'hero') {
     return (
       <div onClick={onClick} className={`relative w-full h-full lg:rounded-[2rem] bg-white flex flex-col md:flex-row shadow-xl group cursor-pointer overflow-hidden ${className}`}>
-        {/* Image Section */}
-        <div className="w-full md:w-[35%] aspect-[4/3] md:aspect-auto md:h-full overflow-hidden relative bg-gray-50 shrink-0">
+        {/* Image Section - Adjusted width and aspect ratio */}
+        <div className="w-full md:w-[50%] lg:w-[60%] aspect-video md:aspect-auto md:h-full overflow-hidden relative bg-gray-50 shrink-0">
           <img 
             src={article.imageUrl} 
             alt={article.title}
@@ -48,8 +48,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           <div className="absolute inset-0 bg-black/5"></div>
         </div>
         
-        {/* Content Section - 65% Width */}
-        <div className="w-full md:w-[65%] p-5 md:p-6 lg:p-8 bg-[#e31b23] text-white flex flex-col justify-between transition-all duration-500 group-hover:bg-[#c0ff8c] relative">
+        {/* Content Section - Adjusted width */}
+        <div className="w-full md:w-[50%] lg:w-[40%] p-5 md:p-6 lg:p-8 bg-[#e31b23] text-white flex flex-col justify-between transition-all duration-500 group-hover:bg-[#c0ff8c] relative">
           
           <div className="flex flex-col items-start w-full">
              {/* Category Tag */}
@@ -58,13 +58,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
              </span>
 
              {/* Typography: Reduced size from 6xl to 4xl/5xl range */}
-             <h2 className="font-condensed text-3xl md:text-4xl lg:text-5xl font-black leading-[0.95] uppercase tracking-tight w-full group-hover:text-black transition-colors line-clamp-3 text-left">
+             <h2 className="font-condensed text-2xl md:text-3xl lg:text-4xl font-black leading-[0.95] uppercase tracking-tight w-full group-hover:text-black transition-colors line-clamp-3 text-justify">
               {article.title}
             </h2>
             
             {/* Excerpt */}
-            <p className="hidden xl:block text-sm font-medium leading-normal opacity-90 group-hover:text-black transition-colors mt-3 max-w-xl line-clamp-2">
-              {article.excerpt.substring(0, 150)}...
+            <p className="hidden md:block text-xs lg:text-sm font-medium leading-normal opacity-90 group-hover:text-black transition-colors mt-3 max-w-xl line-clamp-3 lg:line-clamp-4">
+              {article.excerpt}
             </p>
           </div>
           
@@ -105,7 +105,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
            >
              {article.category}
            </span>
-           <h3 className="text-white font-condensed text-lg lg:text-xl font-bold uppercase leading-none tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3">
+           <h3 className="text-white font-condensed text-lg lg:text-xl font-bold uppercase leading-none tracking-tight group-hover:text-[#c0ff8c] transition-colors line-clamp-3 text-justify">
              {article.title}
            </h3>
         </div>
@@ -143,7 +143,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
         </span>
         
         {/* Title: Reduced from 3xl/Black to xl/Bold */}
-        <h3 className="font-condensed text-lg md:text-xl lg:text-2xl font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors mb-2 line-clamp-3 tracking-tight">
+        <h3 className="font-condensed text-lg md:text-xl lg:text-2xl font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors mb-2 line-clamp-3 tracking-tight text-justify">
           {article.title}
         </h3>
         

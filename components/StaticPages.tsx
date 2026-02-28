@@ -1,10 +1,16 @@
 
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 
 // Pagina Chi Siamo
 export const AboutPage: React.FC = () => {
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500">
+      <Helmet>
+        <title>Chi Siamo | TuttoXAndroid</title>
+        <meta name="description" content="Scopri la storia di TuttoXAndroid, il punto di riferimento per l'ecosistema Android in Italia dal 2013." />
+        <link rel="canonical" href="https://www.tuttoxandroid.com/about" />
+      </Helmet>
       {/* Header Hero */}
       <div className="bg-black text-white py-20 px-4 text-center border-b-8 border-[#e31b23]">
         <h1 className="font-condensed text-6xl md:text-8xl font-black uppercase italic tracking-tighter mb-4">La Nostra Storia</h1>
@@ -53,6 +59,11 @@ export const AboutPage: React.FC = () => {
 export const CollabPage: React.FC = () => {
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500">
+      <Helmet>
+        <title>Lavora con Noi | TuttoXAndroid</title>
+        <meta name="description" content="Entra nel team di TuttoXAndroid. Cerchiamo appassionati di tecnologia per scrivere news, recensioni e guide." />
+        <link rel="canonical" href="https://www.tuttoxandroid.com/collab" />
+      </Helmet>
       <div className="bg-[#e31b23] text-white py-20 px-4 text-center">
         <h1 className="font-condensed text-6xl md:text-8xl font-black uppercase italic tracking-tighter mb-4">Join The Team</h1>
         <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl mx-auto uppercase tracking-widest">
