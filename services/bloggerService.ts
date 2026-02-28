@@ -165,7 +165,10 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     }
 
     let feedPath = '/feeds/posts/default?alt=json&max-results=150';
-    if (category && category !== 'Tutti') {
+    
+    if (searchQuery) {
+       feedPath = `/feeds/posts/default?alt=json&q=${encodeURIComponent(searchQuery)}&max-results=20`;
+    } else if (category && category !== 'Tutti') {
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100`;
     }
     
