@@ -199,7 +199,6 @@ const App: React.FC = () => {
         try {
            const found = await fetchArticleByUrl(path);
            if (found) {
-             setCurrentArticle(found);
              // Also add to articles list to prevent re-fetching if navigating back
              setArticles(prev => {
                 if (prev.find(a => a.id === found.id)) return prev;
