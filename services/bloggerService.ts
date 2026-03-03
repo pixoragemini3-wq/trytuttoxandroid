@@ -85,15 +85,22 @@ const getFirstImageFromContent = (htmlContent: string): string | null => {
 
 // --- CORS PROXY CONFIGURATION ---
 const TARGET_DOMAIN = 'https://www.tuttoxandroid.com';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+// List of available proxies
+const PROXY_LIST = [
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+];
 
 const getFetchUrl = (path: string) => {
-  const hostname = window.location.hostname;
-  if (hostname.includes('localhost') || hostname.includes('stackblitz') || hostname.includes('webcontainer') || hostname.includes('googleusercontent')) {
-    const fullTargetUrl = `${TARGET_DOMAIN}${path}`;
-    return `${CORS_PROXY}${encodeURIComponent(fullTargetUrl)}`;
+  // If we are on the target domain, fetch directly
+  if (window.location.hostname === 'www.tuttoxandroid.com') {
+    return path;
   }
-  return path;
+  // Otherwise, we need a proxy. We return the full target URL, 
+  // and the fetch function will handle wrapping it with a proxy.
+  return `${TARGET_DOMAIN}${path}`;
 };
 
 const fetchWithTimeout = async (url: string, timeout = 15000) => {
@@ -109,14 +116,40 @@ const fetchWithTimeout = async (url: string, timeout = 15000) => {
   }
 };
 
+// New helper to try multiple proxies
+const fetchWithProxyFallback = async (targetUrl: string, timeout = 10000): Promise<Response> => {
+  // If we are on the target domain, just fetch directly
+  if (window.location.hostname === 'www.tuttoxandroid.com') {
+     return fetchWithTimeout(targetUrl.replace(TARGET_DOMAIN, ''), timeout);
+  }
+
+  let lastError;
+  
+  for (const proxyFn of PROXY_LIST) {
+    try {
+      const proxyUrl = proxyFn(targetUrl);
+      const response = await fetchWithTimeout(proxyUrl, timeout);
+      if (response.ok) {
+        return response;
+      }
+      // If 403 or 500, try next proxy
+      console.warn(`Proxy failed: ${proxyUrl} - Status: ${response.status}`);
+    } catch (e) {
+      console.warn(`Proxy error: ${proxyFn(targetUrl)}`, e);
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('All proxies failed');
+};
+
 export const fetchArticleById = async (id: string): Promise<string | null> => {
   if (id.length < 5) {
       const mock = MOCK_ARTICLES.find(a => a.id === id);
       return mock ? mock.content : null;
   }
   try {
-    const feedUrl = getFetchUrl(`/feeds/posts/default/${id}?alt=json`);
-    const response = await fetch(feedUrl);
+    const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/${id}?alt=json`;
+    const response = await fetchWithProxyFallback(targetUrl);
     if (!response.ok) return null;
     const data = await response.json();
     const rawContent = data.entry?.content?.$t || data.entry?.summary?.$t || "";
@@ -133,6 +166,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
     const shouldUseNative = nativePosts && nativePosts.length > 20;
 
     if (shouldUseNative) {
+      // ... existing native logic ...
       let filtered = nativePosts.map((p: any) => {
           const isFeatured = p.category === 'Evidenza' || p.title.includes('⭐') || (p.tags && p.tags.includes('Evidenza'));
           const { cleanContent, dealData } = parseArticleContent(p.content || '');
@@ -172,7 +206,9 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100`;
     }
     
-    const response = await fetchWithTimeout(getFetchUrl(feedPath), 8000);
+    const targetUrl = `${TARGET_DOMAIN}${feedPath}`;
+    const response = await fetchWithProxyFallback(targetUrl, 10000);
+    
     if (!response.ok) return [];
     
     const data = await response.json();
@@ -266,7 +302,8 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
     const bloggerPromise = (async () => {
         try {
-            const response = await fetchWithTimeout(getFetchUrl('/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20'), 5000);
+            const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20`;
+            const response = await fetchWithProxyFallback(targetUrl, 5000);
             if (!response.ok) return [];
             const data = await response.json();
             const entries = data.feed.entry || [];

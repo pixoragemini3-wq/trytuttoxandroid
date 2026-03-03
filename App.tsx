@@ -14,6 +14,7 @@ import ArticleDetail from './components/ArticleDetail';
 import AdUnit from './components/AdUnit'; 
 import DesktopSidebar from './components/DesktopSidebar'; 
 import { AboutPage, CollabPage } from './components/StaticPages'; 
+import GPSCalculator from './components/gps/GPSCalculator';
 import Layout from './components/Layout';
 
 // Utility per mescolare l'array (Fisher-Yates shuffle)
@@ -104,9 +105,10 @@ const App: React.FC = () => {
   // --- ROUTER LOGIC ---
   const isAbout = location.pathname === '/about';
   const isCollab = location.pathname === '/collab';
+  const isGPS = location.pathname === '/calcolatore-gps';
   const isArticle = location.pathname.endsWith('.html') || location.pathname.startsWith('/article/');
   const isSearch = location.pathname === '/search';
-  const isHome = !isAbout && !isCollab && !isArticle && !isSearch;
+  const isHome = !isAbout && !isCollab && !isArticle && !isSearch && !isGPS;
 
   // Function to extract the current article based on URL
   const getCurrentArticle = () => {
@@ -199,7 +201,6 @@ const App: React.FC = () => {
         try {
            const found = await fetchArticleByUrl(path);
            if (found) {
-             setCurrentArticle(found);
              // Also add to articles list to prevent re-fetching if navigating back
              setArticles(prev => {
                 if (prev.find(a => a.id === found.id)) return prev;
@@ -573,19 +574,22 @@ const App: React.FC = () => {
             <meta property="og:image" content={LOGO_URL} />
 
             {/* Structured Data for WebSite */}
-            <script type="application/ld+json">
-            {JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              "name": "TuttoXAndroid",
-              "url": "https://www.tuttoxandroid.com/",
-              "potentialAction": {
-                "@type": "SearchAction",
-                "target": "https://www.tuttoxandroid.com/search?q={search_term_string}",
-                "query-input": "required name=search_term_string"
-              }
-            })}
-            </script>
+            <script 
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "WebSite",
+                  "name": "TuttoXAndroid",
+                  "url": "https://www.tuttoxandroid.com/",
+                  "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": "https://www.tuttoxandroid.com/search?q={search_term_string}",
+                    "query-input": "required name=search_term_string"
+                  }
+                }).replace(/<\/script>/g, '<\\/script>')
+              }}
+            />
         </Helmet>
 
         {/* Loading for Articles - Only shows if no articles available */}
@@ -599,6 +603,7 @@ const App: React.FC = () => {
         {/* --- STATIC PAGES --- */}
         {isAbout && <AboutPage />}
         {isCollab && <CollabPage />}
+        {isGPS && <GPSCalculator />}
 
         {/* --- ARTICLE DETAIL VIEW --- */}
         {(isArticle && (currentArticle || location.pathname.endsWith('.html'))) && (
