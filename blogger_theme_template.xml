@@ -88,10 +88,17 @@
   <meta expr:content='data:blog.title' name='twitter:title'/>
   <meta content='website' property='og:type'/>
   <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
-  <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
-  <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
-  <meta content='600' property='og:image:width'/>
-  <meta content='600' property='og:image:height'/>
+  <b:if cond='data:view.url contains "calcolatore-gps"'>
+    <meta content='https://i.imgur.com/sTIlIOc.png' property='og:image'/>
+    <meta content='https://i.imgur.com/sTIlIOc.png' name='twitter:image'/>
+    <meta content='1200' property='og:image:width'/>
+    <meta content='630' property='og:image:height'/>
+  <b:else/>
+    <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+    <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
+    <meta content='600' property='og:image:width'/>
+    <meta content='600' property='og:image:height'/>
+  </b:if>
 </b:if>
 
 <!-- STRUCTURED DATA (JSON-LD) FOR GOOGLE -->
