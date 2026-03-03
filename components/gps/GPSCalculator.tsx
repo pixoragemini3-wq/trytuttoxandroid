@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { GPSState, INITIAL_STATE } from './types';
 import Step1Setup from './Step1Setup';
@@ -13,6 +13,7 @@ const GPSCalculator: React.FC = () => {
   const [state, setState] = useState<GPSState>(INITIAL_STATE);
   const [scores, setScores] = useState({ access: 0, cultural: 0, service: 0, total: 0 });
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const calculatorRef = useRef<HTMLDivElement>(null);
 
   // Load from local storage on mount? Maybe later.
 
@@ -27,6 +28,13 @@ const GPSCalculator: React.FC = () => {
       total: access + cultural + service
     });
   }, [state]);
+
+  const scrollToTop = () => {
+    if (window.innerWidth < 1024 && calculatorRef.current) {
+      const y = calculatorRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   const updateSetup = (field: keyof GPSState['setup'], value: any) => {
     setState(prev => ({ ...prev, setup: { ...prev.setup, [field]: value } }));
@@ -49,6 +57,7 @@ const GPSCalculator: React.FC = () => {
       setShowTelegramModal(true);
     } else if (step < 5) {
       setStep(step + 1);
+      scrollToTop();
     }
   };
 
@@ -56,15 +65,20 @@ const GPSCalculator: React.FC = () => {
     window.open('https://t.me/tuttoxandroid', '_blank');
     setShowTelegramModal(false);
     setStep(5);
+    scrollToTop();
   };
 
   const handleSkipTelegram = () => {
     setShowTelegramModal(false);
     setStep(5);
+    scrollToTop();
   };
 
   const prevStep = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 1) {
+      setStep(step - 1);
+      scrollToTop();
+    }
   };
 
   const isStepValid = () => {
@@ -80,7 +94,7 @@ const GPSCalculator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 pb-32 md:pb-8">
+    <div className="max-w-5xl mx-auto px-4 py-8 pb-32 md:pb-8" ref={calculatorRef}>
       <Helmet>
         <title>Calcolatore GPS 2026 | Simula il tuo punteggio</title>
         <meta property="og:title" content="Calcolatore GPS 2026 | Simula il tuo punteggio" />
