@@ -10,8 +10,29 @@ const GRADES: Grade[] = ['Infanzia', 'Primaria', 'Secondaria I', 'Secondaria II'
 const FASCE: Fascia[] = ['I Fascia', 'II Fascia'];
 
 const COMMON_CDC = [
-  'A-01', 'A-11', 'A-12', 'A-13', 'A-18', 'A-19', 'A-20', 'A-21', 'A-22', 'A-24', 'A-26', 'A-27', 'A-28', 
-  'A-45', 'A-46', 'A-47', 'A-48', 'A-49', 'A-50', 'A-60', 'B-02', 'B-16', 'B-20'
+  'A-01 Arte e immagine nella scuola secondaria di I grado',
+  'A-11 Discipline letterarie e latino',
+  'A-12 Discipline letterarie negli istituti di istruzione secondaria di II grado',
+  'A-13 Discipline letterarie, latino e greco',
+  'A-18 Filosofia e Scienze umane',
+  'A-19 Filosofia e Storia',
+  'A-20 Fisica',
+  'A-21 Geografia',
+  'A-22 Italiano, storia, geografia, nella scuola secondaria di I grado',
+  'A-24 Lingue e culture straniere negli istituti di istruzione secondaria di II grado',
+  'A-26 Matematica',
+  'A-27 Matematica e Fisica',
+  'A-28 Matematica e scienze',
+  'A-45 Scienze economico-aziendali',
+  'A-46 Scienze giuridico-economiche',
+  'A-47 Scienze matematiche applicate',
+  'A-48 Scienze motorie e sportive negli istituti di istruzione secondaria di II grado',
+  'A-49 Scienze motorie e sportive nella scuola secondaria di I grado',
+  'A-50 Scienze naturali, chimiche e biologiche',
+  'A-60 Tecnologia nella scuola secondaria di I grado',
+  'B-02 Conversazione in lingua straniera',
+  'B-16 Laboratori di scienze e tecnologie informatiche',
+  'B-20 Laboratori di servizi enogastronomici, settore cucina'
 ];
 
 const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
@@ -112,10 +133,41 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
           </div>
         )}
 
-        {/* 3. Fascia (Only if Post Type selected) */}
+        {/* 3. CDC (Only if Post Type selected) */}
         {data.postType && (
           <div className="animate-in fade-in slide-in-from-top-2">
-            <label className="block text-lg font-bold text-gray-800 mb-3">3. In quale fascia ti inserisci?</label>
+            <label className="block text-lg font-bold text-gray-800 mb-3">3. Classe di Concorso</label>
+            
+            {data.postType === 'Sostegno' ? (
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <p className="text-purple-900 font-medium">Classe di Concorso assegnata automaticamente:</p>
+                <p className="text-2xl font-bold text-purple-700 mt-1">{data.cdc}</p>
+              </div>
+            ) : (
+              <div>
+                <input 
+                  list="cdc-list"
+                  type="text" 
+                  value={data.cdc} 
+                  onChange={(e) => onChange('cdc', e.target.value.toUpperCase())}
+                  placeholder={data.postType === 'ITP' ? "Es. B-02, B-16..." : "Es. A-18, A-46..."}
+                  className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase font-mono text-lg"
+                />
+                <datalist id="cdc-list">
+                  {COMMON_CDC.map(c => <option key={c} value={c} />)}
+                </datalist>
+                <p className="text-sm text-gray-500 mt-2">
+                  Digita il codice della tua classe di concorso.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. Fascia (Only if CDC selected) */}
+        {data.cdc && (
+          <div className="animate-in fade-in slide-in-from-top-2">
+            <label className="block text-lg font-bold text-gray-800 mb-3">4. In quale fascia ti inserisci?</label>
             <div className="flex gap-4 mb-4">
               {FASCE.map(f => (
                 <label key={f} className={`flex-1 cursor-pointer border-2 rounded-xl p-4 flex items-center justify-center gap-3 transition-all ${
@@ -141,37 +193,6 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
               <p><strong className="text-gray-900">I Fascia:</strong> Per docenti in possesso di <strong>abilitazione</strong> (su materia) o <strong>specializzazione</strong> (su sostegno).</p>
               <p><strong className="text-gray-900">II Fascia:</strong> Per docenti <strong>non abilitati</strong> ma in possesso del titolo di studio valido per l'accesso (Laurea + CFU, Diploma ITP, ecc.).</p>
             </div>
-          </div>
-        )}
-
-        {/* 4. CDC (Only if Fascia selected) */}
-        {data.fascia && (
-          <div className="animate-in fade-in slide-in-from-top-2">
-            <label className="block text-lg font-bold text-gray-800 mb-3">4. Classe di Concorso</label>
-            
-            {data.postType === 'Sostegno' ? (
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                <p className="text-purple-900 font-medium">Classe di Concorso assegnata automaticamente:</p>
-                <p className="text-2xl font-bold text-purple-700 mt-1">{data.cdc}</p>
-              </div>
-            ) : (
-              <div>
-                <input 
-                  list="cdc-list"
-                  type="text" 
-                  value={data.cdc} 
-                  onChange={(e) => onChange('cdc', e.target.value.toUpperCase())}
-                  placeholder={data.postType === 'ITP' ? "Es. B-02, B-16..." : "Es. A-18, A-46..."}
-                  className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase font-mono text-lg"
-                />
-                <datalist id="cdc-list">
-                  {COMMON_CDC.map(c => <option key={c} value={c} />)}
-                </datalist>
-                <p className="text-sm text-gray-500 mt-2">
-                  Digita il codice della tua classe di concorso.
-                </p>
-              </div>
-            )}
           </div>
         )}
       </div>
