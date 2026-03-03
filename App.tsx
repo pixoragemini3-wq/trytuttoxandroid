@@ -199,6 +199,7 @@ const App: React.FC = () => {
         try {
            const found = await fetchArticleByUrl(path);
            if (found) {
+             setCurrentArticle(found);
              // Also add to articles list to prevent re-fetching if navigating back
              setArticles(prev => {
                 if (prev.find(a => a.id === found.id)) return prev;
@@ -572,22 +573,19 @@ const App: React.FC = () => {
             <meta property="og:image" content={LOGO_URL} />
 
             {/* Structured Data for WebSite */}
-            <script 
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{
-                __html: JSON.stringify({
-                  "@context": "https://schema.org",
-                  "@type": "WebSite",
-                  "name": "TuttoXAndroid",
-                  "url": "https://www.tuttoxandroid.com/",
-                  "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": "https://www.tuttoxandroid.com/search?q={search_term_string}",
-                    "query-input": "required name=search_term_string"
-                  }
-                }).replace(/<\/script>/g, '<\\/script>')
-              }}
-            />
+            <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "TuttoXAndroid",
+              "url": "https://www.tuttoxandroid.com/",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://www.tuttoxandroid.com/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })}
+            </script>
         </Helmet>
 
         {/* Loading for Articles - Only shows if no articles available */}
