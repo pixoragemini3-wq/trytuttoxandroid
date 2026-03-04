@@ -24,6 +24,7 @@ export interface CulturalTitlesState {
   perfezionamento_count: number;
   
   hasAbilitazione: boolean;
+  abilitazioni_count: number;
   abilitazioni: { cdc: string; vote: number; voteBase: number }[];
   
   hasConcorso: boolean;
@@ -34,8 +35,6 @@ export interface CulturalTitlesState {
   
   itCertifications: string[]; // List of IDs
   hasOldItCertificationsMax: boolean; // User declares they already have 2 points from old certs
-  
-  pubblicazioni: number; // count
 }
 
 export interface GPSState {
@@ -50,6 +49,13 @@ export interface GPSState {
     voteBase: number; // 110, 100, or 30
     isLode: boolean;
     bonusId: string; // for I Fascia
+    hasAbilitazione?: boolean;
+    abilitazioneCdc?: string;
+    abilitazioneVote?: number;
+    abilitazioneVoteBase?: number;
+    laureaVote?: number;
+    laureaVoteBase?: number;
+    laureaLode?: boolean;
   };
   culturalTitles: CulturalTitlesState;
   service: ServiceEntry[];
@@ -77,6 +83,7 @@ export const INITIAL_STATE: GPSState = {
     hasPerfezionamento: false,
     perfezionamento_count: 0,
     hasAbilitazione: false,
+    abilitazioni_count: 0,
     abilitazioni: [],
     hasConcorso: false,
     concorsi: [],
@@ -84,7 +91,6 @@ export const INITIAL_STATE: GPSState = {
     hasClil: false,
     itCertifications: [],
     hasOldItCertificationsMax: false,
-    pubblicazioni: 0,
   },
   service: [],
 };

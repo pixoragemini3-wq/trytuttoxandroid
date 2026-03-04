@@ -47,16 +47,7 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
   // Reset CDC when post type changes
   const handlePostTypeChange = (type: PostType) => {
     onChange('postType', type);
-    
-    // Auto-set CDC for Sostegno based on Grade
-    if (type === 'Sostegno') {
-      if (data.grade === 'Infanzia') onChange('cdc', 'ADAA');
-      else if (data.grade === 'Primaria') onChange('cdc', 'ADEE');
-      else if (data.grade === 'Secondaria I') onChange('cdc', 'ADMM');
-      else if (data.grade === 'Secondaria II') onChange('cdc', 'ADSS');
-    } else {
-      onChange('cdc', '');
-    }
+    onChange('cdc', '');
   };
 
   return (
@@ -139,9 +130,21 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
             <label className="block text-lg font-bold text-gray-800 mb-3">3. Classe di Concorso</label>
             
             {data.postType === 'Sostegno' ? (
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                <p className="text-purple-900 font-medium">Classe di Concorso assegnata automaticamente:</p>
-                <p className="text-2xl font-bold text-purple-700 mt-1">{data.cdc}</p>
+              <div>
+                <select
+                  value={data.cdc}
+                  onChange={(e) => onChange('cdc', e.target.value)}
+                  className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-lg bg-white"
+                >
+                  <option value="">Seleziona Classe di Concorso Sostegno</option>
+                  <option value="ADAA">ADAA - Sostegno Infanzia</option>
+                  <option value="ADEE">ADEE - Sostegno Primaria</option>
+                  <option value="ADMM">ADMM - Sostegno Secondaria I grado</option>
+                  <option value="ADSS">ADSS - Sostegno Secondaria II grado</option>
+                </select>
+                <p className="text-sm text-gray-500 mt-2">
+                  Seleziona la tua classe di concorso per il sostegno.
+                </p>
               </div>
             ) : (
               <div>

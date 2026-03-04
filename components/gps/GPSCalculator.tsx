@@ -13,6 +13,7 @@ const GPSCalculator: React.FC = () => {
   const [state, setState] = useState<GPSState>(INITIAL_STATE);
   const [scores, setScores] = useState({ access: 0, cultural: 0, service: 0, total: 0 });
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
   const calculatorRef = useRef<HTMLDivElement>(null);
 
   // Load from local storage on mount? Maybe later.
@@ -30,10 +31,7 @@ const GPSCalculator: React.FC = () => {
   }, [state]);
 
   const scrollToTop = () => {
-    if (window.innerWidth < 1024 && calculatorRef.current) {
-      const y = calculatorRef.current.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const updateSetup = (field: keyof GPSState['setup'], value: any) => {
@@ -53,12 +51,20 @@ const GPSCalculator: React.FC = () => {
   };
 
   const nextStep = () => {
-    if (step === 4) {
+    if (step === 2) {
+      setShowAdModal(true);
+    } else if (step === 4) {
       setShowTelegramModal(true);
     } else if (step < 5) {
       setStep(step + 1);
       scrollToTop();
     }
+  };
+
+  const handleSkipAd = () => {
+    setShowAdModal(false);
+    setStep(3);
+    scrollToTop();
   };
 
   const handleTelegramAction = () => {
@@ -85,10 +91,14 @@ const GPSCalculator: React.FC = () => {
     if (step === 1) return state.setup.grade && state.setup.fascia && state.setup.cdc;
     if (step === 2) return state.accessTitle.vote > 0;
     if (step === 3) {
-      if (state.culturalTitles.hasAbilitazione) {
-        return state.culturalTitles.abilitazioni.every(ab => ab.cdc && ab.vote > 0);
-      }
       return true;
+    }
+    if (step === 4) {
+      return state.service.every(entry => {
+        const hasCdc = entry.cdc && entry.cdc.trim() !== '';
+        const hasValidDates = entry.year !== null || (entry.startDate && entry.endDate);
+        return hasCdc && hasValidDates;
+      });
     }
     return true;
   };
@@ -120,12 +130,21 @@ const GPSCalculator: React.FC = () => {
             <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-10 rounded-full"></div>
             <div className={`absolute left-0 top-1/2 h-1 bg-[#e31b23] -z-10 rounded-full transition-all duration-500`} style={{ width: `${((step - 1) / 4) * 100}%` }}></div>
             {[1, 2, 3, 4, 5].map(s => (
-              <div 
+              <button 
                 key={s} 
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'bg-[#e31b23] text-white scale-110 shadow-lg' : 'bg-gray-200 text-gray-400'}`}
+                onClick={() => {
+                  if (s < step) {
+                    setStep(s);
+                    scrollToTop();
+                  }
+                }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+                  step >= s ? 'bg-[#e31b23] text-white shadow-lg' : 'bg-gray-200 text-gray-400'
+                } ${s < step ? 'cursor-pointer hover:scale-110' : step === s ? 'scale-110' : 'cursor-default'}`}
+                title={s < step ? `Torna al passaggio ${s}` : undefined}
               >
                 {s}
-              </div>
+              </button>
             ))}
           </div>
 
@@ -134,7 +153,7 @@ const GPSCalculator: React.FC = () => {
             {step === 1 && <Step1Setup data={state.setup} onChange={updateSetup} />}
             {step === 2 && <Step2Access data={state.accessTitle} fascia={state.setup.fascia} postType={state.setup.postType} cdc={state.setup.cdc} onChange={updateAccess} />}
             {step === 3 && <Step3Titles data={state.culturalTitles} fullState={state} onChange={updateCultural} />}
-            {step === 4 && <Step4Service data={state.service} onChange={updateService} />}
+            {step === 4 && <Step4Service data={state.service} cdc={state.setup.cdc} onChange={updateService} />}
             {step === 5 && <Step5Summary state={state} />}
           </div>
 
@@ -258,6 +277,28 @@ const GPSCalculator: React.FC = () => {
            )}
         </div>
       </div>
+
+      {/* Ad Modal */}
+      {showAdModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
+            <div className="w-full h-48 bg-gray-100 rounded-xl flex items-center justify-center mb-6 border-2 border-dashed border-gray-300">
+              <span className="text-gray-400 font-bold uppercase tracking-widest text-sm">Spazio Pubblicitario</span>
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Supporta il nostro lavoro</h3>
+            <p className="text-gray-600 mb-6 text-sm">
+              Questo strumento è offerto gratuitamente. Se ti è utile, considera di supportarci!
+            </p>
+            
+            <button 
+              onClick={handleSkipAd}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 px-6 rounded-xl transition-all shadow-sm"
+            >
+              Salta Pubblicità
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Telegram Modal */}
       {showTelegramModal && (

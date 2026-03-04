@@ -42,28 +42,68 @@ export const calculateAccessScore = (state: GPSState) => {
     // Note: Bonus Ammissione Selettiva (TFA) is handled by the bonusId check below
     // which adds 12 points if 'tfa_sostegno' is selected.
 
+    // A.2 Abilitazione su posto comune
+    if (state.accessTitle.hasAbilitazione) {
+      let abScore = 24; // Base score for having the habilitation
+      
+      const abVote = state.accessTitle.abilitazioneVote || 0;
+      const abBase = state.accessTitle.abilitazioneVoteBase || 100;
+      const abNormalized = Math.round((abVote / abBase) * 100);
+      
+      const abTable = GPS_CONFIG.gps_config.titoli_culturali_accademici.tabella_abilitazioni;
+      const abRange = abTable?.find(r => abNormalized >= r.min && abNormalized <= r.max);
+      
+      if (abRange) {
+        abScore += abRange.punti;
+      } else {
+        abScore += 4; // Fallback for < 60
+      }
+      
+      score += abScore;
+    }
+
   } else {
     // Standard Logic (Base 110, Formula)
-    if (vote > 0) {
+    const isFascia1PostoComune = fascia === 'I Fascia' && !isSostegnoFascia1;
+    
+    // Determine which vote to use for the base score
+    const activeVote = isFascia1PostoComune && state.accessTitle.laureaVote !== undefined 
+      ? state.accessTitle.laureaVote 
+      : vote;
+    const activeBase = isFascia1PostoComune && state.accessTitle.laureaVoteBase !== undefined 
+      ? state.accessTitle.laureaVoteBase 
+      : voteBase;
+    const activeLode = isFascia1PostoComune ? state.accessTitle.laureaLode : isLode;
+
+    if (activeVote > 0) {
       // Normalize vote to 110 base
-      const base = voteBase || 110;
-      const normalizedVote = (vote / base) * 110;
+      const base = activeBase || 110;
+      const normalizedVote = (activeVote / base) * 110;
       
       let baseScore = 12 + ((normalizedVote - 76) * 0.50);
       if (baseScore < 12) baseScore = 12;
       score += baseScore;
     }
     
-    if (isLode) {
+    if (activeLode) {
       score += config.bonus_lode;
+    }
+
+    if (isFascia1PostoComune) {
+      // Add 24 points automatically for the Abilitazione
+      score += 24;
     }
   }
 
   // Bonus Fascia 1 (Common for both)
   if (fascia === 'I Fascia' && bonusId) {
-    const bonus = GPS_CONFIG.gps_config.bonus_abilitazione_fascia_1.opzioni.find(b => b.id === bonusId);
-    if (bonus) {
-      score += bonus.punti;
+    // For Posto Comune, we removed the bonusId dropdown and added 24 points automatically.
+    // So this bonusId logic should only apply to Sostegno (e.g. tfa_sostegno)
+    if (isSostegnoFascia1) {
+      const bonus = GPS_CONFIG.gps_config.bonus_abilitazione_fascia_1.opzioni.find(b => b.id === bonusId);
+      if (bonus) {
+        score += bonus.punti;
+      }
     }
   }
 
@@ -86,28 +126,7 @@ export const calculateCulturalScore = (state: GPSState) => {
   
   // Abilitazioni Extra
   if (culturalTitles.hasAbilitazione) {
-    culturalTitles.abilitazioni.forEach(ab => {
-      if (ab.vote > 0) {
-        // Calculate based on table
-        const base = ab.voteBase || 100;
-        // Normalize to 100
-        let normalizedVote = (ab.vote / base) * 100;
-        normalizedVote = Math.round(normalizedVote);
-        
-        let points = 0;
-        if (normalizedVote >= 96) points = 12;
-        else if (normalizedVote >= 91) points = 11;
-        else if (normalizedVote >= 86) points = 9;
-        else if (normalizedVote >= 81) points = 8;
-        else if (normalizedVote >= 76) points = 7;
-        else if (normalizedVote >= 71) points = 6;
-        else if (normalizedVote >= 66) points = 5;
-        else if (normalizedVote >= 60) points = 4;
-        
-        // Add fixed bonus of 24 points as per user request
-        score += points + 24;
-      }
-    });
+    score += (culturalTitles.abilitazioni_count || 0) * 3;
   }
   
   // Concorsi
@@ -133,8 +152,12 @@ export const calculateCulturalScore = (state: GPSState) => {
   });
 
   // CLIL
-  if (culturalTitles.hasClil && culturalTitles.languages.length > 0) {
-    score += 3;
+  if (culturalTitles.hasClil) {
+    if (culturalTitles.languages.length > 0) {
+      score += 3;
+    } else {
+      score += 1;
+    }
   }
 
   // Informatica
@@ -180,9 +203,6 @@ export const calculateCulturalScore = (state: GPSState) => {
 
   score += itScore;
 
-  // Pubblicazioni
-  score += culturalTitles.pubblicazioni * 1;
-
   return parseFloat(score.toFixed(2));
 };
 
@@ -208,20 +228,24 @@ const getPointsFromDays = (days: number) => {
 };
 
 export const calculateServiceScore = (state: GPSState) => {
-  const { service } = state;
+  const { service, setup } = state;
+  const targetCdc = (setup.cdc || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
 
   // Group by School Year
   // Key: Year (e.g., 2023 for 23/24) -> { specific: days, aspecific: days }
   const years: Record<number, { specific: number, aspecific: number }> = {};
 
   service.forEach(entry => {
+    const entryCdc = (entry.cdc || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const isSpecific = entryCdc === targetCdc;
+
     if (entry.year) {
       // Full Year
       const y = entry.year;
       if (!years[y]) years[y] = { specific: 0, aspecific: 0 };
       
       // Add max days (166)
-      if (entry.isSpecific) {
+      if (isSpecific) {
         years[y].specific += 166;
       } else {
         years[y].aspecific += 166;
@@ -237,7 +261,7 @@ export const calculateServiceScore = (state: GPSState) => {
           const y = getSchoolYearFromDate(day);
           if (!years[y]) years[y] = { specific: 0, aspecific: 0 };
           
-          if (entry.isSpecific) {
+          if (isSpecific) {
             years[y].specific += 1;
           } else {
             years[y].aspecific += 1;

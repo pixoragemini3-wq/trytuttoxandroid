@@ -12,7 +12,7 @@ interface Step2Props {
 
 const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChange }) => {
   const isFascia1 = fascia === 'I Fascia';
-  const isSostegno = postType === 'Sostegno' && isFascia1;
+  const isSostegno = postType === 'Sostegno';
   const config = GPS_CONFIG.gps_config;
 
   const getTitleLabel = () => {
@@ -23,7 +23,10 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
       if (cdc === 'ADAA') return "Titolo di Specializzazione su Sostegno (Infanzia)";
       return "Titolo di Specializzazione su Sostegno";
     }
-    return `Titolo di Accesso (${cdc})`;
+    if (isFascia1) {
+      return `Abilitazione (Titolo di Accesso per ${cdc})`;
+    }
+    return `Titolo di Studio (Titolo di Accesso per ${cdc})`;
   };
 
   const handleVoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,8 +37,7 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
     onChange('vote', val);
   };
 
-  const handleBaseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newBase = parseInt(e.target.value);
+  const handleBaseChange = (newBase: number) => {
     onChange('voteBase', newBase);
     if (data.vote > newBase) onChange('vote', newBase);
   };
@@ -47,18 +49,57 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
         <p className="text-sm text-green-700">
           {isSostegno 
             ? "Inserisci il voto del tuo titolo di specializzazione. Se il voto è espresso in 30esimi, seleziona la base 30." 
-            : "Inserisci il voto del tuo titolo di abilitazione o accesso."}
+            : isFascia1 
+              ? "Inserisci il voto della tua abilitazione."
+              : "Inserisci il voto della tua Laurea o Diploma che dà accesso alla classe di concorso."}
         </p>
       </div>
 
       <div className="space-y-6">
-        {/* 1. Voto */}
+        {/* 1. Bonus Questions (Context Aware) */}
+        {isFascia1 && isSostegno && (
+          <div className="bg-yellow-50 p-6 rounded-xl border-2 border-yellow-200 animate-in fade-in slide-in-from-top-4">
+            <h4 className="text-lg font-bold text-yellow-900 mb-4">1. Dettagli del percorso</h4>
+            
+            {/* Sostegno Question */}
+            <div>
+              <p className="mb-3 font-medium text-yellow-800">Hai conseguito la specializzazione tramite un percorso selettivo (es. TFA Sostegno)?</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => onChange('bonusId', 'tfa_sostegno')}
+                  className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
+                    data.bonusId === 'tfa_sostegno'
+                      ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
+                      : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
+                  }`}
+                >
+                  SÌ (+12 Punti)
+                </button>
+                <button
+                  onClick={() => onChange('bonusId', '')}
+                  className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
+                    data.bonusId === ''
+                      ? 'border-gray-400 bg-gray-100 text-gray-900 font-bold shadow-sm'
+                      : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
+                  }`}
+                >
+                  NO
+                </button>
+              </div>
+              <p className="text-xs text-yellow-700 mt-3">
+                Seleziona SÌ se l'accesso al corso di specializzazione è avvenuto tramite prove selettive.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Voto */}
         <div className="bg-white p-6 rounded-xl border-2 border-gray-100 shadow-sm">
           <label className="block text-lg font-bold text-gray-800 mb-4">
-            1. Con quale voto hai conseguito il titolo?
+            {isFascia1 ? "2. Con quale voto hai conseguito il titolo?" : "1. Con quale voto hai conseguito il titolo?"}
           </label>
           
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center mb-4">
             <div className="flex items-center gap-2 w-full md:w-auto">
               <input 
                 type="number" 
@@ -66,19 +107,9 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
                 max={data.voteBase || 110} 
                 value={data.vote || ''} 
                 onChange={handleVoteChange}
-                placeholder="Voto"
-                className="w-32 p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-2xl font-mono text-center font-bold"
+                placeholder={`Voto (max ${data.voteBase || 110})`}
+                className="w-full md:w-48 p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-2xl font-mono text-center font-bold"
               />
-              <span className="text-gray-400 font-black text-xl">/</span>
-              <select 
-                  value={data.voteBase || 110} 
-                  onChange={handleBaseChange}
-                  className="p-4 border-2 border-gray-300 rounded-xl bg-gray-50 font-bold text-gray-700 focus:ring-2 focus:ring-green-500 text-lg"
-              >
-                  <option value="110">110</option>
-                  <option value="100">100</option>
-                  {isSostegno && <option value="30">30</option>}
-              </select>
             </div>
 
             {/* Lode */}
@@ -97,6 +128,25 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
                 <span className="font-bold">Con Lode</span>
               </label>
             )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-600 mb-2">Seleziona la base del voto:</label>
+            <div className="flex flex-wrap gap-2">
+              {[110, 100, 10, ...(isSostegno ? [30] : [])].map(b => (
+                <button
+                  key={b}
+                  onClick={() => handleBaseChange(b)}
+                  className={`px-6 py-3 rounded-xl font-bold transition-colors border-2 ${
+                    data.voteBase === b 
+                      ? 'bg-green-50 border-green-500 text-green-700' 
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-green-300'
+                  }`}
+                >
+                  su {b}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* No Vote Checkbox for Sostegno */}
@@ -122,59 +172,101 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
           )}
         </div>
 
-        {/* 2. Bonus Questions (Context Aware) */}
-        {isFascia1 && (
-          <div className="bg-yellow-50 p-6 rounded-xl border-2 border-yellow-200 animate-in fade-in slide-in-from-top-4">
-            <h4 className="text-lg font-bold text-yellow-900 mb-4">2. Dettagli del percorso</h4>
+        {/* 3. Abilitazione per Sostegno I Fascia */}
+        {isSostegno && isFascia1 && (
+          <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-4">
+            <h4 className="text-lg font-bold text-blue-900 mb-4">3. Abilitazione su Posto Comune</h4>
+            <p className="text-sm text-blue-700 mb-4">
+              Hai un'abilitazione su una classe di concorso del medesimo grado? Il voto di questa abilitazione ti darà ulteriore punteggio.
+            </p>
             
-            {isSostegno ? (
-              // Sostegno Question
-              <div>
-                <p className="mb-3 font-medium text-yellow-800">Hai conseguito la specializzazione tramite un percorso selettivo (es. TFA Sostegno)?</p>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => onChange('bonusId', 'tfa_sostegno')}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
-                      data.bonusId === 'tfa_sostegno'
-                        ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
-                        : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
-                    }`}
-                  >
-                    SÌ (+12 Punti)
-                  </button>
-                  <button
-                    onClick={() => onChange('bonusId', '')}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
-                      data.bonusId === ''
-                        ? 'border-gray-400 bg-gray-100 text-gray-900 font-bold shadow-sm'
-                        : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
-                    }`}
-                  >
-                    NO
-                  </button>
+            <div className="flex gap-4 mb-6">
+              <button
+                onClick={() => onChange('hasAbilitazione', true)}
+                className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
+                  data.hasAbilitazione
+                    ? 'border-blue-600 bg-blue-100 text-blue-900 font-bold shadow-sm'
+                    : 'border-blue-200 bg-white text-gray-600 hover:border-blue-400'
+                }`}
+              >
+                SÌ
+              </button>
+              <button
+                onClick={() => {
+                  onChange('hasAbilitazione', false);
+                  onChange('abilitazioneVote', undefined);
+                  onChange('abilitazioneVoteBase', undefined);
+                  onChange('abilitazioneCdc', undefined);
+                }}
+                className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
+                  !data.hasAbilitazione
+                    ? 'border-gray-400 bg-gray-100 text-gray-900 font-bold shadow-sm'
+                    : 'border-blue-200 bg-white text-gray-600 hover:border-blue-400'
+                }`}
+              >
+                NO
+              </button>
+            </div>
+
+            {data.hasAbilitazione && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <label className="block text-sm font-bold text-blue-900 mb-2">Classe di Concorso dell'Abilitazione</label>
+                  <input 
+                    list="cdc-abilitazione-list"
+                    type="text" 
+                    value={data.abilitazioneCdc || ''} 
+                    onChange={(e) => onChange('abilitazioneCdc', e.target.value.toUpperCase())}
+                    placeholder="es. A-22, A-12..."
+                    className="w-full p-3 border-2 border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white uppercase font-mono"
+                  />
+                  <datalist id="cdc-abilitazione-list">
+                    {['A-01', 'A-11', 'A-12', 'A-13', 'A-18', 'A-19', 'A-20', 'A-21', 'A-22', 'A-24', 'A-26', 'A-27', 'A-28', 'A-45', 'A-46', 'A-47', 'A-48', 'A-49', 'A-50', 'A-60', 'B-02', 'B-16', 'B-20'].map(c => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
-                <p className="text-xs text-yellow-700 mt-3">
-                  Seleziona SÌ se l'accesso al corso di specializzazione è avvenuto tramite prove selettive.
-                </p>
-              </div>
-            ) : (
-              // Posto Comune Question
-              <div>
-                <label className="block font-medium text-yellow-800 mb-2">Il tuo titolo di abilitazione rientra in una di queste casistiche?</label>
-                <select 
-                  value={data.bonusId} 
-                  onChange={(e) => onChange('bonusId', e.target.value)}
-                  className="w-full p-4 border-2 border-yellow-300 rounded-xl focus:ring-2 focus:ring-yellow-500 bg-white text-lg"
-                >
-                  <option value="">Nessun percorso specifico / Vecchio ordinamento</option>
-                  {config.bonus_abilitazione_fascia_1.opzioni
-                    .filter(opt => opt.id !== 'tfa_sostegno')
-                    .map(opt => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label} (+{opt.punti} pt)
-                    </option>
-                  ))}
-                </select>
+
+                <div>
+                  <label className="block text-sm font-bold text-blue-900 mb-2">Voto dell'Abilitazione</label>
+                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max={data.abilitazioneVoteBase || 100} 
+                      value={data.abilitazioneVote || ''} 
+                      onChange={(e) => {
+                        let val = parseFloat(e.target.value);
+                        if (isNaN(val)) val = 0;
+                        const max = data.abilitazioneVoteBase || 100;
+                        if (val > max) val = max;
+                        onChange('abilitazioneVote', val);
+                      }}
+                      placeholder={`Voto (max ${data.abilitazioneVoteBase || 100})`}
+                      className="w-full md:w-48 p-3 border-2 border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white font-mono text-center font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-blue-800 mb-2">Base del voto dell'abilitazione:</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[110, 100, 30, 10].map(b => (
+                      <button
+                        key={b}
+                        onClick={() => {
+                          onChange('abilitazioneVoteBase', b);
+                          if ((data.abilitazioneVote || 0) > b) onChange('abilitazioneVote', b);
+                        }}
+                        className={`px-4 py-2 rounded-lg font-bold transition-colors border-2 ${
+                          (data.abilitazioneVoteBase || 100) === b 
+                            ? 'bg-blue-500 border-blue-600 text-white' 
+                            : 'bg-white border-blue-200 text-blue-600 hover:bg-blue-50'
+                        }`}
+                      >
+                        su {b}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -23,7 +23,7 @@ export const GPS_CONFIG = {
       "opzioni": [
         { "id": "concorso_ordinario", "label": "Superamento Concorso Ordinario", "punti": 24 },
         { "id": "percorsi_60cfu", "label": "Percorsi abilitanti 60 CFU", "punti": 24 },
-        { "id": "percorsi_30cfu", "label": "Percorsi abilitanti 30/36 CFU", "punti": 12 },
+        { "id": "percorsi_30cfu", "label": "Percorsi abilitanti 30/36 CFU", "punti": 24 },
         { "id": "tfa_sostegno", "label": "TFA Sostegno / Percorso Selettivo", "punti": 12 }
       ]
     },

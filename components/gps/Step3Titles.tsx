@@ -157,74 +157,56 @@ const Step3Titles: React.FC<Step3Props> = ({ data, fullState, onChange }) => {
         <h4 className="font-bold text-lg text-gray-800 border-b pb-2">Altre Abilitazioni e Concorsi</h4>
         
         {/* Abilitazioni */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="font-medium text-gray-700">Hai conseguito altre abilitazioni su altra Classe di Concorso?</label>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => onChange('hasAbilitazione', !data.hasAbilitazione)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${data.hasAbilitazione ? 'bg-purple-600' : 'bg-gray-200'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.hasAbilitazione ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-              <span className="text-sm font-medium text-gray-600">{data.hasAbilitazione ? 'Si' : 'No'}</span>
-            </div>
-          </div>
-          
-          {data.hasAbilitazione && (
-            <div className="mt-3 space-y-4 pl-4 border-l-2 border-purple-100">
-              <div className="bg-purple-50 p-3 rounded-lg text-sm text-purple-800">
-                <strong>Nota Punteggio:</strong> Le altre abilitazioni vengono valutate in base al voto (da 4 a 12 punti) più un <strong>bonus fisso di 24 punti</strong>.
-                <br/>
-                <span className="text-xs">Punteggio totale per titolo: <strong>da 28 a 36 punti</strong>.</span>
+        {fullState.setup.postType !== 'Sostegno' && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="font-medium text-gray-700">Hai conseguito altre abilitazioni su altra Classe di Concorso?</label>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    onChange('hasAbilitazione', !data.hasAbilitazione);
+                    if (!data.hasAbilitazione && data.abilitazioni_count === 0) {
+                      onChange('abilitazioni_count', 1);
+                    }
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${data.hasAbilitazione ? 'bg-purple-600' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.hasAbilitazione ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+                <span className="text-sm font-medium text-gray-600">{data.hasAbilitazione ? 'Si' : 'No'}</span>
               </div>
-              
-              <p className="text-xs text-gray-500 mb-2">Inserisci il voto per il calcolo corretto del punteggio aggiuntivo. <strong>Obbligatorio indicare CDC e Voto.</strong></p>
-              {data.abilitazioni.map((ab, idx) => (
-                <div key={idx} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex gap-2">
-                    <input 
-                        list={`cdc-list-${idx}`}
-                        type="text" 
-                        value={ab.cdc} 
-                        onChange={(e) => updateAbilitazione(idx, 'cdc', e.target.value)}
-                        placeholder="Seleziona CDC (es. A-18)"
-                        className={`flex-1 p-2 border rounded-lg uppercase text-sm ${!ab.cdc ? 'border-red-300 bg-red-50' : ''}`}
-                    />
-                    <datalist id={`cdc-list-${idx}`}>
-                      {COMMON_CDC.map(c => <option key={c} value={c} />)}
-                    </datalist>
-                    <button onClick={() => removeAbilitazione(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </div>
+            
+            {data.hasAbilitazione && (
+              <div className="mt-3 space-y-4 pl-4 border-l-2 border-purple-100">
+                <div className="bg-purple-50 p-3 rounded-lg text-sm text-purple-800">
+                  <strong>Nota Punteggio:</strong> Ogni abilitazione su altra classe di concorso conferisce <strong>3 punti</strong>.
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <label className="text-sm font-medium text-gray-700">Numero di altre abilitazioni:</label>
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <button 
+                      onClick={() => onChange('abilitazioni_count', Math.max(1, data.abilitazioni_count - 1))}
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
+                    >
+                      -
+                    </button>
+                    <div className="px-4 py-1 font-semibold text-center min-w-[3rem]">
+                      {data.abilitazioni_count || 1}
+                    </div>
+                    <button 
+                      onClick={() => onChange('abilitazioni_count', (data.abilitazioni_count || 1) + 1)}
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
+                    >
+                      +
                     </button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-gray-600">Voto:</label>
-                    <input 
-                        type="number" 
-                        step="0.1"
-                        value={ab.vote || ''} 
-                        onChange={(e) => updateAbilitazione(idx, 'vote', parseFloat(e.target.value))}
-                        className={`w-20 p-2 border rounded-lg text-sm ${!ab.vote ? 'border-red-300 bg-red-50' : ''}`}
-                        placeholder="Voto"
-                    />
-                    <span className="text-gray-400">/</span>
-                    <select 
-                        value={ab.voteBase} 
-                        onChange={(e) => updateAbilitazione(idx, 'voteBase', parseInt(e.target.value))}
-                        className="p-2 border rounded-lg text-sm bg-white"
-                    >
-                        <option value={100}>100</option>
-                        <option value={110}>110</option>
-                        <option value={10}>10</option>
-                    </select>
-                  </div>
                 </div>
-              ))}
-              <button onClick={addAbilitazione} className="text-sm text-purple-600 font-medium hover:underline">+ Aggiungi altra abilitazione</button>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Concorsi */}
         <div>
@@ -232,7 +214,13 @@ const Step3Titles: React.FC<Step3Props> = ({ data, fullState, onChange }) => {
             <label className="font-medium text-gray-700">Risulti idoneo a concorsi ordinari (es. PNRR)?</label>
             <div className="flex items-center gap-2">
               <button 
-                onClick={() => onChange('hasConcorso', !data.hasConcorso)}
+                onClick={() => {
+                  const newValue = !data.hasConcorso;
+                  onChange('hasConcorso', newValue);
+                  if (newValue && data.concorsi.length === 0) {
+                    onChange('concorsi', [{ description: '' }]);
+                  }
+                }}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${data.hasConcorso ? 'bg-purple-600' : 'bg-gray-200'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.hasConcorso ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -367,20 +355,24 @@ const Step3Titles: React.FC<Step3Props> = ({ data, fullState, onChange }) => {
             <span className="text-xl">+</span> Aggiungi Certificazione Linguistica
           </button>
           
-          {data.languages.length > 0 && (
-            <label className="flex items-center gap-3 mt-4 p-4 border border-blue-200 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={data.hasClil} 
-                onChange={(e) => onChange('hasClil', e.target.checked)}
-                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <div>
-                <span className="font-bold block text-blue-900">Corso CLIL (+3)</span>
-                <span className="text-xs text-blue-700">Valido solo se abbinato a una certificazione linguistica.</span>
-              </div>
-            </label>
-          )}
+          <label className="flex items-center gap-3 mt-4 p-4 border border-blue-200 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
+            <input 
+              type="checkbox" 
+              checked={data.hasClil} 
+              onChange={(e) => onChange('hasClil', e.target.checked)}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <div>
+              <span className="font-bold block text-blue-900">
+                Corso CLIL (+{data.languages.length > 0 ? '3' : '1'})
+              </span>
+              <span className="text-xs text-blue-700">
+                {data.languages.length > 0 
+                  ? "Valutato 3 punti perché abbinato a una certificazione linguistica." 
+                  : "Valutato 1 punto (non abbinato a certificazione linguistica)."}
+              </span>
+            </div>
+          </label>
         </div>
       </div>
 
@@ -448,23 +440,6 @@ const Step3Titles: React.FC<Step3Props> = ({ data, fullState, onChange }) => {
             Selezionati: {data.itCertifications.length} / 4
           </p>
         )}
-      </div>
-
-      {/* 7. Pubblicazioni */}
-      <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
-        <h4 className="font-bold text-lg text-gray-800 border-b pb-2">Pubblicazioni</h4>
-        <div className="flex items-center justify-between">
-          <label className="font-medium text-gray-700">Hai pubblicazioni valutabili?</label>
-          <input 
-            type="number" 
-            min="0" 
-            value={data.pubblicazioni} 
-            onChange={(e) => onChange('pubblicazioni', parseInt(e.target.value) || 0)}
-            className="w-20 p-2 border rounded-lg text-center"
-            placeholder="0"
-          />
-        </div>
-        <p className="text-xs text-gray-500">Libri o articoli su riviste specializzate inerenti alla materia di insegnamento.</p>
       </div>
 
     </div>
