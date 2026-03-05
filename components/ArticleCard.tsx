@@ -27,9 +27,14 @@ const getCategoryColors = (category: string, type: 'text' | 'bg') => {
 };
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
+  const [isImageLoaded, setIsImageLoaded] = React.useState(false);
   
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
+  };
+
+  const handleImageLoad = () => {
+    setIsImageLoaded(true);
   };
 
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
@@ -39,11 +44,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
       <div onClick={onClick} className={`relative w-full h-full lg:rounded-[2rem] bg-white flex flex-col md:flex-row shadow-xl group cursor-pointer overflow-hidden ${className}`}>
         {/* Image Section - Adjusted width and aspect ratio */}
         <div className="w-full md:w-[50%] lg:w-[60%] aspect-video md:aspect-auto md:h-full overflow-hidden relative bg-gray-50 shrink-0">
+          {!isImageLoaded && <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />}
           <img 
             src={article.imageUrl} 
             alt={article.title}
             onError={handleImageError}
-            className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+            onLoad={handleImageLoad}
+            className={`h-full w-full object-cover transition-all duration-1000 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
           <div className="absolute inset-0 bg-black/5"></div>
         </div>
@@ -92,11 +99,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     
     return (
       <div onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-xl lg:rounded-2xl group cursor-pointer shadow-lg bg-black shrink-0 ${className}`}>
+        {!isImageLoaded && <div className="absolute inset-0 bg-gray-800 animate-pulse z-10" />}
         <img 
           src={article.imageUrl} 
           alt={article.title}
           onError={handleImageError}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
+          onLoad={handleImageLoad}
+          className={`h-full w-full object-cover transition-all duration-700 group-hover:scale-110 opacity-70 ${isImageLoaded ? 'opacity-70' : 'opacity-0'}`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
         <div className="absolute bottom-0 left-0 p-3 lg:p-4 w-full flex flex-col items-start">
@@ -129,12 +138,16 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     <div onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.02] hover:shadow-2xl rounded-2xl p-3 border border-transparent hover:border-gray-100 ${className}`}>
       
       {/* IMAGE - Directly styled with img selector as requested (35% width, proportional height/aspect) */}
-      <img 
-        src={article.imageUrl} 
-        alt={article.title}
-        onError={handleImageError}
-        className="w-full md:w-[35%] aspect-video md:aspect-[4/3] rounded-xl object-cover bg-gray-100 shadow-sm border border-gray-100 shrink-0 transition-transform duration-500 group-hover:brightness-95"
-      />
+      <div className="w-full md:w-[35%] aspect-video md:aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100 shrink-0 relative">
+         {!isImageLoaded && <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />}
+         <img 
+            src={article.imageUrl} 
+            alt={article.title}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+            className={`w-full h-full object-cover transition-all duration-500 group-hover:brightness-95 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+         />
+      </div>
 
       {/* CONTENT CONTAINER: 65% Width */}
       <div className="flex-1 flex flex-col justify-center py-0.5">

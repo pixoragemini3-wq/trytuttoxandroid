@@ -1,13 +1,15 @@
 
 import React from 'react';
 import { Article } from '../types';
+import ArticleSkeleton from './ArticleSkeleton';
 
 interface DesktopSidebarProps {
   articles: Article[];
   onArticleClick: (article: Article) => void;
+  isLoading?: boolean;
 }
 
-const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClick }) => {
+const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClick, isLoading = false }) => {
   // Limitiamo a 4 articoli
   const displayArticles = articles.slice(0, 4);
 
@@ -34,21 +36,30 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
        
        {/* List - Spaced out evenly */}
        <div className="flex flex-col gap-4 relative z-10 flex-1 justify-center"> 
-          {displayArticles.map((article, idx) => (
-             <div key={article.id} onClick={() => onArticleClick(article)} className="group cursor-pointer flex gap-3 items-center shrink-0 w-full">
-                {/* Numero */}
-                <span className="font-condensed text-2xl font-black text-black/20 group-hover:text-black transition-colors leading-[0.8] w-6 shrink-0">
-                  0{idx + 1}
-                </span>
-                
-                {/* Testo: UPDATED to single line (truncate) and larger font (text-[15px]) */}
-                <div className="pt-0.5 border-t border-black/10 w-full overflow-hidden">
-                  <h4 className="font-condensed text-[15px] leading-tight font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all truncate block w-full">
-                    {article.title}
-                  </h4>
-                </div>
-             </div>
-          ))}
+          {isLoading ? (
+             <>
+               <ArticleSkeleton type="sidebar" />
+               <ArticleSkeleton type="sidebar" />
+               <ArticleSkeleton type="sidebar" />
+               <ArticleSkeleton type="sidebar" />
+             </>
+          ) : (
+            displayArticles.map((article, idx) => (
+               <div key={article.id} onClick={() => onArticleClick(article)} className="group cursor-pointer flex gap-3 items-center shrink-0 w-full">
+                  {/* Numero */}
+                  <span className="font-condensed text-2xl font-black text-black/20 group-hover:text-black transition-colors leading-[0.8] w-6 shrink-0">
+                    0{idx + 1}
+                  </span>
+                  
+                  {/* Testo: UPDATED to single line (truncate) and larger font (text-[15px]) */}
+                  <div className="pt-0.5 border-t border-black/10 w-full overflow-hidden">
+                    <h4 className="font-condensed text-[15px] leading-tight font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all truncate block w-full">
+                      {article.title}
+                    </h4>
+                  </div>
+               </div>
+            ))
+          )}
        </div>
 
        {/* Footer decoration */}

@@ -34,12 +34,10 @@ const GPSCalculator: React.FC = () => {
   }, [state]);
 
   const scrollToTop = () => {
-    if (stepsRef.current) {
-      // Scroll to the steps indicator with a bit of padding (e.g. 20px above)
-      const y = stepsRef.current.getBoundingClientRect().top + window.scrollY - 100;
+    if (calculatorRef.current) {
+      // Scroll to the top of the calculator container with a bit of padding
+      const y = calculatorRef.current.getBoundingClientRect().top + window.scrollY - 20;
       window.scrollTo({ top: y, behavior: 'smooth' });
-    } else if (calculatorRef.current) {
-      calculatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }

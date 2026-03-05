@@ -15,6 +15,7 @@ import AdUnit from './components/AdUnit';
 import DesktopSidebar from './components/DesktopSidebar'; 
 import { AboutPage, CollabPage } from './components/StaticPages'; 
 import GPSCalculator from './components/gps/GPSCalculator';
+import ArticleSkeleton from './components/ArticleSkeleton';
 import Layout from './components/Layout';
 
 // Utility per mescolare l'array (Fisher-Yates shuffle)
@@ -26,22 +27,6 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   }
   return newArray;
 };
-
-// SKELETON LOADER COMPONENT
-const SkeletonLoader = () => (
-  <div className="flex flex-col md:flex-row gap-4 h-full p-3 rounded-2xl border border-gray-100 bg-white animate-pulse">
-    <div className="w-full md:w-[35%] shrink-0">
-       <div className="aspect-video md:aspect-[4/3] w-full rounded-xl bg-gray-200"></div>
-    </div>
-    <div className="flex-1 flex flex-col justify-center py-2 space-y-3">
-      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-      <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-      <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-      <div className="h-3 bg-gray-200 rounded w-full mt-2"></div>
-      <div className="h-3 bg-gray-200 rounded w-full"></div>
-    </div>
-  </div>
-);
 
 const App: React.FC = () => {
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
@@ -639,21 +624,26 @@ const App: React.FC = () => {
             <section className="bg-white pb-4">
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
-                {isHome && heroArticle && (
+                {isHome && (
                   <div className="w-full h-[auto] md:h-[420px] lg:h-[420px] flex gap-2">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 
                           onArticleClick={handleArticleClick} 
+                          isLoading={isArticlesLoading}
                       />
                     )}
                     
                     <div className="flex-1 h-full w-full">
-                        <ArticleCard 
-                          article={heroArticle} 
-                          onClick={() => handleArticleClick(heroArticle)}
-                          className="" 
-                        />
+                        {isArticlesLoading ? (
+                           <ArticleSkeleton type="hero" />
+                        ) : heroArticle && (
+                          <ArticleCard 
+                            article={heroArticle} 
+                            onClick={() => handleArticleClick(heroArticle)}
+                            className="" 
+                          />
+                        )}
                     </div>
                   </div>
                 )}
@@ -684,7 +674,13 @@ const App: React.FC = () => {
                       onMouseMove={handleMouseMove}
                       style={{ scrollBehavior: isDragging ? 'auto' : 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {(articles.length > 0 ? articles : MOCK_ARTICLES).slice(0, 10).map(item => (
+                        {isArticlesLoading ? (
+                           Array.from({ length: 5 }).map((_, i) => (
+                             <div key={i} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
+                               <ArticleSkeleton type="horizontal" />
+                             </div>
+                           ))
+                        ) : (articles.length > 0 ? articles : MOCK_ARTICLES).slice(0, 10).map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
                             <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                           </div>
@@ -768,9 +764,9 @@ const App: React.FC = () => {
                     {/* ANIMATED GRID CONTAINER - Key ensures re-render and animation triggers on swipe */}
                     {isArticlesLoading ? (
                         <div className="space-y-6">
-                            <SkeletonLoader />
-                            <SkeletonLoader />
-                            <SkeletonLoader />
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <ArticleSkeleton key={i} type="standard" />
+                            ))}
                         </div>
                     ) : displayArticles.length > 0 ? (
                       <div 
