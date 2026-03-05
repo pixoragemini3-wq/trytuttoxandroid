@@ -7,7 +7,6 @@ import Step3Titles from './Step3Titles';
 import Step4Service from './Step4Service';
 import Step5Summary from './Step5Summary';
 import { calculateAccessScore, calculateCulturalScore, calculateServiceScore } from './utils';
-import { supabase } from '../../services/supabaseClient';
 import AdUnit from '../AdUnit';
 
 const GPSCalculator: React.FC = () => {

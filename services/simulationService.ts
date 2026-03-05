@@ -2,6 +2,11 @@ import { supabase } from './supabaseClient';
 import { SavedSimulation } from '../components/gps/types';
 
 export const saveSimulationToSupabase = async (simulation: SavedSimulation) => {
+  if (!supabase) {
+    console.warn('Supabase client not initialized. Skipping save.');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('gps_simulations')
     .insert([
@@ -25,6 +30,11 @@ export const saveSimulationToSupabase = async (simulation: SavedSimulation) => {
 };
 
 export const getSimulationsFromSupabase = async () => {
+  if (!supabase) {
+    console.warn('Supabase client not initialized. Skipping fetch.');
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('gps_simulations')
     .select('*')
