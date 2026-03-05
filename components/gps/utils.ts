@@ -9,6 +9,24 @@ export const calculateAccessScore = (state: GPSState) => {
   
   let score = 0;
   
+  // Helper: Calculate Laurea Score (Standard II Fascia Formula)
+  const calculateLaureaScore = () => {
+      let s = 0;
+      // Use values from setup (Step 1)
+      const lVote = state.setup.laureaVote || 0;
+      const lBase = state.setup.laureaVoteBase || 110;
+      const lLode = state.setup.laureaLode || false;
+      
+      if (lVote > 0) {
+        const normalized = (lVote / lBase) * 110;
+        let baseScore = 12 + ((normalized - 76) * 0.50);
+        if (baseScore < 12) baseScore = 12;
+        s += baseScore;
+      }
+      if (lLode) s += 4;
+      return s;
+  };
+
   // Check for Sostegno I Fascia
   const isSostegnoFascia1 = fascia === 'I Fascia' && (cdc.startsWith('AD') || cdc.includes('SOSTEGNO'));
 
@@ -36,11 +54,9 @@ export const calculateAccessScore = (state: GPSState) => {
       score += range.punti;
     } else {
       // Fallback for < 60 or no vote
-      score += 8;
+      if (vote === 0) score += 0;
+      else score += 8;
     }
-
-    // Note: Bonus Ammissione Selettiva (TFA) is handled by the bonusId check below
-    // which adds 12 points if 'tfa_sostegno' is selected.
 
     // A.2 Abilitazione su posto comune
     if (state.accessTitle.hasAbilitazione) {
@@ -63,35 +79,55 @@ export const calculateAccessScore = (state: GPSState) => {
     }
 
   } else {
-    // Standard Logic (Base 110, Formula)
+    // Posto Comune (I or II Fascia)
     const isFascia1PostoComune = fascia === 'I Fascia' && !isSostegnoFascia1;
     
-    // Determine which vote to use for the base score
-    const activeVote = isFascia1PostoComune && state.accessTitle.laureaVote !== undefined 
-      ? state.accessTitle.laureaVote 
-      : vote;
-    const activeBase = isFascia1PostoComune && state.accessTitle.laureaVoteBase !== undefined 
-      ? state.accessTitle.laureaVoteBase 
-      : voteBase;
-    const activeLode = isFascia1PostoComune ? state.accessTitle.laureaLode : isLode;
-
-    if (activeVote > 0) {
-      // Normalize vote to 110 base
-      const base = activeBase || 110;
-      const normalizedVote = (activeVote / base) * 110;
-      
-      let baseScore = 12 + ((normalizedVote - 76) * 0.50);
-      if (baseScore < 12) baseScore = 12;
-      score += baseScore;
-    }
-    
-    if (activeLode) {
-      score += config.bonus_lode;
-    }
-
     if (isFascia1PostoComune) {
-      // Add 24 points automatically for the Abilitazione
-      score += 24;
+      // I Fascia Posto Comune
+      // User Request Correction: Laurea is absorbed by the Abilitazione. 
+      // Only the Abilitazione score counts (Tabella A/3).
+      
+      // 1. Laurea Score is NOT added.
+      
+      // 2. Abilitazione Score
+      // Uses 'vote' from Step 2 (Abilitazione)
+      let abilScore = 0;
+      
+      if (vote > 0) {
+        const base = voteBase || 100; 
+        const normalizedVote = Math.round((vote / base) * 100);
+        
+        const abTable = GPS_CONFIG.gps_config.titoli_culturali_accademici.tabella_abilitazioni;
+        const abRange = abTable?.find(r => normalizedVote >= r.min && normalizedVote <= r.max);
+        
+        if (abRange) {
+          abilScore += abRange.punti;
+        } else {
+          abilScore += 4; // Fallback
+        }
+      } else {
+         // Fallback if vote is 0 (not entered) or invalid
+         if (vote === 0) abilScore = 0;
+         else abilScore = 4;
+      }
+      
+      // Add Bonus based on selection
+      if (bonusId) {
+        const bonus = GPS_CONFIG.gps_config.bonus_abilitazione_fascia_1.opzioni.find(b => b.id === bonusId);
+        if (bonus) {
+          abilScore += bonus.punti;
+        }
+      }
+      
+      score += abilScore;
+      
+    } else {
+      // II Fascia (Table A/4)
+      // Base Score: Formula (normalized to 110)
+      // Uses Laurea Vote (which is stored in setup, but Step 2 might have overwritten 'vote' if we didn't clean up. 
+      // But calculateLaureaScore uses state.setup directly, which is safer.)
+      
+      score += calculateLaureaScore();
     }
   }
 
@@ -227,16 +263,24 @@ const getPointsFromDays = (days: number) => {
   return 0;
 };
 
+export const extractCdcCode = (input: string): string => {
+  if (!input) return '';
+  // Take the first word (e.g., "A-45" from "A-45 SCIENZE...")
+  const firstWord = input.trim().split(/\s+/)[0].toUpperCase();
+  // Remove non-alphanumeric characters (e.g., "A-45" -> "A45")
+  return firstWord.replace(/[^A-Z0-9]/g, '');
+};
+
 export const calculateServiceScore = (state: GPSState) => {
   const { service, setup } = state;
-  const targetCdc = (setup.cdc || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+  const targetCdc = extractCdcCode(setup.cdc);
 
   // Group by School Year
   // Key: Year (e.g., 2023 for 23/24) -> { specific: days, aspecific: days }
   const years: Record<number, { specific: number, aspecific: number }> = {};
 
   service.forEach(entry => {
-    const entryCdc = (entry.cdc || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const entryCdc = extractCdcCode(entry.cdc);
     const isSpecific = entryCdc === targetCdc;
 
     if (entry.year) {
@@ -288,4 +332,274 @@ export const calculateServiceScore = (state: GPSState) => {
   });
 
   return parseFloat(totalScore.toFixed(2));
+};
+
+// Detailed Report Helpers
+export const getDetailedAccessReport = (state: GPSState) => {
+  const { vote, voteBase, isLode, bonusId } = state.accessTitle;
+  const { fascia, cdc } = state.setup;
+  const config = GPS_CONFIG.gps_config.titolo_accesso;
+  
+  const items: { label: string; points: number }[] = [];
+  let score = 0;
+
+  const calculateLaureaScore = () => {
+      let s = 0;
+      const lVote = state.setup.laureaVote || 0;
+      const lBase = state.setup.laureaVoteBase || 110;
+      const lLode = state.setup.laureaLode || false;
+      
+      if (lVote > 0) {
+        const normalized = (lVote / lBase) * 110;
+        let baseScore = 12 + ((normalized - 76) * 0.50);
+        if (baseScore < 12) baseScore = 12;
+        items.push({ label: `Voto Laurea/Diploma (${lVote}/${lBase})`, points: parseFloat(baseScore.toFixed(2)) });
+        s += baseScore;
+      }
+      if (lLode) {
+        items.push({ label: 'Lode', points: 4 });
+        s += 4;
+      }
+      return s;
+  };
+
+  const isSostegnoFascia1 = fascia === 'I Fascia' && (cdc.startsWith('AD') || cdc.includes('SOSTEGNO'));
+
+  if (isSostegnoFascia1) {
+    let normalizedVote = 0;
+    if (vote > 0) {
+      const base = voteBase || 100;
+      normalizedVote = Math.round((vote / base) * 100);
+    }
+    
+    const table = config.tabella_sostegno;
+    const range = table?.find(r => normalizedVote >= r.min && normalizedVote <= r.max);
+    
+    let basePoints = 0;
+    if (range) {
+      basePoints = range.punti;
+    } else {
+      if (vote > 0) basePoints = 8;
+    }
+    
+    if (basePoints > 0) {
+        items.push({ label: `Titolo di Specializzazione Sostegno (${vote}/${voteBase})`, points: basePoints });
+        score += basePoints;
+    }
+
+    if (state.accessTitle.hasAbilitazione) {
+      let abScore = 24;
+      items.push({ label: 'Abilitazione su posto comune (Base)', points: 24 });
+      
+      const abVote = state.accessTitle.abilitazioneVote || 0;
+      const abBase = state.accessTitle.abilitazioneVoteBase || 100;
+      const abNormalized = Math.round((abVote / abBase) * 100);
+      
+      const abTable = GPS_CONFIG.gps_config.titoli_culturali_accademici.tabella_abilitazioni;
+      const abRange = abTable?.find(r => abNormalized >= r.min && abNormalized <= r.max);
+      
+      let extraAbPoints = 0;
+      if (abRange) {
+        extraAbPoints = abRange.punti;
+      } else {
+        extraAbPoints = 4;
+      }
+      
+      items.push({ label: `Punteggio aggiuntivo Abilitazione (${abVote}/${abBase})`, points: extraAbPoints });
+      abScore += extraAbPoints;
+      score += abScore;
+    }
+
+  } else {
+    const isFascia1PostoComune = fascia === 'I Fascia' && !isSostegnoFascia1;
+    
+    if (isFascia1PostoComune) {
+      let abilScore = 0;
+      if (vote > 0) {
+        const base = voteBase || 100; 
+        const normalizedVote = Math.round((vote / base) * 100);
+        const abTable = GPS_CONFIG.gps_config.titoli_culturali_accademici.tabella_abilitazioni;
+        const abRange = abTable?.find(r => normalizedVote >= r.min && normalizedVote <= r.max);
+        
+        let p = 0;
+        if (abRange) p = abRange.punti;
+        else p = 4;
+        
+        items.push({ label: `Abilitazione (${vote}/${voteBase})`, points: p });
+        abilScore += p;
+      } else {
+         items.push({ label: `Abilitazione (Voto non inserito o <60)`, points: 4 });
+         abilScore += 4;
+      }
+      
+      if (bonusId) {
+        const bonus = GPS_CONFIG.gps_config.bonus_abilitazione_fascia_1.opzioni.find(b => b.id === bonusId);
+        if (bonus) {
+          items.push({ label: `Bonus: ${bonus.label}`, points: bonus.punti });
+          abilScore += bonus.punti;
+        }
+      }
+      score += abilScore;
+    } else {
+      score += calculateLaureaScore();
+    }
+  }
+
+  if (fascia === 'I Fascia' && bonusId && isSostegnoFascia1) {
+      const bonus = GPS_CONFIG.gps_config.bonus_abilitazione_fascia_1.opzioni.find(b => b.id === bonusId);
+      if (bonus) {
+        items.push({ label: `Bonus: ${bonus.label}`, points: bonus.punti });
+        score += bonus.punti;
+      }
+  }
+
+  return { total: parseFloat(score.toFixed(2)), items };
+};
+
+export const getDetailedCulturalReport = (state: GPSState) => {
+  const { culturalTitles } = state;
+  const langConfig = GPS_CONFIG.gps_config.certificazioni_linguistiche;
+  const academicConfig = GPS_CONFIG.gps_config.titoli_culturali_accademici;
+
+  const items: { label: string; points: number }[] = [];
+  let score = 0;
+
+  if (culturalTitles.dottorato) {
+     const phdPoints = academicConfig.titoli_singoli.find(t => t.id === 'dottorato')?.punti || 12;
+     items.push({ label: 'Dottorato di Ricerca', points: phdPoints });
+     score += phdPoints;
+  }
+  if (culturalTitles.asn) {
+      items.push({ label: 'Abilitazione Scientifica Nazionale', points: 12 });
+      score += 12;
+  }
+  
+  if (culturalTitles.hasAbilitazione && culturalTitles.abilitazioni_count > 0) {
+    const pts = culturalTitles.abilitazioni_count * 3;
+    items.push({ label: `Altre Abilitazioni (${culturalTitles.abilitazioni_count})`, points: pts });
+    score += pts;
+  }
+  
+  if (culturalTitles.hasConcorso && culturalTitles.concorsi.length > 0) {
+    const pts = culturalTitles.concorsi.length * 3;
+    items.push({ label: `Concorsi Ordinari (${culturalTitles.concorsi.length})`, points: pts });
+    score += pts;
+  }
+  
+  if (culturalTitles.specializzazione_sostegno_extra.length > 0) {
+    const pts = culturalTitles.specializzazione_sostegno_extra.length * 9;
+    items.push({ label: `Specializzazioni Sostegno Extra (${culturalTitles.specializzazione_sostegno_extra.length})`, points: pts });
+    score += pts;
+  }
+
+  let formazioneCount = 0;
+  if (culturalTitles.hasMaster) formazioneCount += culturalTitles.master_count;
+  if (culturalTitles.hasPerfezionamento) formazioneCount += culturalTitles.perfezionamento_count;
+  
+  const validFormazione = Math.min(formazioneCount, 3);
+  if (validFormazione > 0) {
+      items.push({ label: `Master/Perfezionamenti (${validFormazione})`, points: validFormazione });
+      score += validFormazione;
+  }
+
+  culturalTitles.languages.forEach(lang => {
+    const lConfig = langConfig.livelli.find(l => l.id === lang.level);
+    if (lConfig) {
+        items.push({ label: `Certificazione Linguistica ${lang.level}`, points: lConfig.punti });
+        score += lConfig.punti;
+    }
+  });
+
+  if (culturalTitles.hasClil) {
+    if (culturalTitles.languages.length > 0) {
+      items.push({ label: 'Corso CLIL (con Cert. Linguistica)', points: 3 });
+      score += 3;
+    } else {
+      items.push({ label: 'Corso CLIL (senza Cert. Linguistica)', points: 1 });
+      score += 1;
+    }
+  }
+
+  let itScore = 0;
+  const itItems: string[] = [];
+  
+  if (culturalTitles.hasOldItCertificationsMax) {
+      itScore = 2;
+      itItems.push("Vecchie Cert. (2pt)");
+      
+      culturalTitles.itCertifications.forEach(certId => {
+          if (certId === 'digcomp_22') { itScore += 1; itItems.push("DigComp 2.2 (1pt)"); }
+          else if (certId === 'digcomp_edu') { itScore += 2; itItems.push("DigComp Edu (2pt)"); }
+      });
+      
+      if (itScore > 4) itScore = 4;
+  } else {
+      culturalTitles.itCertifications.forEach(certId => {
+        if (certId === 'digcomp_22') { itScore += 1; itItems.push("DigComp 2.2 (1pt)"); }
+        else if (certId === 'digcomp_edu') { itScore += 2; itItems.push("DigComp Edu (2pt)"); }
+        else { itScore += 0.5; itItems.push("Cert. Standard (0.5pt)"); }
+      });
+      if (itScore > 4) itScore = 4;
+  }
+
+  if (itScore > 0) {
+      items.push({ label: `Certificazioni Informatiche: ${itItems.join(', ')}`, points: itScore });
+      score += itScore;
+  }
+
+  return { total: parseFloat(score.toFixed(2)), items };
+};
+
+export const getDetailedServiceReport = (state: GPSState) => {
+  const { service, setup } = state;
+  const targetCdc = extractCdcCode(setup.cdc);
+  const items: { label: string; points: number }[] = [];
+  
+  const years: Record<number, { specific: number, aspecific: number }> = {};
+
+  service.forEach(entry => {
+    const entryCdc = extractCdcCode(entry.cdc);
+    const isSpecific = entryCdc === targetCdc;
+
+    if (entry.year) {
+      const y = entry.year;
+      if (!years[y]) years[y] = { specific: 0, aspecific: 0 };
+      if (isSpecific) years[y].specific += 166;
+      else years[y].aspecific += 166;
+    } else if (entry.startDate && entry.endDate) {
+      const start = parseISO(entry.startDate);
+      const end = parseISO(entry.endDate);
+      try {
+        const days = eachDayOfInterval({ start, end });
+        days.forEach(day => {
+          const y = getSchoolYearFromDate(day);
+          if (!years[y]) years[y] = { specific: 0, aspecific: 0 };
+          if (isSpecific) years[y].specific += 1;
+          else years[y].aspecific += 1;
+        });
+      } catch (e) {}
+    }
+  });
+
+  let totalScore = 0;
+  Object.keys(years).sort((a, b) => parseInt(b) - parseInt(a)).forEach(yStr => {
+    const y = parseInt(yStr);
+    const data = years[y];
+    
+    const specificPts = getPointsFromDays(data.specific);
+    const aspecificPts = getPointsFromDays(data.aspecific) * 0.5;
+    
+    let yearScore = specificPts + aspecificPts;
+    if (yearScore > 12) yearScore = 12;
+    
+    let label = `Anno Scolastico ${y}/${y+1}`;
+    let details = [];
+    if (data.specific > 0) details.push(`${data.specific}gg Specifici`);
+    if (data.aspecific > 0) details.push(`${data.aspecific}gg Aspecifici`);
+    
+    items.push({ label: `${label} (${details.join(', ')})`, points: parseFloat(yearScore.toFixed(2)) });
+    totalScore += yearScore;
+  });
+
+  return { total: parseFloat(totalScore.toFixed(2)), items };
 };

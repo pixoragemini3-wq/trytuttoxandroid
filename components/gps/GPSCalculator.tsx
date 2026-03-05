@@ -7,6 +7,8 @@ import Step3Titles from './Step3Titles';
 import Step4Service from './Step4Service';
 import Step5Summary from './Step5Summary';
 import { calculateAccessScore, calculateCulturalScore, calculateServiceScore } from './utils';
+import { supabase } from '../../services/supabaseClient';
+import AdUnit from '../AdUnit';
 
 const GPSCalculator: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -15,6 +17,7 @@ const GPSCalculator: React.FC = () => {
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
   const calculatorRef = useRef<HTMLDivElement>(null);
+  const stepsRef = useRef<HTMLDivElement>(null);
 
   // Load from local storage on mount? Maybe later.
 
@@ -31,7 +34,15 @@ const GPSCalculator: React.FC = () => {
   }, [state]);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (stepsRef.current) {
+      // Scroll to the steps indicator with a bit of padding (e.g. 20px above)
+      const y = stepsRef.current.getBoundingClientRect().top + window.scrollY - 100;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    } else if (calculatorRef.current) {
+      calculatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const updateSetup = (field: keyof GPSState['setup'], value: any) => {
@@ -108,10 +119,11 @@ const GPSCalculator: React.FC = () => {
       <Helmet>
         <title>Calcolatore GPS 2026 | Simula il tuo punteggio</title>
         <meta property="og:title" content="Calcolatore GPS 2026 | Simula il tuo punteggio" />
-        <meta property="og:description" content="Calcola il tuo punteggio per le Graduatorie Provinciali Supplenze (GPS) 2026-2028." />
+        <meta property="og:description" content="Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!" />
         <meta property="og:image" content="https://i.imgur.com/sTIlIOc.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content="https://i.imgur.com/sTIlIOc.png" />
+        <meta name="twitter:description" content="Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!" />
       </Helmet>
 
       {/* Header */}
@@ -126,7 +138,7 @@ const GPSCalculator: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1 bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
           {/* Progress Bar */}
-          <div className="flex items-center justify-between mb-8 relative">
+          <div className="flex items-center justify-between mb-8 relative" ref={stepsRef}>
             <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-10 rounded-full"></div>
             <div className={`absolute left-0 top-1/2 h-1 bg-[#e31b23] -z-10 rounded-full transition-all duration-500`} style={{ width: `${((step - 1) / 4) * 100}%` }}></div>
             {[1, 2, 3, 4, 5].map(s => (
@@ -151,7 +163,7 @@ const GPSCalculator: React.FC = () => {
           {/* Steps */}
           <div className="min-h-[400px]">
             {step === 1 && <Step1Setup data={state.setup} onChange={updateSetup} />}
-            {step === 2 && <Step2Access data={state.accessTitle} fascia={state.setup.fascia} postType={state.setup.postType} cdc={state.setup.cdc} onChange={updateAccess} />}
+            {step === 2 && <Step2Access data={state.accessTitle} setupData={state.setup} fascia={state.setup.fascia} postType={state.setup.postType} cdc={state.setup.cdc} onChange={updateAccess} />}
             {step === 3 && <Step3Titles data={state.culturalTitles} fullState={state} onChange={updateCultural} />}
             {step === 4 && <Step4Service data={state.service} cdc={state.setup.cdc} onChange={updateService} />}
             {step === 5 && <Step5Summary state={state} />}
@@ -219,6 +231,22 @@ const GPSCalculator: React.FC = () => {
       {/* Info Section */}
       <div className="mt-12 bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
         <h3 className="font-condensed text-2xl font-black uppercase text-gray-900 mb-6 border-b pb-4">Struttura del Sistema GPS</h3>
+        
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                <span className="font-bold">ATTENZIONE:</span> Questo programma è sperimentale e potrebbe essere suscettibile di errori. I risultati sono indicativi e non hanno valore legale.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-8 items-start">
           <div className="flex-1 space-y-4 text-gray-600">
             <p className="font-medium text-gray-800">Il sistema GPS è strutturato in modo tale che:</p>
@@ -282,8 +310,8 @@ const GPSCalculator: React.FC = () => {
       {showAdModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className="w-full h-48 bg-gray-100 rounded-xl flex items-center justify-center mb-6 border-2 border-dashed border-gray-300">
-              <span className="text-gray-400 font-bold uppercase tracking-widest text-sm">Spazio Pubblicitario</span>
+            <div className="w-full min-h-[250px] mb-6 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden">
+               <AdUnit slotId="5244362740" format="rectangle" label="Sponsor" />
             </div>
             <h3 className="text-xl font-black text-gray-900 mb-2">Supporta il nostro lavoro</h3>
             <p className="text-gray-600 mb-6 text-sm">

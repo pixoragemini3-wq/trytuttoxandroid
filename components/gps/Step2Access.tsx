@@ -4,13 +4,14 @@ import { GPS_CONFIG } from './config';
 
 interface Step2Props {
   data: GPSState['accessTitle'];
+  setupData: GPSState['setup'];
   fascia: GPSState['setup']['fascia'];
   postType: PostType | '';
   cdc: string;
   onChange: (field: keyof GPSState['accessTitle'], value: any) => void;
 }
 
-const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChange }) => {
+const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, cdc, onChange }) => {
   const isFascia1 = fascia === 'I Fascia';
   const isSostegno = postType === 'Sostegno';
   const config = GPS_CONFIG.gps_config;
@@ -32,7 +33,19 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
   const handleVoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = parseFloat(e.target.value);
     if (isNaN(val)) val = 0;
-    const max = data.voteBase || 110;
+    
+    // Auto-detect base
+    let newBase = data.voteBase || 110;
+    if (val > 0 && val <= 10) newBase = 10;
+    else if (val > 10 && val <= 30) newBase = 30;
+    else if (val > 30 && val <= 100) newBase = 100;
+    else if (val > 100) newBase = 110;
+
+    if (newBase !== data.voteBase) {
+      onChange('voteBase', newBase);
+    }
+
+    const max = newBase;
     if (val > max) val = max;
     onChange('vote', val);
   };
@@ -51,52 +64,97 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
             ? "Inserisci il voto del tuo titolo di specializzazione. Se il voto è espresso in 30esimi, seleziona la base 30." 
             : isFascia1 
               ? "Inserisci il voto della tua abilitazione."
-              : "Inserisci il voto della tua Laurea o Diploma che dà accesso alla classe di concorso."}
+              : "Il punteggio è calcolato sulla base del voto di laurea/diploma inserito nel passaggio precedente."}
         </p>
       </div>
 
       <div className="space-y-6">
         {/* 1. Bonus Questions (Context Aware) */}
-        {isFascia1 && isSostegno && (
+        {isFascia1 && (
           <div className="bg-yellow-50 p-6 rounded-xl border-2 border-yellow-200 animate-in fade-in slide-in-from-top-4">
             <h4 className="text-lg font-bold text-yellow-900 mb-4">1. Dettagli del percorso</h4>
             
-            {/* Sostegno Question */}
-            <div>
-              <p className="mb-3 font-medium text-yellow-800">Hai conseguito la specializzazione tramite un percorso selettivo (es. TFA Sostegno)?</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => onChange('bonusId', 'tfa_sostegno')}
-                  className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
-                    data.bonusId === 'tfa_sostegno'
-                      ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
-                      : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
-                  }`}
-                >
-                  SÌ (+12 Punti)
-                </button>
-                <button
-                  onClick={() => onChange('bonusId', '')}
-                  className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
-                    data.bonusId === ''
-                      ? 'border-gray-400 bg-gray-100 text-gray-900 font-bold shadow-sm'
-                      : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
-                  }`}
-                >
-                  NO
-                </button>
+            {isSostegno ? (
+              /* Sostegno Question */
+              <div>
+                <p className="mb-3 font-medium text-yellow-800">Hai conseguito la specializzazione tramite un percorso selettivo (es. TFA Sostegno)?</p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => onChange('bonusId', 'tfa_sostegno')}
+                    className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
+                      data.bonusId === 'tfa_sostegno'
+                        ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
+                        : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
+                    }`}
+                  >
+                    SÌ (+12 Punti)
+                  </button>
+                  <button
+                    onClick={() => onChange('bonusId', '')}
+                    className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
+                      data.bonusId === ''
+                        ? 'border-gray-400 bg-gray-100 text-gray-900 font-bold shadow-sm'
+                        : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
+                    }`}
+                  >
+                    NO
+                  </button>
+                </div>
+                <p className="text-xs text-yellow-700 mt-3">
+                  Seleziona SÌ se l'accesso al corso di specializzazione è avvenuto tramite prove selettive.
+                </p>
               </div>
-              <p className="text-xs text-yellow-700 mt-3">
-                Seleziona SÌ se l'accesso al corso di specializzazione è avvenuto tramite prove selettive.
-              </p>
-            </div>
+            ) : (
+              /* Posto Comune Question */
+              <div>
+                <p className="mb-3 font-medium text-yellow-800">Seleziona il tipo di abilitazione conseguita:</p>
+                <div className="grid grid-cols-1 gap-3">
+                  {config.bonus_abilitazione_fascia_1.opzioni
+                    .filter(opt => opt.id !== 'tfa_sostegno') // Exclude TFA Sostegno for Posto Comune
+                    .map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => onChange('bonusId', data.bonusId === opt.id ? '' : opt.id)}
+                      className={`p-4 rounded-xl border-2 transition-all text-left flex justify-between items-center ${
+                        data.bonusId === opt.id
+                          ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
+                          : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">+{opt.punti} pt</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-yellow-700 mt-3">
+                  Seleziona l'opzione corrispondente al tuo percorso di abilitazione per ottenere il punteggio aggiuntivo.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* 2. Voto */}
-        <div className="bg-white p-6 rounded-xl border-2 border-gray-100 shadow-sm">
+        {/* If II Fascia Posto Comune, show summary. If I Fascia or Sostegno, show input. */}
+        {!isSostegno && !isFascia1 ? (
+          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 shadow-sm">
+             <h4 className="text-lg font-bold text-gray-800 mb-2">Voto del Titolo di Accesso</h4>
+             <div className="flex items-center gap-4">
+               <div className="bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
+                 <span className="text-gray-500 text-sm block">Voto inserito</span>
+                 <span className="font-mono font-bold text-xl text-gray-900">{setupData.laureaVote}/{setupData.laureaVoteBase || 110} {setupData.laureaLode ? 'con Lode' : ''}</span>
+               </div>
+             </div>
+             <p className="text-sm text-gray-500 mt-4">
+               Questo voto è stato inserito nel passaggio precedente e viene utilizzato per calcolare il punteggio base.
+             </p>
+          </div>
+        ) : (
+          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 shadow-sm">
           <label className="block text-lg font-bold text-gray-800 mb-4">
-            {isFascia1 ? "2. Con quale voto hai conseguito il titolo?" : "1. Con quale voto hai conseguito il titolo?"}
+            {isSostegno 
+              ? (isFascia1 ? "2. Con quale voto hai conseguito l'abilitazione sul sostegno?" : "1. Con quale voto hai conseguito l'abilitazione sul sostegno?")
+              : (isFascia1 ? "2. Con quale voto hai conseguito l'abilitazione?" : "1. Con quale voto hai conseguito il titolo?")}
           </label>
           
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center mb-4">
@@ -112,28 +170,44 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
               />
             </div>
 
-            {/* Lode */}
-            {!isSostegno && (
-              <label className={`flex items-center gap-3 cursor-pointer select-none border-2 p-4 rounded-xl transition-all ${
-                data.isLode 
-                  ? 'border-green-500 bg-green-50 text-green-900' 
-                  : 'border-gray-200 hover:border-green-300'
-              }`}>
-                <input 
-                  type="checkbox" 
-                  checked={data.isLode} 
-                  onChange={(e) => onChange('isLode', e.target.checked)}
-                  className="w-6 h-6 text-green-600 rounded focus:ring-green-500"
-                />
-                <span className="font-bold">Con Lode</span>
-              </label>
+            {/* Quick Fill from Laurea (I Fascia Posto Comune) */}
+            {isFascia1 && !isSostegno && setupData.laureaVote && (
+              <button
+                onClick={() => {
+                  onChange('vote', setupData.laureaVote);
+                  onChange('voteBase', setupData.laureaVoteBase || 110);
+                  onChange('isLode', setupData.laureaLode || false);
+                }}
+                className="text-sm text-green-700 underline hover:text-green-900 bg-green-50 px-3 py-2 rounded-lg border border-green-200"
+              >
+                Usa voto di laurea ({setupData.laureaVote}/{setupData.laureaVoteBase || 110})
+              </button>
             )}
+
+            {/* Lode - Only for Sostegno or I Fascia here if needed */}
+            {/* Actually, for I Fascia Posto Comune, usually Lode is not a separate checkbox but part of the score? 
+                But let's allow it if the user wants to specify it for record, though Tabella A/3 is usually just vote based.
+                Wait, user said "Voto dell'abilitazione".
+            */}
+            <label className={`flex items-center gap-3 cursor-pointer select-none border-2 p-4 rounded-xl transition-all ${
+              data.isLode 
+                ? 'border-green-500 bg-green-50 text-green-900' 
+                : 'border-gray-200 hover:border-green-300'
+            }`}>
+              <input 
+                type="checkbox" 
+                checked={data.isLode} 
+                onChange={(e) => onChange('isLode', e.target.checked)}
+                className="w-6 h-6 text-green-600 rounded focus:ring-green-500"
+              />
+              <span className="font-bold">Con Lode</span>
+            </label>
           </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-600 mb-2">Seleziona la base del voto:</label>
             <div className="flex flex-wrap gap-2">
-              {[110, 100, 10, ...(isSostegno ? [30] : [])].map(b => (
+              {[110, 100, 30, 10].map(b => (
                 <button
                   key={b}
                   onClick={() => handleBaseChange(b)}
@@ -171,13 +245,16 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
             </div>
           )}
         </div>
+        )}
 
         {/* 3. Abilitazione per Sostegno I Fascia */}
         {isSostegno && isFascia1 && (
           <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-4">
-            <h4 className="text-lg font-bold text-blue-900 mb-4">3. Abilitazione su Posto Comune</h4>
+            <h4 className="text-lg font-bold text-blue-900 mb-4">3. Abilitazione su altra CdC (Punto B.1 Tab. A/7)</h4>
             <p className="text-sm text-blue-700 mb-4">
-              Hai un'abilitazione su una classe di concorso del medesimo grado? Il voto di questa abilitazione ti darà ulteriore punteggio.
+              Hai un'abilitazione su una classe di concorso del medesimo grado (es. su materia)? 
+              <br/>
+              <span className="font-bold">Nota:</span> Se la tua laurea è stata titolo di accesso per questa abilitazione, verrà "assorbita" e non valutata separatamente.
             </p>
             
             <div className="flex gap-4 mb-6">
@@ -236,7 +313,18 @@ const Step2Access: React.FC<Step2Props> = ({ data, fascia, postType, cdc, onChan
                       onChange={(e) => {
                         let val = parseFloat(e.target.value);
                         if (isNaN(val)) val = 0;
-                        const max = data.abilitazioneVoteBase || 100;
+                        
+                        let newBase = data.abilitazioneVoteBase || 100;
+                        if (val > 0 && val <= 10) newBase = 10;
+                        else if (val > 10 && val <= 30) newBase = 30;
+                        else if (val > 30 && val <= 100) newBase = 100;
+                        else if (val > 100) newBase = 110;
+                        
+                        if (newBase !== data.abilitazioneVoteBase) {
+                            onChange('abilitazioneVoteBase', newBase);
+                        }
+                        
+                        const max = newBase;
                         if (val > max) val = max;
                         onChange('abilitazioneVote', val);
                       }}

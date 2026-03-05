@@ -1,6 +1,7 @@
 import React from 'react';
 import { GPSState, ServiceEntry } from './types';
 import { differenceInDays } from 'date-fns';
+import { extractCdcCode } from './utils';
 
 interface Step4Props {
   data: GPSState['service'];
@@ -160,7 +161,7 @@ const Step4Service: React.FC<Step4Props> = ({ data, cdc, onChange }) => {
                       required
                     />
                     <datalist id={`cdc-list-${entry.id}`}>
-                      {cdc && <option value={cdc}>Classe Scelta ({cdc})</option>}
+                      {cdc && <option value={extractCdcCode(cdc)}>Classe Scelta ({cdc})</option>}
                       <option value="ADAA">ADAA - Sostegno Infanzia</option>
                       <option value="ADEE">ADEE - Sostegno Primaria</option>
                       <option value="ADMM">ADMM - Sostegno Secondaria I grado</option>
@@ -191,11 +192,11 @@ const Step4Service: React.FC<Step4Props> = ({ data, cdc, onChange }) => {
                     {entry.cdc && (
                       <div className="absolute right-2 top-1/2 -translate-y-1/2">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                          entry.cdc.replace(/[^A-Z0-9]/gi, '') === cdc.replace(/[^A-Z0-9]/gi, '')
+                          extractCdcCode(entry.cdc) === extractCdcCode(cdc)
                             ? 'bg-green-100 text-green-800'
                             : 'bg-orange-100 text-orange-800'
                         }`}>
-                          {entry.cdc.replace(/[^A-Z0-9]/gi, '') === cdc.replace(/[^A-Z0-9]/gi, '') ? 'SPECIFICO' : 'ASPECIFICO'}
+                          {extractCdcCode(entry.cdc) === extractCdcCode(cdc) ? 'SPECIFICO' : 'ASPECIFICO'}
                         </span>
                       </div>
                     )}

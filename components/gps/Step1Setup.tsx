@@ -30,9 +30,38 @@ const COMMON_CDC = [
   'A-49 Scienze motorie e sportive nella scuola secondaria di I grado',
   'A-50 Scienze naturali, chimiche e biologiche',
   'A-60 Tecnologia nella scuola secondaria di I grado',
+  'B-01 Attività pratiche speciali',
   'B-02 Conversazione in lingua straniera',
+  'B-03 Laboratori di Fisica',
+  'B-04 Laboratori di Liuteria',
+  'B-05 Laboratorio di Logistica',
+  'B-06 Laboratorio di Odontotecnica',
+  'B-07 Laboratorio di Ottica',
+  'B-08 Laboratori di produzioni industriali ed artigianali della ceramica',
+  'B-09 Laboratori di scienze e tecnologie aeronautiche',
+  'B-10 Laboratori di scienze e tecnologie costruzioni aeronautiche',
+  'B-11 Laboratori di scienze e tecnologie agrarie',
+  'B-12 Laboratori di scienze e tecnologie chimiche e microbiologiche',
+  'B-13 Laboratori di scienze e tecnologie della calzatura e della moda',
+  'B-14 Laboratori di scienze e tecnologie delle costruzioni',
+  'B-15 Laboratori di scienze e tecnologie elettriche ed elettroniche',
   'B-16 Laboratori di scienze e tecnologie informatiche',
-  'B-20 Laboratori di servizi enogastronomici, settore cucina'
+  'B-17 Laboratori di scienze e tecnologie meccaniche',
+  'B-18 Laboratori di scienze e tecnologie tessili, dell\'abbigliamento e della moda',
+  'B-19 Laboratori di servizi di ricettività alberghiera',
+  'B-20 Laboratori di servizi enogastronomici, settore cucina',
+  'B-21 Laboratori di servizi enogastronomici, settore sala e vendita',
+  'B-22 Laboratori di tecnologie e tecniche delle comunicazioni multimediali',
+  'B-23 Laboratori per i servizi socio-sanitari',
+  'B-24 Laboratorio di scienze e tecnologie nautiche',
+  'B-25 Laboratorio di scienze e tecnologie delle costruzioni navali',
+  'B-26 Laboratorio di tecnologie del legno',
+  'B-27 Laboratorio di tecnologie del marmo',
+  'B-28 Laboratorio di tecnologie orafe',
+  'B-29 Gabinetto fisioterapico',
+  'B-30 Addetto all\'ufficio tecnico',
+  'B-31 Esercitazioni pratiche per ciechi',
+  'B-32 Esercitazioni di pratica professionale'
 ];
 
 const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
@@ -48,6 +77,19 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
   const handlePostTypeChange = (type: PostType) => {
     onChange('postType', type);
     onChange('cdc', '');
+  };
+
+  const handleVoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    const max = data.laureaVoteBase || 110;
+    if (val > max) val = max;
+    onChange('laureaVote', val);
+  };
+
+  const handleBaseChange = (base: number) => {
+    onChange('laureaVoteBase', base);
+    if ((data.laureaVote || 0) > base) onChange('laureaVote', base);
   };
 
   return (
@@ -167,10 +209,70 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
           </div>
         )}
 
-        {/* 4. Fascia (Only if CDC selected) */}
+        {/* 4. Voto Laurea (Only for Posto Comune/ITP, NOT Sostegno) */}
+        {data.cdc && data.postType !== 'Sostegno' && (
+          <div className="animate-in fade-in slide-in-from-top-2 bg-white p-6 rounded-xl border-2 border-gray-100 shadow-sm">
+            <label className="block text-lg font-bold text-gray-800 mb-4">4. Voto di {data.postType === 'ITP' ? 'Diploma' : 'Laurea'}</label>
+            
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center mb-4">
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <input 
+                  type="number" 
+                  min="0" 
+                  max={data.laureaVoteBase || 110} 
+                  value={data.laureaVote || ''} 
+                  onChange={handleVoteChange}
+                  placeholder={`Voto (max ${data.laureaVoteBase || 110})`}
+                  className="w-full md:w-48 p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-2xl font-mono text-center font-bold"
+                />
+              </div>
+
+              <label className={`flex items-center gap-3 cursor-pointer select-none border-2 p-4 rounded-xl transition-all ${
+                data.laureaLode 
+                  ? 'border-green-500 bg-green-50 text-green-900' 
+                  : 'border-gray-200 hover:border-green-300'
+              }`}>
+                <input 
+                  type="checkbox" 
+                  checked={data.laureaLode || false} 
+                  onChange={(e) => onChange('laureaLode', e.target.checked)}
+                  className="w-6 h-6 text-green-600 rounded focus:ring-green-500"
+                />
+                <span className="font-bold">Con Lode</span>
+              </label>
+            </div>
+
+            <div className="mb-2">
+              <label className="block text-sm font-medium text-gray-600 mb-2">Seleziona la base del voto:</label>
+              <div className="flex flex-wrap gap-2">
+                {[110, 100, 30, 10].map(b => (
+                  <button
+                    key={b}
+                    onClick={() => handleBaseChange(b)}
+                    className={`px-4 py-2 rounded-lg font-bold transition-colors border-2 ${
+                      (data.laureaVoteBase || 110) === b 
+                        ? 'bg-blue-500 border-blue-600 text-white' 
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    su {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-3">
+              Inserisci il voto del titolo di accesso ({data.postType === 'ITP' ? 'Diploma' : 'Laurea'}). Se hai la lode, seleziona la casella.
+            </p>
+          </div>
+        )}
+
+        {/* 5. Fascia (Only if CDC selected) */}
         {data.cdc && (
           <div className="animate-in fade-in slide-in-from-top-2">
-            <label className="block text-lg font-bold text-gray-800 mb-3">4. In quale fascia ti inserisci?</label>
+            <label className="block text-lg font-bold text-gray-800 mb-3">
+              {data.postType !== 'Sostegno' ? '5. In quale fascia ti inserisci?' : '4. In quale fascia ti inserisci?'}
+            </label>
             <div className="flex gap-4 mb-4">
               {FASCE.map(f => (
                 <label key={f} className={`flex-1 cursor-pointer border-2 rounded-xl p-4 flex items-center justify-center gap-3 transition-all ${

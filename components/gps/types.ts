@@ -43,6 +43,9 @@ export interface GPSState {
     postType: PostType | '';
     fascia: Fascia | '';
     cdc: string;
+    laureaVote?: number;
+    laureaVoteBase?: number;
+    laureaLode?: boolean;
   };
   accessTitle: {
     vote: number;
@@ -53,9 +56,6 @@ export interface GPSState {
     abilitazioneCdc?: string;
     abilitazioneVote?: number;
     abilitazioneVoteBase?: number;
-    laureaVote?: number;
-    laureaVoteBase?: number;
-    laureaLode?: boolean;
   };
   culturalTitles: CulturalTitlesState;
   service: ServiceEntry[];
@@ -94,3 +94,15 @@ export const INITIAL_STATE: GPSState = {
   },
   service: [],
 };
+
+export interface SavedSimulation {
+  id: string;
+  date: string;
+  state: GPSState;
+  scores: {
+    access: number;
+    cultural: number;
+    service: number;
+    total: number;
+  };
+}
