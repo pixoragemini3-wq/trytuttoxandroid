@@ -6,6 +6,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App';
 
 const rootElement = document.getElementById('root');
+console.log('TuttoXAndroid App Version: 1.0.3 - Updated 10:37');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
