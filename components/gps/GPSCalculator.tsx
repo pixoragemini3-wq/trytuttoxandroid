@@ -33,13 +33,9 @@ const GPSCalculator: React.FC = () => {
   }, [state]);
 
   const scrollToTop = () => {
-    if (calculatorRef.current) {
-      // Scroll to the top of the calculator container with a bit of padding
-      const y = calculatorRef.current.getBoundingClientRect().top + window.scrollY - 20;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    } else {
+    setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    }, 100);
   };
 
   const updateSetup = (field: keyof GPSState['setup'], value: any) => {
@@ -162,7 +158,7 @@ const GPSCalculator: React.FC = () => {
             {step === 1 && <Step1Setup data={state.setup} onChange={updateSetup} />}
             {step === 2 && <Step2Access data={state.accessTitle} setupData={state.setup} fascia={state.setup.fascia} postType={state.setup.postType} cdc={state.setup.cdc} onChange={updateAccess} />}
             {step === 3 && <Step3Titles data={state.culturalTitles} fullState={state} onChange={updateCultural} />}
-            {step === 4 && <Step4Service data={state.service} cdc={state.setup.cdc} onChange={updateService} />}
+            {step === 4 && <Step4Service data={state.service} cdc={state.setup.cdc} targetGrade={state.setup.grade} onChange={updateService} />}
             {step === 5 && <Step5Summary state={state} />}
           </div>
 

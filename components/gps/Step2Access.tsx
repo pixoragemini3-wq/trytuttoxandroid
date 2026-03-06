@@ -70,67 +70,35 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
 
       <div className="space-y-6">
         {/* 1. Bonus Questions (Context Aware) */}
-        {isFascia1 && (
+        {isFascia1 && !isSostegno && (
           <div className="bg-yellow-50 p-6 rounded-xl border-2 border-yellow-200 animate-in fade-in slide-in-from-top-4">
             <h4 className="text-lg font-bold text-yellow-900 mb-4">1. Dettagli del percorso</h4>
             
-            {isSostegno ? (
-              /* Sostegno Question */
-              <div>
-                <p className="mb-3 font-medium text-yellow-800">Hai conseguito la specializzazione tramite un percorso selettivo (es. TFA Sostegno)?</p>
-                <div className="flex gap-4">
+            {/* Posto Comune Question */}
+            <div>
+              <p className="mb-3 font-medium text-yellow-800">Seleziona il tipo di abilitazione conseguita:</p>
+              <div className="grid grid-cols-1 gap-3">
+                {config.bonus_abilitazione_fascia_1.opzioni
+                  .filter(opt => opt.id !== 'tfa_sostegno') // Exclude TFA Sostegno for Posto Comune
+                  .map(opt => (
                   <button
-                    onClick={() => onChange('bonusId', 'tfa_sostegno')}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
-                      data.bonusId === 'tfa_sostegno'
+                    key={opt.id}
+                    onClick={() => onChange('bonusId', data.bonusId === opt.id ? '' : opt.id)}
+                    className={`p-4 rounded-xl border-2 transition-all text-left flex justify-between items-center ${
+                      data.bonusId === opt.id
                         ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
                         : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
                     }`}
                   >
-                    SÌ (+12 Punti)
+                    <span>{opt.label}</span>
+                    <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">+{opt.punti} pt</span>
                   </button>
-                  <button
-                    onClick={() => onChange('bonusId', '')}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-all text-center ${
-                      data.bonusId === ''
-                        ? 'border-gray-400 bg-gray-100 text-gray-900 font-bold shadow-sm'
-                        : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
-                    }`}
-                  >
-                    NO
-                  </button>
-                </div>
-                <p className="text-xs text-yellow-700 mt-3">
-                  Seleziona SÌ se l'accesso al corso di specializzazione è avvenuto tramite prove selettive.
-                </p>
+                ))}
               </div>
-            ) : (
-              /* Posto Comune Question */
-              <div>
-                <p className="mb-3 font-medium text-yellow-800">Seleziona il tipo di abilitazione conseguita:</p>
-                <div className="grid grid-cols-1 gap-3">
-                  {config.bonus_abilitazione_fascia_1.opzioni
-                    .filter(opt => opt.id !== 'tfa_sostegno') // Exclude TFA Sostegno for Posto Comune
-                    .map(opt => (
-                    <button
-                      key={opt.id}
-                      onClick={() => onChange('bonusId', data.bonusId === opt.id ? '' : opt.id)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left flex justify-between items-center ${
-                        data.bonusId === opt.id
-                          ? 'border-yellow-600 bg-yellow-100 text-yellow-900 font-bold shadow-sm'
-                          : 'border-yellow-200 bg-white text-gray-600 hover:border-yellow-400'
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">+{opt.punti} pt</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-yellow-700 mt-3">
-                  Seleziona l'opzione corrispondente al tuo percorso di abilitazione per ottenere il punteggio aggiuntivo.
-                </p>
-              </div>
-            )}
+              <p className="text-xs text-yellow-700 mt-3">
+                Seleziona l'opzione corrispondente al tuo percorso di abilitazione per ottenere il punteggio aggiuntivo.
+              </p>
+            </div>
           </div>
         )}
 

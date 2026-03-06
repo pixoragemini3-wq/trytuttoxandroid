@@ -1,15 +1,16 @@
 import React from 'react';
 import { GPSState, ServiceEntry } from './types';
 import { differenceInDays } from 'date-fns';
-import { extractCdcCode } from './utils';
+import { extractCdcCode, isServiceSpecific } from './utils';
 
 interface Step4Props {
   data: GPSState['service'];
   cdc: string;
+  targetGrade: string;
   onChange: (value: ServiceEntry[]) => void;
 }
 
-const Step4Service: React.FC<Step4Props> = ({ data, cdc, onChange }) => {
+const Step4Service: React.FC<Step4Props> = ({ data, cdc, targetGrade, onChange }) => {
   const addService = () => {
     const newEntry: ServiceEntry = {
       id: Date.now().toString(),
@@ -192,11 +193,11 @@ const Step4Service: React.FC<Step4Props> = ({ data, cdc, onChange }) => {
                     {entry.cdc && (
                       <div className="absolute right-2 top-1/2 -translate-y-1/2">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                          extractCdcCode(entry.cdc) === extractCdcCode(cdc)
+                          isServiceSpecific(entry.cdc, cdc, targetGrade)
                             ? 'bg-green-100 text-green-800'
                             : 'bg-orange-100 text-orange-800'
                         }`}>
-                          {extractCdcCode(entry.cdc) === extractCdcCode(cdc) ? 'SPECIFICO' : 'ASPECIFICO'}
+                          {isServiceSpecific(entry.cdc, cdc, targetGrade) ? 'SPECIFICO' : 'ASPECIFICO'}
                         </span>
                       </div>
                     )}

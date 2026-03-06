@@ -132,10 +132,12 @@ export const calculateAccessScore = (state: GPSState) => {
   }
 
   // Bonus Fascia 1 (Common for both)
-  if (fascia === 'I Fascia' && bonusId) {
-    // For Posto Comune, we removed the bonusId dropdown and added 24 points automatically.
-    // So this bonusId logic should only apply to Sostegno (e.g. tfa_sostegno)
+  if (fascia === 'I Fascia') {
     if (isSostegnoFascia1) {
+      // Automatically add 12 points for TFA Sostegno
+      score += 12;
+    } else if (bonusId) {
+      // Posto Comune bonus
       const bonus = GPS_CONFIG.gps_config.bonus_abilitazione_fascia_1.opzioni.find(b => b.id === bonusId);
       if (bonus) {
         score += bonus.punti;
@@ -268,20 +270,51 @@ export const extractCdcCode = (input: string): string => {
   // Take the first word (e.g., "A-45" from "A-45 SCIENZE...")
   const firstWord = input.trim().split(/\s+/)[0].toUpperCase();
   // Remove non-alphanumeric characters (e.g., "A-45" -> "A45")
-  return firstWord.replace(/[^A-Z0-9]/g, '');
+  // Wait, if we remove the hyphen, A-45 becomes A45. Let's keep the hyphen if it exists, or just standardize it.
+  // Actually, keeping it alphanumeric is fine, but let's make sure we compare apples to apples.
+  return firstWord.replace(/[^A-Z0-9-]/g, '');
+};
+
+const getGradeFromSostegnoCdc = (cdc: string): string | null => {
+  const cleanCdc = cdc.replace(/[^A-Z]/g, '');
+  if (cleanCdc === 'ADAA') return 'Infanzia';
+  if (cleanCdc === 'ADEE') return 'Primaria';
+  if (cleanCdc === 'ADMM') return 'Secondaria I';
+  if (cleanCdc === 'ADSS') return 'Secondaria II';
+  return null;
+};
+
+export const isServiceSpecific = (entryCdc: string, targetCdc: string, targetGrade: string): boolean => {
+  const cleanEntryCdc = extractCdcCode(entryCdc);
+  const cleanTargetCdc = extractCdcCode(targetCdc);
+  
+  // Exact match is always specific
+  if (cleanEntryCdc === cleanTargetCdc) return true;
+
+  // "Il servizio prestato sul sostegno è valutato come specifico per la graduatoria di sostegno dello stesso grado e come specifico (quindi al 100%) per tutte le altre classi di concorso dello stesso grado."
+  const entrySostegnoGrade = getGradeFromSostegnoCdc(cleanEntryCdc);
+  if (entrySostegnoGrade) {
+    // The service was performed on Sostegno.
+    // Is it the same grade as the target ranking?
+    if (entrySostegnoGrade === targetGrade) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 export const calculateServiceScore = (state: GPSState) => {
   const { service, setup } = state;
   const targetCdc = extractCdcCode(setup.cdc);
+  const targetGrade = setup.grade;
 
   // Group by School Year
   // Key: Year (e.g., 2023 for 23/24) -> { specific: days, aspecific: days }
   const years: Record<number, { specific: number, aspecific: number }> = {};
 
   service.forEach(entry => {
-    const entryCdc = extractCdcCode(entry.cdc);
-    const isSpecific = entryCdc === targetCdc;
+    const isSpecific = isServiceSpecific(entry.cdc, setup.cdc, targetGrade);
 
     if (entry.year) {
       // Full Year
@@ -553,13 +586,13 @@ export const getDetailedCulturalReport = (state: GPSState) => {
 export const getDetailedServiceReport = (state: GPSState) => {
   const { service, setup } = state;
   const targetCdc = extractCdcCode(setup.cdc);
+  const targetGrade = setup.grade;
   const items: { label: string; points: number }[] = [];
   
   const years: Record<number, { specific: number, aspecific: number }> = {};
 
   service.forEach(entry => {
-    const entryCdc = extractCdcCode(entry.cdc);
-    const isSpecific = entryCdc === targetCdc;
+    const isSpecific = isServiceSpecific(entry.cdc, setup.cdc, targetGrade);
 
     if (entry.year) {
       const y = entry.year;

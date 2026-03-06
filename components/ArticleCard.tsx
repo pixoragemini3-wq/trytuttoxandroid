@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Article } from '../types';
 
 interface ArticleCardProps {
@@ -27,7 +27,34 @@ const getCategoryColors = (category: string, type: 'text' | 'bg') => {
 };
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
-  const [isImageLoaded, setIsImageLoaded] = React.useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isSticky, setIsSticky] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsSticky(entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1, // Trigger when at least 10% of the card is visible
+      }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, []);
+
+  const stickyClasses = isSticky ? 'sticky top-24 z-40' : '';
   
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
@@ -41,7 +68,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   // UPDATED: Font sizes reduced for a more professional blog look
   if (article.type === 'hero') {
     return (
-      <div onClick={onClick} className={`relative w-full h-full lg:rounded-[2rem] bg-white flex flex-col md:flex-row shadow-xl group cursor-pointer overflow-hidden ${className}`}>
+      <div ref={cardRef} onClick={onClick} className={`relative w-full h-full lg:rounded-[2rem] bg-white flex flex-col md:flex-row shadow-xl group cursor-pointer overflow-hidden ${stickyClasses} ${className}`}>
         {/* Image Section - Adjusted width and aspect ratio */}
         <div className="w-full md:w-[50%] lg:w-[60%] aspect-video md:aspect-auto md:h-full overflow-hidden relative bg-gray-50 shrink-0">
           {!isImageLoaded && <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />}
@@ -98,7 +125,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     const isCustom = bgClass.includes('[');
     
     return (
-      <div onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-xl lg:rounded-2xl group cursor-pointer shadow-lg bg-black shrink-0 ${className}`}>
+      <div ref={cardRef} onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-xl lg:rounded-2xl group cursor-pointer shadow-lg bg-black shrink-0 ${stickyClasses} ${className}`}>
         {!isImageLoaded && <div className="absolute inset-0 bg-gray-800 animate-pulse z-10" />}
         <img 
           src={article.imageUrl} 
@@ -135,7 +162,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     'text-[#e31b23]';
 
   return (
-    <div onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.02] hover:shadow-2xl rounded-2xl p-3 border border-transparent hover:border-gray-100 ${className}`}>
+    <div ref={cardRef} onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.02] hover:shadow-2xl rounded-2xl p-3 border border-transparent hover:border-gray-100 ${stickyClasses} ${className}`}>
       
       {/* IMAGE - Directly styled with img selector as requested (35% width, proportional height/aspect) */}
       <div className="w-full md:w-[35%] aspect-video md:aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100 shrink-0 relative">

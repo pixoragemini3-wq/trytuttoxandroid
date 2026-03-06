@@ -44,7 +44,18 @@
 <meta content='@tuttoxandroid' name='twitter:site'/>
 <meta content='@tuttoxandroid' name='twitter:creator'/>
 
-<b:if cond='data:view.isPost'>
+<b:if cond='data:view.url contains "calcolatore-gps"'>
+  <meta content='Calcolatore GPS 2026 | Simula il tuo punteggio' property='og:title'/>
+  <meta content='Calcolatore GPS 2026 | Simula il tuo punteggio' name='twitter:title'/>
+  <meta content='Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!' property='og:description'/>
+  <meta content='Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!' name='twitter:description'/>
+  <meta content='website' property='og:type'/>
+  <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
+  <meta content='https://i.imgur.com/sTIlIOc.png' property='og:image'/>
+  <meta content='https://i.imgur.com/sTIlIOc.png' name='twitter:image'/>
+  <meta content='1200' property='og:image:width'/>
+  <meta content='630' property='og:image:height'/>
+<b:elseif cond='data:view.isPost'/>
   <b:with value='data:widgets.Blog1.posts.first' var='post'>
       <meta expr:content='data:post.title' property='og:title'/>
       <meta expr:content='data:post.title' name='twitter:title'/>
@@ -88,17 +99,10 @@
   <meta expr:content='data:blog.title' name='twitter:title'/>
   <meta content='website' property='og:type'/>
   <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
-  <b:if cond='data:view.url contains "calcolatore-gps"'>
-    <meta content='https://i.imgur.com/sTIlIOc.png' property='og:image'/>
-    <meta content='https://i.imgur.com/sTIlIOc.png' name='twitter:image'/>
-    <meta content='1200' property='og:image:width'/>
-    <meta content='630' property='og:image:height'/>
-  <b:else/>
-    <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
-    <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
-    <meta content='600' property='og:image:width'/>
-    <meta content='600' property='og:image:height'/>
-  </b:if>
+  <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+  <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
+  <meta content='600' property='og:image:width'/>
+  <meta content='600' property='og:image:height'/>
 </b:if>
 
 <!-- STRUCTURED DATA (JSON-LD) FOR GOOGLE -->
@@ -191,7 +195,6 @@
 <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=Saira+Extra+Condensed:wght@700;800;900&amp;display=swap' rel='stylesheet'/>
 
 <script type='importmap'>
-<![CDATA[
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0?v=fixed",
@@ -203,7 +206,6 @@
     "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
   }
 }
-]]>
 </script>
 </head>
 <body class='bg-white'>
