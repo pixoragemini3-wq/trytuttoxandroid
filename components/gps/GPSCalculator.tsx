@@ -34,7 +34,13 @@ const GPSCalculator: React.FC = () => {
 
   const scrollToTop = () => {
     setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (calculatorRef.current) {
+        const yOffset = -100; // Offset for fixed header
+        const y = calculatorRef.current.getBoundingClientRect().top + window.scrollY + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }, 100);
   };
 
