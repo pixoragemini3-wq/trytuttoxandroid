@@ -485,7 +485,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 }
             }
         } catch (e) {
-            console.warn(`Telegram fetch failed with proxy ${proxyUrl}`, e);
+            // Silently fail and try the next proxy
         }
     }
 
