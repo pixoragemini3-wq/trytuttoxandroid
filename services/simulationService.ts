@@ -1,41 +1,56 @@
+import { supabase } from './supabaseClient';
 import { SavedSimulation } from '../components/gps/types';
 
-export const saveSimulationLocally = async (simulation: SavedSimulation) => {
-  try {
-    const existing = localStorage.getItem('gps_simulations');
-    let simulations: SavedSimulation[] = [];
-    if (existing) {
-      simulations = JSON.parse(existing);
-    }
-    
-    // Add new simulation at the beginning
-    simulations.unshift(simulation);
-    
-    // Keep only the last 10 simulations to avoid filling up localStorage
-    if (simulations.length > 10) {
-      simulations = simulations.slice(0, 10);
-    }
-    
-    localStorage.setItem('gps_simulations', JSON.stringify(simulations));
-    
-    // Simulate a tiny delay for visual feedback
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return simulation;
-  } catch (e) {
-    console.error('Failed to save simulation locally', e);
-    throw e;
+export const saveSimulationToSupabase = async (simulation: SavedSimulation) => {
+  if (!supabase) {
+    console.warn('Supabase client not initialized. Skipping save.');
+    return null;
   }
+
+  const { data, error } = await supabase
+    .from('gps_simulations')
+    .insert([
+      { 
+        id: simulation.id,
+        created_at: simulation.date,
+        grade: simulation.state.setup.grade,
+        post_type: simulation.state.setup.postType,
+        cdc: simulation.state.setup.cdc,
+        fascia: simulation.state.setup.fascia,
+        access_score: simulation.scores.access,
+        cultural_score: simulation.scores.cultural,
+        service_score: simulation.scores.service,
+        total_score: simulation.scores.total,
+        details: simulation.state
+      }
+    ]);
+    
+  if (error) throw error;
+  return data;
 };
 
-export const getSimulationsLocally = async (): Promise<SavedSimulation[]> => {
-  try {
-    const existing = localStorage.getItem('gps_simulations');
-    if (existing) {
-      return JSON.parse(existing);
-    }
-    return [];
-  } catch (e) {
-    console.error('Failed to get local simulations', e);
+export const getSimulationsFromSupabase = async () => {
+  if (!supabase) {
+    console.warn('Supabase client not initialized. Skipping fetch.');
     return [];
   }
+
+  const { data, error } = await supabase
+    .from('gps_simulations')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+  
+  return data.map((row: any) => ({
+    id: row.id,
+    date: row.created_at,
+    state: row.details,
+    scores: {
+      access: row.access_score,
+      cultural: row.cultural_score,
+      service: row.service_score,
+      total: row.total_score
+    }
+  }));
 };
