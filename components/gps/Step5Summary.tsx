@@ -3,7 +3,7 @@ import { GPSState, SavedSimulation } from './types';
 import { calculateAccessScore, calculateCulturalScore, calculateServiceScore, getDetailedAccessReport, getDetailedCulturalReport, getDetailedServiceReport } from './utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { saveSimulationToSupabase } from '../../services/simulationService';
+import { saveSimulationLocally } from '../../services/simulationService';
 
 interface Step5Props {
   state: GPSState;
@@ -45,12 +45,12 @@ const Step5Summary: React.FC<Step5Props> = ({ state }) => {
     };
 
     try {
-      await saveSimulationToSupabase(newSim);
+      await saveSimulationLocally(newSim);
       setIsSaved(true);
     } catch (err: any) {
-      console.error('Error saving to Supabase:', err);
+      console.error('Error saving locally:', err);
       // Don't show error to user for auto-save unless critical, or just log it
-      // setSaveError('Errore: Verifica configurazione Supabase (.env)');
+      // setSaveError('Errore: Impossibile salvare sul dispositivo');
     } finally {
       setIsSaving(false);
     }
@@ -174,7 +174,7 @@ const Step5Summary: React.FC<Step5Props> = ({ state }) => {
           ) : isSaved ? (
             <>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-              Salvato su Cloud
+              Salvato sul dispositivo
             </>
           ) : (
             <>
