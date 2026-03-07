@@ -85,12 +85,25 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
     const max = data.laureaVoteBase || 110;
     if (val > max) val = max;
     onChange('laureaVote', val);
+    
+    // Reset lode if vote is not max
+    if (val < max && data.laureaLode) {
+      onChange('laureaLode', false);
+    }
   };
 
   const handleBaseChange = (base: number) => {
     onChange('laureaVoteBase', base);
-    if ((data.laureaVote || 0) > base) onChange('laureaVote', base);
+    const currentVote = data.laureaVote || 0;
+    if (currentVote > base) {
+      onChange('laureaVote', base);
+    } else if (currentVote < base && data.laureaLode) {
+      // If vote was max for previous base but not for new base
+      onChange('laureaLode', false);
+    }
   };
+
+  const canHaveLode = (data.laureaVote || 0) === (data.laureaVoteBase || 110) && (data.laureaVote || 0) > 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -228,6 +241,7 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
               </div>
 
               <label className={`flex items-center gap-3 cursor-pointer select-none border-2 p-4 rounded-xl transition-all ${
+                !canHaveLode ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' :
                 data.laureaLode 
                   ? 'border-green-500 bg-green-50 text-green-900' 
                   : 'border-gray-200 hover:border-green-300'
@@ -235,8 +249,9 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
                 <input 
                   type="checkbox" 
                   checked={data.laureaLode || false} 
+                  disabled={!canHaveLode}
                   onChange={(e) => onChange('laureaLode', e.target.checked)}
-                  className="w-6 h-6 text-green-600 rounded focus:ring-green-500"
+                  className="w-6 h-6 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
                 />
                 <span className="font-bold">Con Lode</span>
               </label>
@@ -263,6 +278,9 @@ const Step1Setup: React.FC<Step1Props> = ({ data, onChange }) => {
             
             <p className="text-sm text-gray-500 mt-3">
               Inserisci il voto del titolo di accesso ({data.postType === 'ITP' ? 'Diploma' : 'Laurea'}). Se hai la lode, seleziona la casella.
+              {!canHaveLode && (data.laureaVote || 0) > 0 && (
+                <span className="block text-orange-600 font-bold mt-1">La lode è selezionabile solo con il punteggio massimo ({data.laureaVoteBase || 110}).</span>
+              )}
             </p>
           </div>
         )}

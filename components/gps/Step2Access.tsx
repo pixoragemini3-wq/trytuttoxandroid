@@ -49,12 +49,23 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
     const max = newBase;
     if (val > max) val = max;
     onChange('vote', val);
+
+    // Reset lode if vote is not max
+    if (val < max && data.isLode) {
+      onChange('isLode', false);
+    }
   };
 
   const handleBaseChange = (newBase: number) => {
     onChange('voteBase', newBase);
-    if (data.vote > newBase) onChange('vote', newBase);
+    if (data.vote > newBase) {
+      onChange('vote', newBase);
+    } else if (data.vote < newBase && data.isLode) {
+      onChange('isLode', false);
+    }
   };
+
+  const canHaveLode = data.vote === (data.voteBase || 110) && data.vote > 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -153,12 +164,8 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
               </button>
             )}
 
-            {/* Lode - Only for Sostegno or I Fascia here if needed */}
-            {/* Actually, for I Fascia Posto Comune, usually Lode is not a separate checkbox but part of the score? 
-                But let's allow it if the user wants to specify it for record, though Tabella A/3 is usually just vote based.
-                Wait, user said "Voto dell'abilitazione".
-            */}
             <label className={`flex items-center gap-3 cursor-pointer select-none border-2 p-4 rounded-xl transition-all ${
+              !canHaveLode ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' :
               data.isLode 
                 ? 'border-green-500 bg-green-50 text-green-900' 
                 : 'border-gray-200 hover:border-green-300'
@@ -166,8 +173,9 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
               <input 
                 type="checkbox" 
                 checked={data.isLode} 
+                disabled={!canHaveLode}
                 onChange={(e) => onChange('isLode', e.target.checked)}
-                className="w-6 h-6 text-green-600 rounded focus:ring-green-500"
+                className="w-6 h-6 text-green-600 rounded focus:ring-green-500 disabled:opacity-50"
               />
               <span className="font-bold">Con Lode</span>
             </label>
@@ -212,6 +220,12 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
                 <span>Il titolo non riporta un voto numerico o giudizio quantificabile (Punteggio base: 8 pt)</span>
               </label>
             </div>
+          )}
+
+          {!canHaveLode && data.vote > 0 && (
+            <p className="text-xs text-orange-600 font-bold mt-2">
+              La lode è selezionabile solo con il punteggio massimo ({data.voteBase || 110}).
+            </p>
           )}
         </div>
         )}

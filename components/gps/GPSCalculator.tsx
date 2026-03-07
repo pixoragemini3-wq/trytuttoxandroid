@@ -99,7 +99,14 @@ const GPSCalculator: React.FC = () => {
 
   const isStepValid = () => {
     if (step === 1) return state.setup.grade && state.setup.fascia && state.setup.cdc;
-    if (step === 2) return state.accessTitle.vote > 0;
+    if (step === 2) {
+      // For II Fascia (Posto Comune or ITP), the vote was already entered in Step 1
+      if (state.setup.fascia === 'II Fascia' && state.setup.postType !== 'Sostegno') {
+        return (state.setup.laureaVote || 0) > 0;
+      }
+      // For Sostegno or I Fascia, the vote is entered in Step 2
+      return state.accessTitle.vote > 0;
+    }
     if (step === 3) {
       return true;
     }
