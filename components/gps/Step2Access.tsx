@@ -18,6 +18,7 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
 
   const getTitleLabel = () => {
     if (isSostegno) {
+      if (!isFascia1) return "Titolo di Accesso (Sostegno II Fascia)";
       if (cdc === 'ADSS') return "Titolo di Specializzazione su Sostegno (Secondaria II Grado)";
       if (cdc === 'ADMM') return "Titolo di Specializzazione su Sostegno (Secondaria I Grado)";
       if (cdc === 'ADEE') return "Titolo di Specializzazione su Sostegno (Primaria)";
@@ -60,11 +61,11 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
       <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
         <h3 className="font-bold text-green-900">{getTitleLabel()}</h3>
         <p className="text-sm text-green-700">
-          {isSostegno 
-            ? "Inserisci il voto del tuo titolo di specializzazione. Se il voto è espresso in 30esimi, seleziona la base 30." 
-            : isFascia1 
-              ? "Inserisci il voto della tua abilitazione."
-              : "Il punteggio è calcolato sulla base del voto di laurea/diploma inserito nel passaggio precedente."}
+          {!isFascia1 
+            ? "Il punteggio è calcolato sulla base del voto di laurea/diploma inserito nel passaggio precedente."
+            : isSostegno
+              ? "Inserisci il voto del tuo titolo di specializzazione. Se il voto è espresso in 30esimi, seleziona la base 30."
+              : "Inserisci il voto della tua abilitazione."}
         </p>
       </div>
 
@@ -103,8 +104,8 @@ const Step2Access: React.FC<Step2Props> = ({ data, setupData, fascia, postType, 
         )}
 
         {/* 2. Voto */}
-        {/* If II Fascia Posto Comune, show summary. If I Fascia or Sostegno, show input. */}
-        {!isSostegno && !isFascia1 ? (
+        {/* If II Fascia (Posto Comune or Sostegno), show summary. If I Fascia, show input. */}
+        {!isFascia1 ? (
           <div className="bg-white p-6 rounded-xl border-2 border-gray-100 shadow-sm">
              <h4 className="text-lg font-bold text-gray-800 mb-2">Voto del Titolo di Accesso</h4>
              <div className="flex items-center gap-4">

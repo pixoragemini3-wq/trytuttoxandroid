@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
 import { Helmet } from 'react-helmet-async';
@@ -20,6 +21,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [portalNodes, setPortalNodes] = useState<{deals: Element | null, readAlso1: Element | null, readAlso2: Element | null}>({deals: null, readAlso1: null, readAlso2: null});
   
   // Newsletter Logic
   const [sidebarEmail, setSidebarEmail] = useState('');
@@ -54,31 +56,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     'text-[#e31b23]';
 
   // --- CONTENT PRE-PROCESSING (Lead-in Text) ---
-  const processLeadIn = (content: string) => {
+  const processedContent = useMemo(() => {
+    let content = fullContent || article.content;
     if (!content) return "";
     return content.replace(
       /^(<p>)?\s*<(b|strong)>(.*?)<\/\2>/i, 
       `$1<span class="lead-in italic font-bold text-xl ${catColor} block mb-2 border-l-4 border-current pl-3">$3</span>`
     );
-  };
-
-  // --- CONTENT SPLITTER LOGIC ---
-  const contentParts = useMemo(() => {
-    let content = fullContent || article.content;
-    if (!content) return [];
-    
-    // Apply Lead-in styling
-    content = processLeadIn(content);
-
-    const splitByParagraph = content.split('</p>');
-    
-    if (splitByParagraph.length < 3) return [content]; 
-    
-    const part1 = splitByParagraph.slice(0, 2).join('</p>') + '</p>';
-    const part2 = splitByParagraph.slice(2, 6).join('</p>') + '</p>';
-    const part3 = splitByParagraph.slice(6).join('</p>');
-    
-    return [part1, part2, part3].filter(p => p.length > 0 && p !== '</p>');
   }, [fullContent, article.content, catColor]);
 
   useEffect(() => {
@@ -110,9 +94,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     links.forEach(link => {
       link.setAttribute('target', '_blank');
       link.setAttribute('rel', 'noopener noreferrer');
-      link.style.textDecoration = 'underline';
-      link.style.color = '#e31b23';
-      link.style.fontWeight = '700';
+      // We removed the inline style overrides here so that custom buttons from Blogger (with their own inline styles) are preserved.
     });
 
     // 2. Expandable Rows
@@ -126,7 +108,31 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       row.addEventListener('click', handleRowClick as EventListener);
     });
 
-    // 3. Disqus Injection (SPA Compatible)
+    // 3. Inject Portal Nodes for Ads/Deals/ReadAlso
+    const paragraphs = Array.from(container.querySelectorAll('p'));
+    let dealsNode = null;
+    let readAlso1Node = null;
+    let readAlso2Node = null;
+
+    if (paragraphs.length >= 2) {
+      dealsNode = document.createElement('div');
+      dealsNode.className = 'injected-deals my-8 not-prose';
+      paragraphs[1].after(dealsNode);
+      
+      readAlso1Node = document.createElement('div');
+      readAlso1Node.className = 'injected-read-also my-8 not-prose';
+      paragraphs[1].after(readAlso1Node);
+    }
+
+    if (paragraphs.length >= 6) {
+      readAlso2Node = document.createElement('div');
+      readAlso2Node.className = 'injected-read-also my-8 not-prose';
+      paragraphs[5].after(readAlso2Node);
+    }
+
+    setPortalNodes({ deals: dealsNode, readAlso1: readAlso1Node, readAlso2: readAlso2Node });
+
+    // 4. Disqus Injection (SPA Compatible)
     if (typeof window !== 'undefined' && document) {
         const shortname = 'tuttoxandroid-com'; 
         const identifier = article.id;
@@ -163,6 +169,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
     return () => {
       expandableRows.forEach(row => row.removeEventListener('click', handleRowClick as EventListener));
+      if (dealsNode) dealsNode.remove();
+      if (readAlso1Node) readAlso1Node.remove();
+      if (readAlso2Node) readAlso2Node.remove();
     };
   }, [article.id, fullContent]); 
 
@@ -409,38 +418,28 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 </div>
 
                 {/* Content Body */}
-                <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto [&_span]:!font-inherit [&_span]:!text-inherit [&_span]:!leading-inherit [&_p]:mb-6 [&_div]:mb-4 marker:text-gray-800">
+                <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto [&_p]:mb-6 [&_div]:mb-4 marker:text-gray-800 prose-a:text-[#e31b23] prose-a:font-bold prose-a:underline">
                     
-                    {/* Part 1 */}
-                    <div dangerouslySetInnerHTML={{ __html: contentParts[0] }} />
+                    {/* Full Content */}
+                    <div dangerouslySetInnerHTML={{ __html: processedContent }} />
 
-                    {/* --- DEALS INJECTION START --- */}
-                    {isDealCategory && deals.length > 0 && (
+                    {/* --- INJECTED PORTALS --- */}
+                    {portalNodes.deals && isDealCategory && deals.length > 0 && createPortal(
                         <>
                            <MobileDealsCarousel />
                            <DesktopDealsBanner />
-                        </>
-                    )}
-                    {/* --- DEALS INJECTION END --- */}
-
-                    {/* First 'Read Also' */}
-                    {!isTruncated && contentParts.length > 1 && moreArticles.length > 0 && (
-                      <ReadAlsoBlock article={moreArticles[0]} />
+                        </>,
+                        portalNodes.deals
                     )}
 
-                    {/* Part 2 */}
-                    {contentParts.length > 1 && (
-                      <div dangerouslySetInnerHTML={{ __html: contentParts[1] }} />
+                    {portalNodes.readAlso1 && !isTruncated && moreArticles.length > 0 && createPortal(
+                        <ReadAlsoBlock article={moreArticles[0]} />,
+                        portalNodes.readAlso1
                     )}
 
-                    {/* Second 'Read Also' */}
-                    {!isTruncated && contentParts.length > 2 && moreArticles.length > 1 && (
-                       <ReadAlsoBlock article={moreArticles[1]} />
-                    )}
-
-                    {/* Part 3 */}
-                    {contentParts.length > 2 && (
-                       <div dangerouslySetInnerHTML={{ __html: contentParts[2] }} />
+                    {portalNodes.readAlso2 && !isTruncated && moreArticles.length > 1 && createPortal(
+                        <ReadAlsoBlock article={moreArticles[1]} />,
+                        portalNodes.readAlso2
                     )}
                     
                     {/* TRUNCATION FALLBACK */}
