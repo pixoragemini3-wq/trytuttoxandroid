@@ -5,19 +5,28 @@ const CookieConsent: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('txa_cookie_consent');
-    if (!consent) {
-      setTimeout(() => setIsVisible(true), 1000); // Ritardo leggero per non disturbare subito
+    try {
+      const consent = localStorage.getItem('txa_cookie_consent');
+      if (!consent) {
+        setTimeout(() => setIsVisible(true), 1000); // Ritardo leggero per non disturbare subito
+      }
+    } catch (e) {
+      // localStorage is blocked (e.g. Brave Shields)
+      console.warn('localStorage is blocked');
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('txa_cookie_consent', 'accepted');
+    try {
+      localStorage.setItem('txa_cookie_consent', 'accepted');
+    } catch (e) {}
     setIsVisible(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem('txa_cookie_consent', 'declined');
+    try {
+      localStorage.setItem('txa_cookie_consent', 'declined');
+    } catch (e) {}
     setIsVisible(false);
   };
 

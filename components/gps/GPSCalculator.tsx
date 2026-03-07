@@ -315,7 +315,7 @@ const GPSCalculator: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
             <div className="w-full min-h-[250px] mb-6 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden">
-               <AdUnit slotId="5244362740" format="rectangle" label="Sponsor" />
+               <AdUnit slotId="8979248140" format="auto" label="Sponsor" />
             </div>
             <h3 className="text-xl font-black text-gray-900 mb-2">Supporta il nostro lavoro</h3>
             <p className="text-gray-600 mb-6 text-sm">

@@ -453,8 +453,15 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     };
 
     // 2. CACHE CHECK
-    const cachedData = sessionStorage.getItem(CACHE_KEY);
-    const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+    let cachedData = null;
+    let cachedTime = null;
+    try {
+        cachedData = sessionStorage.getItem(CACHE_KEY);
+        cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+    } catch (e) {
+        // sessionStorage blocked
+    }
+    
     if (cachedData && cachedTime) {
         if (Date.now() - parseInt(cachedTime) < CACHE_EXPIRY) {
             return JSON.parse(cachedData);
@@ -479,8 +486,10 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 const deals = parseDealsFromHtml(htmlText);
                 if (deals.length > 0) {
                     // Save to Cache on Success
-                    sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
-                    sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+                    try {
+                        sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
+                        sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+                    } catch (e) {}
                     return deals;
                 }
             }

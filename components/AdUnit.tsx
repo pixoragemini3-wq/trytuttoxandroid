@@ -15,11 +15,6 @@ const AdUnit: React.FC<AdUnitProps> = ({ slotId, format = 'auto', layoutKey, cla
   const [isFilled, setIsFilled] = useState(false);
   const location = useLocation();
 
-  // Disable ads on the GPS calculator page
-  if (location.pathname.includes('/calcolatore-gps')) {
-    return null;
-  }
-
   useEffect(() => {
     // Skip if already filled to prevent double push on re-renders
     if (isFilled || !adRef.current) return;

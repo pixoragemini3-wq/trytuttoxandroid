@@ -577,14 +577,6 @@ const App: React.FC = () => {
             />
         </Helmet>
 
-        {/* Loading for Articles - Only shows if no articles available */}
-        {isArticlesLoading && articles.length === 0 && !currentArticle && (
-          <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-white">
-            <div className="loader mb-4"></div>
-            <p className="text-gray-400 text-xs font-black uppercase tracking-widest animate-pulse">Caricamento...</p>
-          </div>
-        )}
-
         {/* --- STATIC PAGES --- */}
         {isAbout && <AboutPage />}
         {isCollab && <CollabPage />}
