@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface AdUnitProps {
   slotId: string;
@@ -12,6 +13,12 @@ interface AdUnitProps {
 const AdUnit: React.FC<AdUnitProps> = ({ slotId, format = 'auto', layoutKey, className = '', label = 'Sponsor' }) => {
   const adRef = useRef<HTMLModElement>(null);
   const [isFilled, setIsFilled] = useState(false);
+  const location = useLocation();
+
+  // Disable ads on the GPS calculator page
+  if (location.pathname.includes('/calcolatore-gps')) {
+    return null;
+  }
 
   useEffect(() => {
     // Skip if already filled to prevent double push on re-renders

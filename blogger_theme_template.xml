@@ -44,6 +44,9 @@
 <meta content='@tuttoxandroid' name='twitter:site'/>
 <meta content='@tuttoxandroid' name='twitter:creator'/>
 
+<!-- Google AdSense -->
+<script async='async' crossorigin='anonymous' src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8927124953064334'/>
+
 <b:if cond='data:view.url contains "calcolatore-gps"'>
   <meta content='Calcolatore GPS 2026 | Simula il tuo punteggio' property='og:title'/>
   <meta content='Calcolatore GPS 2026 | Simula il tuo punteggio' name='twitter:title'/>

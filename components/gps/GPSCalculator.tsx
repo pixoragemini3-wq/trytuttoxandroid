@@ -280,7 +280,7 @@ const GPSCalculator: React.FC = () => {
 
       {/* Sticky Summary (Mobile) */}
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 lg:hidden z-50 border-t border-gray-800 shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex justify-between items-center">
-        <div>
+        <div className="pl-16 sm:pl-20">
           <span className="block text-[10px] font-bold text-gray-400 uppercase">Totale Punti</span>
           <span className="block text-2xl font-black text-[#e31b23] leading-none">{scores.total.toFixed(2)}</span>
         </div>
