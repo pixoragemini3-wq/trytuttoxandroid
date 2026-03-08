@@ -30,7 +30,37 @@
       gtag('config', 'G-QEJMHS6TCJ');
     </script>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            typography: {
+              DEFAULT: {
+                css: {
+                  maxWidth: 'none',
+                  color: '#333',
+                  a: {
+                    color: '#e31b23',
+                    '&:hover': {
+                      color: '#000',
+                    },
+                  },
+                  // Ensure inline styles like background-color (highlighting) are preserved
+                  'span[style]': {
+                    display: 'inline',
+                  },
+                  'mark': {
+                    backgroundColor: 'yellow',
+                    color: 'black',
+                  },
+                },
+              },
+            },
+          },
+        },
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Saira+Extra+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -40,6 +70,59 @@
         overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
       }
+      
+      /* Preserve Blogger specific formatting */
+      .prose span[style*="background-color"], 
+      .prose span[style*="background"] {
+        padding: 2px 4px;
+        border-radius: 2px;
+      }
+      
+      .prose p {
+        margin-bottom: 1.5rem !important;
+      }
+      
+      .prose img {
+        border-radius: 0.75rem;
+        margin: 2rem auto !important;
+      }
+
+      .prose .separator {
+        margin: 2rem 0;
+        text-align: center;
+      }
+
+      .prose .separator a {
+        display: inline-block;
+        margin: 0 auto;
+      }
+
+      .prose .tr-caption-container {
+        margin: 1.5rem auto;
+        text-align: center;
+        background: #f9f9f9;
+        padding: 8px;
+        border-radius: 8px;
+        font-size: 0.85em;
+        color: #666;
+        max-width: 100%;
+      }
+
+      .prose .tr-caption {
+        margin-top: 8px;
+        display: block;
+      }
+
+      /* Fix for aseptic text: ensure bold and italic are visible */
+      .prose strong, .prose b {
+        font-weight: 800 !important;
+        color: #111;
+      }
+
+      .prose em, .prose i {
+        font-style: italic !important;
+      }
+
       .font-condensed {
         font-family: 'Saira Extra Condensed', 'Impact', 'Arial Narrow', sans-serif !important;
       }
