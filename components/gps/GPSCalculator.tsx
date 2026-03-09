@@ -13,6 +13,13 @@ const GPSCalculator: React.FC = () => {
   const [step, setStep] = useState(1);
   const [state, setState] = useState<GPSState>(INITIAL_STATE);
   const [scores, setScores] = useState({ access: 0, cultural: 0, service: 0, total: 0 });
+  const [isTelegramJoined, setIsTelegramJoined] = useState(() => {
+    try {
+      return localStorage.getItem('gps_telegram_joined') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
   const calculatorRef = useRef<HTMLDivElement>(null);
@@ -61,10 +68,18 @@ const GPSCalculator: React.FC = () => {
   };
 
   const nextStep = () => {
+    if (step === 1 && !isTelegramJoined) {
+      setShowTelegramModal(true);
+      return;
+    }
+
     if (step === 2) {
       setShowAdModal(true);
     } else if (step === 4) {
-      setShowTelegramModal(true);
+      // Keep the final reminder or remove it? User asked for it at 2nd step.
+      // I'll keep it as a final nudge or just proceed.
+      setStep(5);
+      scrollToTop();
     } else if (step < 5) {
       setStep(step + 1);
       scrollToTop();
@@ -79,15 +94,19 @@ const GPSCalculator: React.FC = () => {
 
   const handleTelegramAction = () => {
     window.open('https://t.me/tuttoxandroid', '_blank');
-    setShowTelegramModal(false);
-    setStep(5);
-    scrollToTop();
+    // We don't close the modal yet, we want them to click "I joined"
   };
 
-  const handleSkipTelegram = () => {
+  const handleConfirmJoined = () => {
+    try {
+      localStorage.setItem('gps_telegram_joined', 'true');
+    } catch (e) {}
+    setIsTelegramJoined(true);
     setShowTelegramModal(false);
-    setStep(5);
-    scrollToTop();
+    if (step === 1) {
+      setStep(2);
+      scrollToTop();
+    }
   };
 
   const prevStep = () => {
@@ -341,33 +360,57 @@ const GPSCalculator: React.FC = () => {
 
       {/* Telegram Modal */}
       {showTelegramModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <svg className="w-10 h-10 text-[#0088cc]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-              </svg>
-            </div>
-            <h3 className="text-2xl font-black text-gray-900 mb-3">Unisciti al Canale Ufficiale!</h3>
-            <p className="text-gray-600 mb-8 leading-relaxed">
-              Iscriviti al nostro canale Telegram <span className="font-bold text-[#0088cc]">@tuttoxandroid</span> per non perdere le prossime novità.
-              <br/><span className="font-bold text-[#e31b23] block mt-2">A breve una sorpresa per te!</span>
-            </p>
-            
-            <div className="space-y-3">
-              <button 
-                onClick={handleTelegramAction}
-                className="w-full bg-[#0088cc] hover:bg-[#0077b5] text-white font-bold py-3.5 px-6 rounded-xl transition-all hover:scale-[1.02] shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                Iscriviti su Telegram
-              </button>
-              <button 
-                onClick={handleSkipTelegram}
-                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-500 font-medium py-3 px-6 rounded-xl transition-colors text-sm"
-              >
-                No grazie, vai ai risultati
-              </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all scale-100 animate-in zoom-in-95 duration-300 border border-gray-100 relative overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-red-50 rounded-full blur-3xl opacity-50"></div>
+
+            <div className="relative z-10">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-blue-50">
+                <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+              </div>
+              
+              <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">Accesso Riservato</h3>
+              
+              <div className="bg-blue-50 rounded-2xl p-4 mb-6 border border-blue-100">
+                <p className="text-blue-800 text-sm font-medium leading-relaxed">
+                  Questo calcolatore è offerto gratuitamente dal canale Telegram <span className="font-black">@tuttoxandroid</span>.
+                </p>
+              </div>
+
+              <p className="text-gray-600 mb-8 text-sm leading-relaxed">
+                Per sbloccare il calcolo e procedere al secondo passaggio, è necessario iscriversi al canale ufficiale.
+              </p>
+              
+              <div className="space-y-4">
+                <button 
+                  onClick={handleTelegramAction}
+                  className="w-full bg-[#0088cc] hover:bg-[#0077b5] text-white font-black py-4 px-6 rounded-2xl transition-all hover:scale-[1.02] shadow-lg shadow-blue-200 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                  1. Unisciti al Canale
+                </button>
+                
+                <div className="flex items-center gap-4 py-2">
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Poi</span>
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                </div>
+
+                <button 
+                  onClick={handleConfirmJoined}
+                  className="w-full bg-black hover:bg-gray-800 text-white font-black py-4 px-6 rounded-2xl transition-all hover:scale-[1.02] shadow-xl text-sm uppercase tracking-widest"
+                >
+                  2. Ho già aderito, sblocca
+                </button>
+              </div>
+              
+              <p className="mt-6 text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                Grazie per il supporto! Il tuo contributo ci permette di mantenere gratuiti questi strumenti.
+              </p>
             </div>
           </div>
         </div>
