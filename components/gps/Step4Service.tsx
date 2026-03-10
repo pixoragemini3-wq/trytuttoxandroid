@@ -120,7 +120,7 @@ const Step4Service: React.FC<Step4Props> = ({ data, cdc, targetGrade, onChange }
                     className="w-full p-2 border rounded text-sm font-mono"
                   >
                     {Array.from({ length: 20 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                      <option key={year} value={year}>{year - 1}/{year}</option>
+                      <option key={year} value={year}>{year}/{year + 1}</option>
                     ))}
                   </select>
                 </div>

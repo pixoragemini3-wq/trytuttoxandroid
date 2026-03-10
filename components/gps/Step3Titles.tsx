@@ -330,6 +330,24 @@ const Step3Titles: React.FC<Step3Props> = ({ data, fullState, onChange }) => {
             )}
           </div>
         </div>
+        {/* Italiano L2 */}
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <label className="font-medium text-gray-700 block">Titolo di Specializzazione in Italiano L2</label>
+            <p className="text-xs text-gray-500">Riconosciuto per l'insegnamento dell'italiano agli stranieri (3 punti)</p>
+          </div>
+          <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2">
+              <button 
+                onClick={() => onChange('hasL2', !data.hasL2)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${data.hasL2 ? 'bg-purple-600' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.hasL2 ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+              <span className="text-sm font-medium text-gray-600 w-6">{data.hasL2 ? 'Si' : 'No'}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 5. Competenze Linguistiche */}
@@ -351,8 +369,12 @@ const Step3Titles: React.FC<Step3Props> = ({ data, fullState, onChange }) => {
               <button onClick={() => removeLanguage(idx)} className="text-red-500 hover:text-red-700 font-bold px-3 py-1 bg-red-50 rounded hover:bg-red-100">×</button>
             </div>
           ))}
-          <button onClick={addLanguage} className="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1">
-            <span className="text-xl">+</span> Aggiungi Certificazione Linguistica
+          <button 
+            onClick={addLanguage} 
+            className="w-full py-4 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 font-black hover:bg-blue-50 hover:border-blue-500 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+            Aggiungi Certificazione Linguistica
           </button>
           
           <label className="flex items-center gap-3 mt-4 p-4 border border-blue-200 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">

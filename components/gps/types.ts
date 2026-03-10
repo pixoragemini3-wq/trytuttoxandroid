@@ -30,6 +30,8 @@ export interface CulturalTitlesState {
   hasConcorso: boolean;
   concorsi: { description: string }[];
   
+  hasL2: boolean;
+  
   languages: { level: 'B2' | 'C1' | 'C2' }[];
   hasClil: boolean;
   
@@ -87,6 +89,7 @@ export const INITIAL_STATE: GPSState = {
     abilitazioni: [],
     hasConcorso: false,
     concorsi: [],
+    hasL2: false,
     languages: [],
     hasClil: false,
     itCertifications: [],

@@ -117,17 +117,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     if (paragraphs.length >= 2) {
       dealsNode = document.createElement('div');
       dealsNode.className = 'injected-deals my-8 not-prose';
-      paragraphs[1].after(dealsNode);
+      (paragraphs[1] as any).after(dealsNode);
       
       readAlso1Node = document.createElement('div');
       readAlso1Node.className = 'injected-read-also my-8 not-prose';
-      paragraphs[1].after(readAlso1Node);
+      (paragraphs[1] as any).after(readAlso1Node);
     }
 
     if (paragraphs.length >= 6) {
       readAlso2Node = document.createElement('div');
       readAlso2Node.className = 'injected-read-also my-8 not-prose';
-      paragraphs[5].after(readAlso2Node);
+      (paragraphs[5] as any).after(readAlso2Node);
     }
 
     setPortalNodes({ deals: dealsNode, readAlso1: readAlso1Node, readAlso2: readAlso2Node });

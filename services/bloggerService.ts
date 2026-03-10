@@ -380,11 +380,15 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 
                 if (!link) continue;
 
-                // CHECK 1: Filter Logic - UPDATED
+                // CHECK 1: Filter Logic - RELAXED
                 // User request: "selezionare solo le offerte che hanno hashtag"
+                // However, if it's failing to find any, we might be too strict.
+                // We'll look for hashtags OR clear price/link indicators.
                 const hasHashtag = /#\w+/i.test(textContent);
+                const hasPrice = /(\d+[.,]\d{0,2})\s?€/i.test(textContent);
+                const hasStoreLink = /amzn|amazon|ebay|unieuro|mediaworld|bit\.ly/i.test(textContent);
                 
-                if (!hasHashtag) {
+                if (!hasHashtag && !(hasPrice && hasStoreLink)) {
                     continue; 
                 }
 
@@ -471,16 +475,17 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     // 3. FETCH STRATEGY - UPDATED PROXIES
     const telegramUrl = 'https://t.me/s/tuttoxandroid';
     
-    // Optimized proxy order
+    // Optimized proxy order with fallbacks
     const proxyList = [
-        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
-        `https://thingproxy.freeboard.io/fetch/${telegramUrl}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`
+        (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
     ];
 
-    for (const proxyUrl of proxyList) {
+    for (const proxyFn of proxyList) {
         try {
-            const response = await fetchWithTimeout(proxyUrl, 6000); 
+            const proxyUrl = typeof proxyFn === 'function' ? proxyFn(telegramUrl) : proxyFn;
+            const response = await fetchWithTimeout(proxyUrl, 8000); 
             if (response.ok) {
                 const htmlText = await response.text();
                 const deals = parseDealsFromHtml(htmlText);
@@ -494,7 +499,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 }
             }
         } catch (e) {
-            // Silently fail and try the next proxy
+            console.warn(`Telegram fetch failed with proxy`, e);
         }
     }
 

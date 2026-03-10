@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Article } from '../types';
 import MegaMenu from './MegaMenu';
 import CookieConsent from './CookieConsent';
+import TelegramPopup from './TelegramPopup';
 import TopStoriesMobile from './TopStoriesMobile';
 import { LOGO_URL, NAV_CATEGORIES } from '../constants';
 
@@ -232,6 +233,7 @@ const Layout: React.FC<LayoutProps> = ({
       )}
 
       <CookieConsent />
+      <TelegramPopup />
     </div>
   );
 };

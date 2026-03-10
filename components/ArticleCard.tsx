@@ -1,11 +1,14 @@
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { Article } from '../types';
+import ArticleSkeleton from './ArticleSkeleton';
 
 interface ArticleCardProps {
-  article: Article;
+  article?: Article;
   onClick?: () => void;
-  className?: string; // Added to support custom styling overrides
+  className?: string;
+  isLoading?: boolean;
+  type?: 'standard' | 'horizontal' | 'hero' | 'sidebar';
 }
 
 const getCategoryColors = (category: string, type: 'text' | 'bg') => {
@@ -26,36 +29,16 @@ const getCategoryColors = (category: string, type: 'text' | 'bg') => {
   return `bg-${color.startsWith('[') ? color : `${color}`}`;
 };
 
-const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '' }) => {
+const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className = '', isLoading, type }) => {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [isSticky, setIsSticky] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsSticky(entry.isIntersecting);
-      },
-      {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.1, // Trigger when at least 10% of the card is visible
-      }
-    );
-
-    if (cardRef.current) {
-      observer.observe(cardRef.current);
-    }
-
-    return () => {
-      if (cardRef.current) {
-        observer.unobserve(cardRef.current);
-      }
-    };
-  }, []);
-
-  const stickyClasses = isSticky ? 'sticky top-24 z-40' : '';
   
+  const cardType = type || article?.type || 'standard';
+
+  if (isLoading || !article) {
+    return <ArticleSkeleton type={cardType} className={className} />;
+  }
+
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
   };
@@ -65,13 +48,16 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   };
 
   // Stile HERO (Immagine a sinistra, Box Rosso a destra)
-  // UPDATED: Font sizes reduced for a more professional blog look
-  if (article.type === 'hero') {
+  if (cardType === 'hero') {
     return (
-      <div ref={cardRef} onClick={onClick} className={`relative w-full h-full lg:rounded-[2rem] bg-white flex flex-col md:flex-row shadow-xl group cursor-pointer overflow-hidden ${stickyClasses} ${className}`}>
+      <div ref={cardRef} onClick={onClick} className={`relative w-full h-full lg:rounded-[2rem] bg-white flex flex-col md:flex-row shadow-xl group cursor-pointer overflow-hidden ${className}`}>
         {/* Image Section - Adjusted width and aspect ratio */}
         <div className="w-full md:w-[50%] lg:w-[60%] aspect-video md:aspect-auto md:h-full overflow-hidden relative bg-gray-50 shrink-0">
-          {!isImageLoaded && <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />}
+          {!isImageLoaded && (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-10">
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-[#e31b23] rounded-full animate-spin"></div>
+            </div>
+          )}
           <img 
             src={article.imageUrl} 
             alt={article.title}
@@ -119,14 +105,17 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   }
 
   // Stile OVERLAY (In Evidenza - Carousel)
-  // UPDATED: Font sizes reduced
-  if (article.type === 'horizontal') {
+  if (cardType === 'horizontal') {
     const bgClass = getCategoryColors(article.category, 'bg');
     const isCustom = bgClass.includes('[');
     
     return (
-      <div ref={cardRef} onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-xl lg:rounded-2xl group cursor-pointer shadow-lg bg-black shrink-0 ${stickyClasses} ${className}`}>
-        {!isImageLoaded && <div className="absolute inset-0 bg-gray-800 animate-pulse z-10" />}
+      <div ref={cardRef} onClick={onClick} className={`relative w-full aspect-square md:aspect-[4/5] overflow-hidden rounded-xl lg:rounded-2xl group cursor-pointer shadow-lg bg-black shrink-0 ${className}`}>
+        {!isImageLoaded && (
+          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center z-10">
+            <div className="w-6 h-6 border-2 border-gray-600 border-t-[#c0ff8c] rounded-full animate-spin"></div>
+          </div>
+        )}
         <img 
           src={article.imageUrl} 
           alt={article.title}
@@ -149,8 +138,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     );
   }
 
-  // Stile STANDARD UPDATED: Normal List
-  // UPDATED: Font sizes drastically reduced to be standard blog size
+  // Stile STANDARD
   const textColorClass = 
     article.category === 'Smartphone' ? 'text-blue-600' : 
     article.category === 'Modding' ? 'text-orange-500' : 
@@ -162,11 +150,15 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
     'text-[#e31b23]';
 
   return (
-    <div ref={cardRef} onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.02] hover:shadow-2xl rounded-2xl p-3 border border-transparent hover:border-gray-100 ${stickyClasses} ${className}`}>
+    <div ref={cardRef} onClick={onClick} className={`flex flex-col md:flex-row gap-4 group cursor-pointer h-full transition-all duration-300 hover:bg-white hover:scale-[1.02] hover:shadow-2xl rounded-2xl p-3 border border-transparent hover:border-gray-100 ${className}`}>
       
-      {/* IMAGE - Directly styled with img selector as requested (35% width, proportional height/aspect) */}
+      {/* IMAGE */}
       <div className="w-full md:w-[35%] aspect-video md:aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100 shrink-0 relative">
-         {!isImageLoaded && <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />}
+         {!isImageLoaded && (
+           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-10">
+             <div className="w-6 h-6 border-2 border-gray-200 border-t-[#e31b23] rounded-full animate-spin"></div>
+           </div>
+         )}
          <img 
             src={article.imageUrl} 
             alt={article.title}
@@ -176,18 +168,18 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
          />
       </div>
 
-      {/* CONTENT CONTAINER: 65% Width */}
+      {/* CONTENT CONTAINER */}
       <div className="flex-1 flex flex-col justify-center py-0.5">
         <span className={`${textColorClass} text-[9px] font-bold uppercase tracking-[0.1em] mb-1.5 block transition-colors`}>
           {article.category}
         </span>
         
-        {/* Title: Reduced from 3xl/Black to xl/Bold */}
+        {/* Title */}
         <h3 className="font-condensed text-lg md:text-xl lg:text-2xl font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors mb-2 line-clamp-3 tracking-tight text-justify">
           {article.title}
         </h3>
         
-        {/* Excerpt: Slightly simpler font */}
+        {/* Excerpt */}
         <p className="text-xs text-gray-500 font-normal leading-relaxed line-clamp-2 mb-3 hidden md:block">
            {article.excerpt}
         </p>

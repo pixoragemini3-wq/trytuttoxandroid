@@ -15,7 +15,6 @@ import AdUnit from './components/AdUnit';
 import DesktopSidebar from './components/DesktopSidebar'; 
 import { AboutPage, CollabPage } from './components/StaticPages'; 
 import GPSCalculator from './components/gps/GPSCalculator';
-import ArticleSkeleton from './components/ArticleSkeleton';
 import Layout from './components/Layout';
 
 // Utility per mescolare l'array (Fisher-Yates shuffle)
@@ -628,7 +627,7 @@ const App: React.FC = () => {
                     
                     <div className="flex-1 h-full w-full">
                         {isArticlesLoading ? (
-                           <ArticleSkeleton type="hero" />
+                           <ArticleCard isLoading type="hero" />
                         ) : heroArticle && (
                           <ArticleCard 
                             article={heroArticle} 
@@ -669,7 +668,7 @@ const App: React.FC = () => {
                         {isArticlesLoading ? (
                            Array.from({ length: 5 }).map((_, i) => (
                              <div key={i} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
-                               <ArticleSkeleton type="horizontal" />
+                               <ArticleCard isLoading type="horizontal" />
                              </div>
                            ))
                         ) : (articles.length > 0 ? articles : MOCK_ARTICLES).slice(0, 10).map(item => (
@@ -757,7 +756,7 @@ const App: React.FC = () => {
                     {isArticlesLoading ? (
                         <div className="space-y-6">
                             {Array.from({ length: 6 }).map((_, i) => (
-                                <ArticleSkeleton key={i} type="standard" />
+                                <ArticleCard key={i} isLoading type="standard" />
                             ))}
                         </div>
                     ) : displayArticles.length > 0 ? (

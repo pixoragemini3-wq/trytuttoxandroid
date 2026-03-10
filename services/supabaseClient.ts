@@ -9,9 +9,9 @@ let supabaseAnonKey = '';
 
 // 1. Try Vite's import.meta.env
 try {
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-    supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
+    supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '';
   }
 } catch (e) {
   // Ignore

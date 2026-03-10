@@ -68,14 +68,12 @@ const GPSCalculator: React.FC = () => {
   };
 
   const nextStep = () => {
-    if (step === 1 && !isTelegramJoined) {
+    if (step === 2 && !isTelegramJoined) {
       setShowTelegramModal(true);
       return;
     }
 
-    if (step === 2) {
-      setShowAdModal(true);
-    } else if (step === 4) {
+    if (step === 4) {
       // Keep the final reminder or remove it? User asked for it at 2nd step.
       // I'll keep it as a final nudge or just proceed.
       setStep(5);
@@ -103,8 +101,8 @@ const GPSCalculator: React.FC = () => {
     } catch (e) {}
     setIsTelegramJoined(true);
     setShowTelegramModal(false);
-    if (step === 1) {
-      setStep(2);
+    if (step === 2) {
+      setStep(3);
       scrollToTop();
     }
   };
@@ -336,28 +334,6 @@ const GPSCalculator: React.FC = () => {
         </div>
       </div>
 
-      {/* Ad Modal */}
-      {showAdModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className="w-full min-h-[250px] mb-6 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden">
-               <AdUnit slotId="8979248140" format="auto" label="Sponsor" />
-            </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Supporta il nostro lavoro</h3>
-            <p className="text-gray-600 mb-6 text-sm">
-              Questo strumento è offerto gratuitamente. Se ti è utile, considera di supportarci!
-            </p>
-            
-            <button 
-              onClick={handleSkipAd}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3.5 px-6 rounded-xl transition-all shadow-sm"
-            >
-              Salta Pubblicità
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Telegram Modal */}
       {showTelegramModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
@@ -373,7 +349,7 @@ const GPSCalculator: React.FC = () => {
                 </svg>
               </div>
               
-              <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">Accesso Riservato</h3>
+              <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">Rimani Connesso</h3>
               
               <div className="bg-blue-50 rounded-2xl p-4 mb-6 border border-blue-100">
                 <p className="text-blue-800 text-sm font-medium leading-relaxed">
@@ -381,8 +357,8 @@ const GPSCalculator: React.FC = () => {
                 </p>
               </div>
 
-              <p className="text-gray-600 mb-8 text-sm leading-relaxed">
-                Per sbloccare il calcolo e procedere al secondo passaggio, è necessario iscriversi al canale ufficiale.
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                Unisciti al nostro canale per rimanere sempre aggiornato sul mondo della scuola e supportare il nostro lavoro.
               </p>
               
               <div className="space-y-4">
@@ -404,7 +380,7 @@ const GPSCalculator: React.FC = () => {
                   onClick={handleConfirmJoined}
                   className="w-full bg-black hover:bg-gray-800 text-white font-black py-4 px-6 rounded-2xl transition-all hover:scale-[1.02] shadow-xl text-sm uppercase tracking-widest"
                 >
-                  2. Ho già aderito, sblocca
+                  2. Continua
                 </button>
               </div>
               

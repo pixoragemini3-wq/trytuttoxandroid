@@ -225,6 +225,11 @@ export const getDetailedCulturalReport = (state: GPSState) => {
     score += pts;
   }
   
+  if (culturalTitles.hasL2) {
+    items.push({ label: 'Titolo di Specializzazione in Italiano L2', points: 3 });
+    score += 3;
+  }
+  
   if (culturalTitles.specializzazione_sostegno_extra.length > 0) {
     const pts = culturalTitles.specializzazione_sostegno_extra.length * 9;
     items.push({ label: `Specializzazioni Sostegno Extra (${culturalTitles.specializzazione_sostegno_extra.length})`, points: pts });
