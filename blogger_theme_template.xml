@@ -1,0 +1,306 @@
+
+<!DOCTYPE html>
+<html b:css='false' b:defaultmessages='false' b:layoutsVersion='3' b:responsive='true' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/charts/static/components/2.0/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+<meta charset='UTF-8' />
+<meta content='width=device-width, initial-scale=1.0' name='viewport' />
+
+<!-- DYNAMIC TITLE SEO IMPROVED -->
+<b:if cond='data:view.isPost'>
+  <title><data:blog.pageName/> | TuttoXAndroid</title>
+<b:elseif cond='data:view.isHomepage'/>
+  <title><data:blog.title/> - News, Recensioni e Offerte Tech</title>
+<b:else/>
+  <title><data:blog.pageName/> - TuttoXAndroid</title>
+</b:if>
+
+<!-- CANONICAL URL -->
+<link expr:href='data:view.url.canonical' rel='canonical'/>
+
+<!-- META INFO -->
+<meta content='TuttoXAndroid' name='author'/>
+<meta content='technology, android, smartphone, reviews, news, tech deals, recensioni, offerte, samsung, xiaomi, google pixel' name='keywords'/>
+<meta content='#e31b23' name='theme-color'/>
+
+<!-- ROBOTS & DESCRIPTION -->
+<b:if cond='data:view.isPost'>
+  <b:if cond='data:blog.metaDescription'>
+    <meta expr:content='data:blog.metaDescription' name='description'/>
+  <b:else/>
+    <meta expr:content='data:post.snippet' name='description'/>
+  </b:if>
+  <meta content='index, follow, max-image-preview:large' name='robots'/>
+<b:else/>
+  <meta expr:content='data:blog.metaDescription' name='description'/>
+  <meta content='index, follow' name='robots'/>
+</b:if>
+
+<!-- SOCIAL MEDIA META TAGS (FIXED FOR PREVIEWS) -->
+<meta content='TuttoXAndroid' property='og:site_name'/>
+<meta content='it_IT' property='og:locale'/>
+
+<!-- TWITTER CARDS GLOBAL -->
+<meta content='summary_large_image' name='twitter:card'/>
+<meta content='@tuttoxandroid' name='twitter:site'/>
+<meta content='@tuttoxandroid' name='twitter:creator'/>
+
+<!-- Google AdSense -->
+<script async='async' crossorigin='anonymous' src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'/>
+
+<b:if cond='data:view.url contains "calcolatore-gps"'>
+  <meta content='Calcolatore GPS 2026 | Simula il tuo punteggio' property='og:title'/>
+  <meta content='Calcolatore GPS 2026 | Simula il tuo punteggio' name='twitter:title'/>
+  <meta content='Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!' property='og:description'/>
+  <meta content='Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!' name='twitter:description'/>
+  <meta content='website' property='og:type'/>
+  <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
+  <meta content='https://i.imgur.com/sTIlIOc.png' property='og:image'/>
+  <meta content='https://i.imgur.com/sTIlIOc.png' name='twitter:image'/>
+  <meta content='1200' property='og:image:width'/>
+  <meta content='630' property='og:image:height'/>
+<b:elseif cond='data:view.isPost'/>
+  <b:with value='data:widgets.Blog1.posts.first' var='post'>
+      <meta expr:content='data:post.title' property='og:title'/>
+      <meta expr:content='data:post.title' name='twitter:title'/>
+      
+      <meta content='article' property='og:type'/>
+      <meta expr:content='data:post.url.canonical' property='og:url'/>
+      
+      <b:if cond='data:post.snippet'>
+        <meta expr:content='data:post.snippet' property='og:description'/>
+        <meta expr:content='data:post.snippet' name='twitter:description'/>
+      <b:else/>
+        <meta expr:content='data:blog.metaDescription' property='og:description'/>
+        <meta expr:content='data:blog.metaDescription' name='twitter:description'/>
+      </b:if>
+      
+      <!-- CRITICAL IMAGE FIX: Force 1200x630 for Facebook/Twitter -->
+      <b:if cond='data:post.featuredImage'>
+        <meta expr:content='resizeImage(data:post.featuredImage, 1200, "1200:630")' property='og:image'/>
+        <meta expr:content='resizeImage(data:post.featuredImage, 1200, "1200:630")' name='twitter:image'/>
+        <meta content='1200' property='og:image:width'/>
+        <meta content='630' property='og:image:height'/>
+        <meta content='image/jpeg' property='og:image:type'/>
+      <b:elseif cond='data:post.firstImageUrl'/>
+        <meta expr:content='resizeImage(data:post.firstImageUrl, 1200, "1200:630")' property='og:image'/>
+        <meta expr:content='resizeImage(data:post.firstImageUrl, 1200, "1200:630")' name='twitter:image'/>
+        <meta content='1200' property='og:image:width'/>
+        <meta content='630' property='og:image:height'/>
+        <meta content='image/jpeg' property='og:image:type'/>
+      <b:else/>
+         <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+         <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
+         <meta content='600' property='og:image:width'/>
+         <meta content='600' property='og:image:height'/>
+      </b:if>
+      
+      <meta expr:content='data:post.date.iso8601' property='article:published_time'/>
+      <meta expr:content='data:post.author.name' name='author'/>
+  </b:with>
+<b:else/>
+  <meta expr:content='data:blog.title' property='og:title'/>
+  <meta expr:content='data:blog.title' name='twitter:title'/>
+  <meta content='website' property='og:type'/>
+  <meta expr:content='data:blog.canonicalUrl' property='og:url'/>
+  <meta content='https://i.imgur.com/l7YwbQe.png' property='og:image'/>
+  <meta content='https://i.imgur.com/l7YwbQe.png' name='twitter:image'/>
+  <meta content='600' property='og:image:width'/>
+  <meta content='600' property='og:image:height'/>
+</b:if>
+
+<!-- STRUCTURED DATA (JSON-LD) FOR GOOGLE -->
+<script type='application/ld+json'>
+<b:if cond='data:view.isPost'>
+  <b:with value='data:widgets.Blog1.posts.first' var='post'>
+  {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "<data:post.url.canonical/>"
+    },
+    "headline": "<data:post.title.jsEscaped/>",
+    "image": [
+      "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.firstImageUrl'><data:post.firstImageUrl/><b:else/>https://i.imgur.com/l7YwbQe.png</b:if></b:if>"
+    ],
+    "datePublished": "<data:post.date.iso8601/>",
+    "dateModified": "<data:post.lastUpdated.iso8601/>",
+    "author": {
+      "@type": "Person",
+      "name": "<data:post.author.name.jsEscaped/>",
+      "url": "<data:post.author.profileUrl/>"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "TuttoXAndroid",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://i.imgur.com/l7YwbQe.png"
+      }
+    },
+    "description": "<data:post.snippet.jsEscaped/>"
+  }
+  </b:with>
+<b:else/>
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "TuttoXAndroid",
+    "url": "<data:blog.homepageUrl/>",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "<data:blog.homepageUrl/>search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+</b:if>
+</script>
+
+<b:skin><![CDATA[
+  #navbar-iframe { display: none !important; }
+  body { margin: 0; padding: 0; background: #ffffff; -webkit-font-smoothing: antialiased; }
+  /* Loader styling */
+  #root:empty::before {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    margin: -25px 0 0 -25px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #e31b23;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 9999;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  /* SEO FALLBACK HIDDEN VISUALLY BUT VISIBLE TO BOTS */
+  .seo-fallback {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+  }
+]]></b:skin>
+
+<script>
+  window.bloggerNativePosts = [];
+  window.currentSinglePost = null;
+</script>
+
+<script src='https://cdn.tailwindcss.com'></script>
+<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=Saira+Extra+Condensed:wght@700;800;900&amp;display=swap' rel='stylesheet'/>
+
+<script type='importmap'>
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0?v=fixed",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime?v=fixed",
+    "react-dom": "https://esm.sh/react-dom@18.2.0?v=fixed",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?v=fixed",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?external=react,react-dom&amp;v=fixed",
+    "react-helmet-async": "https://esm.sh/react-helmet-async@2.0.4?external=react,react-dom&amp;v=fixed",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
+  }
+}
+</script>
+</head>
+<body class='bg-white'>
+  
+  <!-- DATA BRIDGE & SEO FALLBACK CONTENT -->
+  <div style='display:none;'>
+    <b:section id='content-bridge' name='Dati Blog' showaddelement='false'>
+      <b:widget id='Blog1' locked='true' title='Post del blog' type='Blog' visible='true'>
+        <b:includable id='main'>
+          
+          <b:if cond='data:view.isPost'>
+            <b:loop values='data:posts' var='post'>
+              <!-- 1. TEXTAREA for React Hydration -->
+              <textarea expr:id='"single-post-body-" + data:post.id' style='display:none;'><data:post.body/></textarea>
+              
+              <!-- 2. NOSCRIPT FALLBACK FOR CRAWLERS (CRITICAL FOR SEO) -->
+              <!-- This puts the full article content in the HTML so Google sees it immediately -->
+              <noscript>
+                  <article>
+                      <h1><data:post.title/></h1>
+                      <div class='post-body'>
+                          <data:post.body/>
+                      </div>
+                  </article>
+              </noscript>
+
+              <script>
+                (function() {
+                  var ta = document.getElementById("single-post-body-<data:post.id/>");
+                  window.currentSinglePost = {
+                    id: "<data:post.id/>",
+                    title: "<data:post.title.jsEscaped/>",
+                    excerpt: "<data:post.snippet.jsEscaped/>",
+                    content: ta ? ta.value : "",
+                    category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
+                    tags: [<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label'> "<data:label.name.jsEscaped/>", </b:loop></b:if>],
+                    imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
+                    author: "<data:post.author.name.jsEscaped/>",
+                    date: "<data:post.date.date.jsEscaped/>",
+                    url: "<data:post.url.canonical/>"
+                  };
+                  window.bloggerNativePosts.push(window.currentSinglePost);
+                })();
+              </script>
+            </b:loop>
+          </b:if>
+
+          <b:if cond='!data:view.isPost'>
+            <b:loop values='data:posts' var='post'>
+              <!-- Crawler Links for Homepage -->
+              <noscript>
+                  <h3><a expr:href='data:post.url'><data:post.title/></a></h3>
+                  <p><data:post.snippet/></p>
+              </noscript>
+              <script>
+                window.bloggerNativePosts.push({
+                  id: "<data:post.id/>",
+                  title: "<data:post.title.jsEscaped/>",
+                  excerpt: "<data:post.snippet.jsEscaped/>",
+                  content: "", 
+                  category: "<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label' index='i'><b:if cond='data:i == 0'><data:label.name.jsEscaped/></b:if></b:loop><b:else/>News</b:if>",
+                  tags: [<b:if cond='data:post.labels'><b:loop values='data:post.labels' var='label'> "<data:label.name.jsEscaped/>", </b:loop></b:if>],
+                  imageUrl: "<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&amp;fit=crop&amp;q=80&amp;w=800</b:if></b:if>",
+                  author: "<data:post.author.name.jsEscaped/>",
+                  date: "<data:post.date.date.jsEscaped/>",
+                  url: "<data:post.url.canonical/>"
+                });
+              </script>
+            </b:loop>
+          </b:if>
+
+        </b:includable>
+      </b:widget>
+    </b:section>
+  </div>
+
+  <div id='root'></div>
+  
+  <script type='module'>
+    //<![CDATA[
+    const cacheBuster = "v" + new Date().getTime(); 
+    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
+    .catch(err => {
+      console.error("CRITICAL ERROR LOADING APP:", err);
+      const root = document.getElementById('root');
+      root.innerHTML = `
+        <div style="font-family: sans-serif; text-align: center; padding: 40px;">
+          <h1 style="color: #e31b23;">Caricamento in corso...</h1>
+        </div>
+      `;
+    });
+    //]]>
+  </script>
+</body>
+</html>

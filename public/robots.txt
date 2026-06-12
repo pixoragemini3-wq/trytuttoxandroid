@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /?m=1
+Allow: /?m=0
+Disallow: /search
+Disallow: /search?*
+
+Sitemap: https://www.tuttoxandroid.com/sitemap.xml
