@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL } from './constants';
 import ArticleCard from './components/ArticleCard';
 import { Article, Deal } from './types';
@@ -91,8 +90,7 @@ const App: React.FC = () => {
 
   // --- ROUTER LOGIC ---
   useEffect(() => {
-    const canonical = `${window.location.origin}${location.pathname}`;
-    console.log(`[SEO Debug] Canonical URL set to: ${canonical}`);
+    // Ensure canonical URL is clean (no trailing slash except root)
     // Redirect trailing slashes (except for root) to non-trailing versions
     if (location.pathname !== '/' && location.pathname.endsWith('/')) {
       navigate(location.pathname.slice(0, -1), { replace: true });
@@ -314,14 +312,18 @@ const App: React.FC = () => {
   };
 
   const handleArticleClick = (article: Article) => {
-    setIsDragging(false); 
+    setIsDragging(false);
     if (isDragging) return;
     if (article.category === 'Offerte' && article.dealData?.link) {
        window.open(article.dealData.link, '_blank');
        return;
     }
     setActiveMegaMenu(null);
-    
+
+    // Track article views for Telegram popup (show after 2+)
+    const count = parseInt(localStorage.getItem('articleViewCount') || '0', 10);
+    localStorage.setItem('articleViewCount', String(count + 1));
+
     if (article.url) {
         try {
             const path = new URL(article.url).pathname;
@@ -332,7 +334,7 @@ const App: React.FC = () => {
     } else {
         navigate(`/article/${article.id}`);
     }
-    
+
     window.scrollTo(0, 0);
   };
 
@@ -705,38 +707,6 @@ const App: React.FC = () => {
       searchInputRef={searchInputRef}
       boxedLayout={layoutConfig.boxedLayout}
     >
-        <Helmet>
-            <title>{activeCategory !== 'Tutti' ? `${activeCategory} | TuttoXAndroid` : 'TuttoXAndroid | Il Portale Tech Moderno'}</title>
-            <meta name="description" content="Il portale di riferimento per Android in Italia. News in tempo reale, recensioni smartphone, guide modding, migliori app e offerte tech esclusive." />
-            <meta name="keywords" content="android, smartphone, recensioni, news, modding, guide, offerte, samsung, xiaomi, pixel" />
-            <link rel="canonical" href={`https://www.tuttoxandroid.com${location.pathname}`} />
-            
-            {/* Open Graph */}
-            <meta property="og:type" content="website" />
-            <meta property="og:url" content="https://www.tuttoxandroid.com/" />
-            <meta property="og:title" content="TuttoXAndroid | Il Portale Tech Moderno" />
-            <meta property="og:description" content="News, recensioni e guide sul mondo Android e Tech." />
-            <meta property="og:image" content={LOGO_URL} />
-
-            {/* Structured Data for WebSite */}
-            <script 
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{
-                __html: JSON.stringify({
-                  "@context": "https://schema.org",
-                  "@type": "WebSite",
-                  "name": "TuttoXAndroid",
-                  "url": "https://www.tuttoxandroid.com/",
-                  "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": "https://www.tuttoxandroid.com/search?q={search_term_string}",
-                    "query-input": "required name=search_term_string"
-                  }
-                }).replace(/<\/script>/g, '<\\/script>')
-              }}
-            />
-        </Helmet>
-
         {/* --- STATIC PAGES --- */}
         {isAbout && <AboutPage />}
         {isCollab && <CollabPage />}
@@ -963,10 +933,8 @@ const App: React.FC = () => {
                     )}
                   </div>
                   
-                  <div className="hidden lg:block space-y-12">
-                      <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
+                  <div className="hidden lg:block">
                       <SocialSidebar />
-                      <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                   </div>
                 </div>
               </div>
