@@ -187,6 +187,22 @@
         box-shadow: 0 6px 16px -6px rgba(0,0,0,0.07);
         transition: transform 0.2s ease;
       }
+      /* Respect Blogger editor alignment (center by default if not explicitly set left/right via preserved styles) */
+      .prose img[style*="float: left"],
+      .prose img[style*="float:left"] {
+        float: left !important;
+        margin-right: 1rem !important;
+        margin-left: 0 !important;
+        display: inline !important;
+      }
+      .prose img[style*="float: right"],
+      .prose img[style*="float:right"] {
+        float: right !important;
+        margin-left: 1rem !important;
+        margin-right: 0 !important;
+        display: inline !important;
+      }
+      /* If a parent wrapper has explicit left/right/center from Blogger, let it win; default images are centered via margin auto above */
       .prose img:hover {
         transform: scale(1.01);
       }
@@ -275,7 +291,15 @@
       }
 
       .font-condensed {
-        font-family: 'Saira Extra Condensed', 'Impact', 'Arial Narrow', sans-serif !important;
+        font-family: 'Saira Extra Condensed', 'Impact', 'Arial Narrow', 'Arial Black', system-ui, sans-serif !important;
+        font-weight: 900 !important;
+      }
+      /* Stronger force for the yellow sidebar "BEST OF THE BEST" titles to match local exactly */
+      .font-condensed.text-\[3\.5rem\],
+      .font-condensed.text-\[2xl\] {
+        font-family: 'Saira Extra Condensed', 'Impact', 'Arial Narrow', 'Arial Black', system-ui, sans-serif !important;
+        font-weight: 900 !important;
+        -webkit-font-smoothing: antialiased;
       }
       .no-scrollbar::-webkit-scrollbar {
         display: none;

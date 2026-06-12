@@ -28,7 +28,7 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({ articles, onArticleClic
              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-black/70">La Selezione</span>
           </div>
           {/* UPDATED FONT SIZE: Increased to 3.5rem as requested */}
-          <h3 className="font-condensed text-[3.5rem] font-black uppercase leading-[0.8] tracking-tight text-black">
+          <h3 className="font-condensed text-[3.5rem] font-black uppercase leading-[0.8] tracking-tight text-black" style={{fontFamily: "'Saira Extra Condensed', 'Impact', 'Arial Narrow', 'Arial Black', system-ui, sans-serif", fontWeight: 900}}>
             Best of<br/>The Best
           </h3>
           <div className="w-8 h-1 bg-black mt-3 mb-4"></div>

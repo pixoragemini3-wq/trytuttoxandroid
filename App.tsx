@@ -970,7 +970,7 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && (
-                  <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0">
+                  <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0 mt-1.5">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 

@@ -37,8 +37,14 @@ const extractDealWidgetData = (content: string, defaultLink: string, defaultTitl
 
 const cleanBloggerHtml = (html: string): string => {
   if (!html) return "";
-  // 1. Remove all inline styles (style="...") - but preserve for known safe cases if needed
-  let clean = html.replace(/\sstyle="[^"]*"/gi, '');
+  // 1. Selectively remove inline styles: keep alignment (text-align, float, margin, clear) so Blogger editor's image alignment is respected.
+  // Remove other junk styles (mso, font-family etc) that pollute.
+  let clean = html.replace(/\sstyle="([^"]*)"/gi, (fullMatch, styles) => {
+    if (/(text-align|float|margin-left|margin-right|clear|text-align)/i.test(styles)) {
+      return fullMatch; // preserve the style attribute for alignment
+    }
+    return ''; // strip junk styles
+  });
   // 2. Remove junk classes (class="...") often added by Blogger or Word
   // Keep classes that are part of our cascata/expandable system or standard
   clean = clean.replace(/\sclass="css-[^"]*"/gi, '');
