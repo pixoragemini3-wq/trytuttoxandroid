@@ -592,7 +592,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 </div>
 
                 {/* Title */}
-                <h1 className="font-condensed text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-8 leading-tight tracking-tight text-left uppercase break-words">
+                <h1 className="font-condensed text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-6 leading-tight tracking-tight text-left uppercase break-words">
                   {article.title}
                 </h1>
 

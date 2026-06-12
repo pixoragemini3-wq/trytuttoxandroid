@@ -213,11 +213,13 @@ const App: React.FC = () => {
       }
 
       // 2. Fetch Deals SECOND (Background - doesn't block UI)
+      // Only use real deals from Telegram/Blogger. Never fall back to standard mock products.
+      // If no real offers (or slow load), the section simply won't render.
       try {
          const dealsData = await fetchBloggerDeals();
-         setDeals(dealsData.length > 0 ? dealsData : MOCK_DEALS);
+         setDeals(dealsData.length > 0 ? dealsData : []);
       } catch (e) {
-         setDeals(MOCK_DEALS);
+         setDeals([]);
       }
     };
 
@@ -718,7 +720,17 @@ const App: React.FC = () => {
     const spotlightCats = ['App & Giochi', 'Smartphone', 'Offerte', 'Guide', 'Recensioni'];
     const spotlightCat = spotlightCats[(new Date().getDate()) % spotlightCats.length];
 
-    const pool = (articles.length > 0 ? articles : MOCK_ARTICLES).filter((a: Article) => a.category === spotlightCat);
+    let pool = (articles.length > 0 ? articles : MOCK_ARTICLES).filter((a: Article) => a.category === spotlightCat);
+
+    // Per la categoria Offerte, allarga il filtro per includere articoli a tema (offerte, sconti, amazon, prezzi...)
+    // così non resta mai vuoto con il messaggio "non disponibili"
+    if (spotlightCat === 'Offerte') {
+      pool = (articles.length > 0 ? articles : MOCK_ARTICLES).filter((a: Article) => {
+        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
+        return a.category === 'Offerte' || 
+               /offerta|offerte|sconto|prezzo|amazon|deal|black friday|prime|risparmio/i.test(hay);
+      });
+    }
 
     let col1Title = `ULTIMI ${spotlightCat.toUpperCase()}`;
     let col2Title = `IN EVIDENZA ${spotlightCat.toUpperCase()}`;
@@ -800,7 +812,7 @@ const App: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[18px]">{col1Icon}</span>
-              <h4 className="font-black uppercase text-[12.5px] tracking-[0.5px] text-green-700">{col1Title}</h4>
+              <h4 className="font-condensed font-black uppercase text-[13px] tracking-[0.5px] text-green-700">{col1Title}</h4>
             </div>
             <div className="h-px bg-green-600/70 w-7 mb-3" />
             {col1Items.length > 0 ? (
@@ -814,7 +826,7 @@ const App: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-gray-400 text-sm">Nessun articolo recente.</p>
+              <p className="text-gray-500 text-xs italic">Le offerte si aggiornano in tempo reale dal nostro canale Telegram.</p>
             )}
             <button
               onClick={handleViewAll}
@@ -828,7 +840,7 @@ const App: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[18px]">{col2Icon}</span>
-              <h4 className="font-black uppercase text-[12.5px] tracking-[0.5px] text-green-700">{col2Title}</h4>
+              <h4 className="font-condensed font-black uppercase text-[13px] tracking-[0.5px] text-green-700">{col2Title}</h4>
             </div>
             <div className="h-px bg-green-600/70 w-7 mb-3" />
             {col2Items.length > 0 ? (
@@ -842,7 +854,7 @@ const App: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-gray-400 text-sm">Nessun articolo recente.</p>
+              <p className="text-gray-500 text-xs italic">Le offerte si aggiornano in tempo reale dal nostro canale Telegram.</p>
             )}
             <button
               onClick={handleViewAll}
@@ -970,7 +982,7 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && (
-                  <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0 mt-1.5">
+                  <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0 mt-4 md:mt-1.5">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 
@@ -1050,9 +1062,12 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* Category Spotlight - alterna random tra categorie (piace il layout "delle app", ora lo proponiamo per una categoria diversa ogni giorno) */}
+            {/* Category Spotlight - hidden on mobile (avoid ULTIME OFFERTE etc on phone home, go straight to news).
+                On desktop it alternates categories daily. */}
             {isHome && activeCategory === 'Tutti' && !isSearch && (
-              <AppsGamesMenu />
+              <div className="hidden md:block">
+                <AppsGamesMenu />
+              </div>
             )}
 
             <section 

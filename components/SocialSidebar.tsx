@@ -50,7 +50,7 @@ const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article:
 
   // Suggested articles widget for user retention (proporre altri articoli)
   // Almeno 7-8 notizie che circolano, con animazione hover come richiesto
-  const suggested = (articles || []).slice(0, 8);
+  const suggested = (articles || []).slice(0, 10);
 
   return (
     <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
@@ -72,19 +72,19 @@ const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article:
         ))}
       </div>
 
-      {/* LEGGI ANCHE - almeno 7 notizie, layout orizzontale con animazione hover */}
+      {/* LEGGI ANCHE - almeno 10 notizie, mini schede più alte (doppio+), animazione hover più coinvolgente */}
       {suggested.length > 0 && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <h3 className="font-condensed text-xl font-black uppercase tracking-tight mb-3 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">LEGGI ANCHE</h3>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {suggested.map((art) => (
               <div
                 key={art.id}
                 onClick={() => onArticleClick && onArticleClick(art)}
-                className="group relative flex h-11 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
+                className="group relative flex h-20 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
               >
-                {/* Immagine orizzontale: 1/4 a sinistra di default, si allarga verso destra su hover */}
-                <div className="relative w-[26%] flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out group-hover:w-[60%]">
+                {/* Immagine: parte da sinistra stretta, si espande progressivamente da sinistra a destra fino a coprire tutto su hover (leggermente più lenta) */}
+                <div className="relative w-[22%] flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out group-hover:w-full">
                   {art.imageUrl ? (
                     <img
                       src={art.imageUrl}
@@ -94,23 +94,25 @@ const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article:
                   ) : (
                     <div className="absolute inset-0 bg-gray-200" />
                   )}
-                  {/* Leggero gradient per leggibilità base */}
+                  {/* Sottile gradient di base */}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent" />
+                  {/* Oscuramento progressivo dell'immagine quando si ingrandisce (per leggibilità del testo) */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-300" />
                 </div>
 
-                {/* Testo a destra (iniziale) - svanisce su hover */}
-                <div className="flex-1 min-w-0 px-2 py-1 flex flex-col justify-center transition-opacity duration-200 group-hover:opacity-0">
-                  <span className="text-[9px] font-extrabold text-[#e31b23] tracking-wide leading-none mb-0.5">{art.category}</span>
-                  <div className="text-[11px] font-semibold leading-tight text-gray-900 line-clamp-2 pr-1">
+                {/* Testo iniziale a destra (scompare quando l'immagine copre tutto) */}
+                <div className="flex-1 min-w-0 px-2.5 py-1.5 flex flex-col justify-center transition-opacity duration-150 group-hover:opacity-0">
+                  <span className="text-[10px] font-extrabold text-[#e31b23] tracking-wide leading-none mb-0.5">{art.category}</span>
+                  <div className="text-sm font-semibold leading-tight text-gray-900 line-clamp-2 pr-1">
                     {art.title}
                   </div>
                 </div>
 
-                {/* Testo inglobato nell'immagine su hover (overlay con gradient scuro) */}
-                <div className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                  <div className="w-full bg-gradient-to-t from-black/85 via-black/55 to-transparent p-2">
-                    <span className="text-[9px] font-bold text-white/75 tracking-wide">{art.category}</span>
-                    <div className="text-white text-[11px] font-semibold leading-tight line-clamp-2 mt-0.5">
+                {/* Overlay che appare quando l'immagine raggiunge il tutto: testo inglobato a destra sull'immagine espansa */}
+                <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  <div className="w-[58%] h-full bg-gradient-to-l from-black/92 via-black/78 to-transparent p-3 flex flex-col justify-center">
+                    <span className="text-[10px] font-bold text-white/80 tracking-wide mb-0.5">{art.category}</span>
+                    <div className="text-white text-[13px] font-semibold leading-snug line-clamp-3">
                       {art.title}
                     </div>
                   </div>
