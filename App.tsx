@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL } from './constants';
+import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL, CATEGORY_COLORS } from './constants';
 import ArticleCard from './components/ArticleCard';
 import { Article, Deal } from './types';
 import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl } from './services/bloggerService';
@@ -164,6 +164,36 @@ const App: React.FC = () => {
       });
     }
   }, [location.pathname, location.search]);
+
+  // --- BASIC DYNAMIC SEO for category / search / home list pages ---
+  useEffect(() => {
+    let pageTitle = 'TuttoXAndroid — News Android, Smartphone, App e Offerte Tech';
+    let desc = 'TuttoXAndroid: le ultime news su Android, smartphone, app, guide e le migliori offerte tech selezionate ogni giorno. Il portale di riferimento per la community Android italiana.';
+
+    if (isSearch && searchQuery) {
+      pageTitle = `Risultati per "${searchQuery}" | TuttoXAndroid`;
+      desc = `Risultati della ricerca per "${searchQuery}" su TuttoXAndroid.`;
+    } else if (activeCategory && activeCategory !== 'Tutti') {
+      pageTitle = `${activeCategory} | TuttoXAndroid`;
+      desc = `Tutte le notizie e gli articoli nella categoria ${activeCategory} su TuttoXAndroid.`;
+    }
+
+    document.title = pageTitle;
+
+    const metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (metaDesc) metaDesc.content = desc;
+
+    const setMeta = (propOrName: string, val: string) => {
+      const isOgOrTw = propOrName.includes(':');
+      const selector = isOgOrTw ? `meta[property="${propOrName}"]` : `meta[name="${propOrName}"]`;
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      if (el) el.content = val;
+    };
+    setMeta('og:title', pageTitle);
+    setMeta('og:description', desc);
+    setMeta('twitter:title', pageTitle);
+    setMeta('twitter:description', desc);
+  }, [activeCategory, searchQuery, isSearch]);
 
   // Load Content - SEPARATED FETCHING
   useEffect(() => {
@@ -683,6 +713,199 @@ const App: React.FC = () => {
     </div>
   );
 
+  const AppsGamesMenu = () => {
+    // Alterna random tra categorie (seed giornaliero per stabilità, piace il layout delle app → lo generalizziamo)
+    const spotlightCats = ['App & Giochi', 'Smartphone', 'Offerte', 'Guide', 'Recensioni'];
+    const spotlightCat = spotlightCats[(new Date().getDate()) % spotlightCats.length];
+
+    const pool = (articles.length > 0 ? articles : MOCK_ARTICLES).filter((a: Article) => a.category === spotlightCat);
+
+    let col1Title = `ULTIMI ${spotlightCat.toUpperCase()}`;
+    let col2Title = `IN EVIDENZA ${spotlightCat.toUpperCase()}`;
+    let col1Icon = '📰';
+    let col2Icon = '⭐';
+    let col1Items: Article[] = pool.slice(0, 3);
+    let col2Items: Article[] = pool.slice(3, 6);
+    let viewAllCat = spotlightCat;
+
+    // Caso speciale che ti è piaciuto: split App vs Giochi con keyword
+    if (spotlightCat === 'App & Giochi') {
+      col1Title = 'ULTIME APP';
+      col2Title = 'ULTIMI GIOCHI';
+      col1Icon = '📱';
+      col2Icon = '🎮';
+
+      const isGameLike = (a: Article) => {
+        const hay = `${a.title} ${(a.tags || []).join(' ')}`.toLowerCase();
+        return /gioco|game|play|arcade|indie/i.test(hay);
+      };
+
+      const appItems = pool.filter((a: Article) => !isGameLike(a));
+      const gameItems = pool.filter(isGameLike);
+
+      col1Items = appItems.length > 0 ? appItems.slice(0, 3) : pool.slice(0, 3);
+      col2Items = gameItems.length > 0 ? gameItems.slice(0, 3) : pool.slice(3, 6);
+    } else if (spotlightCat === 'Offerte') {
+      col1Title = 'ULTIME OFFERTE';
+      col2Title = 'LE MIGLIORI OFFERTE';
+      col1Icon = '🏷️';
+      col2Icon = '💰';
+    } else if (spotlightCat === 'Smartphone') {
+      col1Title = 'ULTIMI SMARTPHONE';
+      col2Title = 'TOP DEVICE';
+      col1Icon = '📱';
+      col2Icon = '🔥';
+    } else if (spotlightCat === 'Guide') {
+      col1Title = 'ULTIME GUIDE';
+      col2Title = 'TUTORIAL UTILI';
+      col1Icon = '📖';
+      col2Icon = '💡';
+    } else if (spotlightCat === 'Recensioni') {
+      col1Title = 'ULTIME RECENSIONI';
+      col2Title = 'TEST & PROVE';
+      col1Icon = '⭐';
+      col2Icon = '📝';
+    }
+
+    const categorieList = [
+      'Giochi Android Gratis',
+      'Migliori App Produttività',
+      'App Foto & Video',
+      'Personalizzazione',
+      'Emulatori'
+    ];
+
+    const handleViewAll = () => {
+      handleNavClick(viewAllCat);
+    };
+
+    const handleCatClick = (label: string) => {
+      setSearchQuery(label);
+      setTimeout(() => {
+        handleSearchSubmit({ preventDefault: () => {} } as any);
+      }, 10);
+    };
+
+    const handlePlayPass = () => {
+      setSearchQuery('Google Play Pass');
+      setTimeout(() => {
+        handleSearchSubmit({ preventDefault: () => {} } as any);
+      }, 10);
+    };
+
+    return (
+      <div className="bg-[#f0f7f1] border-t-[3px] border-[#86efac] py-7">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-7 gap-y-8">
+          {/* Colonna 1: prima lista della categoria random */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[18px]">{col1Icon}</span>
+              <h4 className="font-black uppercase text-[12.5px] tracking-[0.5px] text-green-700">{col1Title}</h4>
+            </div>
+            <div className="h-px bg-green-600/70 w-7 mb-3" />
+            {col1Items.length > 0 ? (
+              col1Items.map((item: Article) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleArticleClick(item)}
+                  className="text-[13px] leading-tight text-gray-600 hover:text-green-700 cursor-pointer mb-1.5 line-clamp-2 transition-colors"
+                >
+                  {item.title}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-400 text-sm">Nessun articolo recente.</p>
+            )}
+            <button
+              onClick={handleViewAll}
+              className="mt-2 text-[10px] font-black uppercase tracking-widest bg-[#f8efe6] hover:bg-white px-3.5 py-1 rounded text-gray-600 hover:text-gray-800 transition"
+            >
+              VEDI TUTTI →
+            </button>
+          </div>
+
+          {/* Colonna 2: seconda lista della categoria random */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[18px]">{col2Icon}</span>
+              <h4 className="font-black uppercase text-[12.5px] tracking-[0.5px] text-green-700">{col2Title}</h4>
+            </div>
+            <div className="h-px bg-green-600/70 w-7 mb-3" />
+            {col2Items.length > 0 ? (
+              col2Items.map((item: Article) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleArticleClick(item)}
+                  className="text-[13px] leading-tight text-gray-600 hover:text-green-700 cursor-pointer mb-1.5 line-clamp-2 transition-colors"
+                >
+                  {item.title}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-400 text-sm">Nessun articolo recente.</p>
+            )}
+            <button
+              onClick={handleViewAll}
+              className="mt-2 text-[10px] font-black uppercase tracking-widest bg-[#f8efe6] hover:bg-white px-3.5 py-1 rounded text-gray-600 hover:text-gray-800 transition"
+            >
+              VEDI TUTTI →
+            </button>
+          </div>
+
+          {/* CATEGORIE (come da immagine - resta fisso) */}
+          <div>
+            <h4 className="font-black uppercase text-sm tracking-widest text-gray-900 mb-2 border-b border-gray-200 pb-1">CATEGORIE</h4>
+            <ul className="space-y-[2px] text-sm">
+              {categorieList.map((c, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => handleCatClick(c)}
+                  className="text-gray-600 hover:text-green-700 cursor-pointer font-medium transition-colors"
+                >
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Promo card - alterna con la categoria in evidenza (la "scheda verde" circola) */}
+          {(() => {
+            const promo = spotlightCat === 'Offerte' 
+              ? { bg: 'bg-[#e31b23]', title: 'OFFERTE DEL GIORNO', desc: 'Le migliori occasioni tech e smartphone con prezzi aggiornati ogni giorno.', btn: 'SCOPRI LE OFFERTE', action: () => handleNavClick('Offerte') }
+              : spotlightCat === 'Smartphone'
+              ? { bg: 'bg-[#1e40af]', title: 'TOP SMARTPHONE', desc: 'Le ultime uscite, test e confronti sui migliori device Android del momento.', btn: 'LEGGI LE RECENSIONI', action: () => handleNavClick('Smartphone') }
+              : spotlightCat === 'Guide'
+              ? { bg: 'bg-[#0f766e]', title: 'GUIDE ESSENZIALI', desc: 'Tutorial chiari e pratici per risolvere problemi comuni e ottimizzare il tuo Android.', btn: 'LEGGI LA GUIDA', action: () => handleNavClick('Guide') }
+              : spotlightCat === 'Recensioni'
+              ? { bg: 'bg-[#7c3aed]', title: 'RECENSIONI PRO', desc: 'Analisi dettagliate e oneste dei nuovi smartphone, wearable e gadget.', btn: 'LEGGI LA RECENSIONE', action: () => handleNavClick('Recensioni') }
+              : { bg: 'bg-[#16a34a]', title: 'GOOGLE PLAY PASS', desc: 'Centinaia di giochi e app senza pubblicità. Scopri se ne vale la pena nella nostra analisi completa.', btn: 'LEGGI ARTICOLO', action: handlePlayPass };
+
+            return (
+              <div
+                onClick={promo.action}
+                className={`${promo.bg} text-white rounded-2xl p-5 flex flex-col justify-between shadow-xl relative overflow-hidden group cursor-pointer`}
+              >
+                <div className="relative z-10">
+                  <div className="absolute -top-1 -right-1 w-20 h-20 bg-white opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+                  <h4 className="font-condensed text-[21px] font-black uppercase tracking-tight leading-none mb-2">{promo.title}</h4>
+                  <p className="text-[11px] text-white/90 leading-snug pr-1">
+                    {promo.desc}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); promo.action(); }}
+                  className="mt-4 self-start bg-white text-green-700 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-100 active:scale-[0.985] transition shadow"
+                >
+                  {promo.btn}
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Layout
       activeMegaMenu={activeMegaMenu}
@@ -747,7 +970,7 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && (
-                  <div className="w-full h-[auto] md:h-[420px] lg:h-[420px] flex gap-2">
+                  <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 
@@ -763,7 +986,7 @@ const App: React.FC = () => {
                           <ArticleCard 
                             article={heroArticle} 
                             onClick={() => handleArticleClick(heroArticle)}
-                            className="" 
+                            className="h-full" 
                           />
                         )}
                     </div>
@@ -774,7 +997,7 @@ const App: React.FC = () => {
                 {isHome && (
                   <div className="px-4 lg:px-0 py-2 mt-1 mb-0">
                     <div className="flex items-end justify-between mb-2">
-                        <h3 className="font-condensed text-2xl lg:text-3xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
+                        <h3 className="font-condensed text-[23px] lg:text-[28px] font-black uppercase text-gray-900 tracking-[-0.5px] leading-none">
                             In Evidenza
                         </h3>
                         <div className="hidden lg:flex gap-2">
@@ -827,6 +1050,11 @@ const App: React.FC = () => {
               </div>
             </section>
 
+            {/* Category Spotlight - alterna random tra categorie (piace il layout "delle app", ora lo proponiamo per una categoria diversa ogni giorno) */}
+            {isHome && activeCategory === 'Tutti' && !isSearch && (
+              <AppsGamesMenu />
+            )}
+
             <section 
               ref={newsSectionRef} 
               className="pt-4 pb-12 bg-gray-50/50 min-h-[500px]"
@@ -841,35 +1069,27 @@ const App: React.FC = () => {
                      {isSearch ? `Risultati per: "${searchQuery}"` : (activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory)}
                   </h3>
                   {!isSearch && (
-                  <div className="flex items-center gap-6 overflow-x-auto no-scrollbar mt-4 md:mt-0">
-                    {ALL_CATEGORIES.map(cat => {
-                      const activeColorClass = 
-                        cat === 'Smartphone' ? 'text-blue-600 border-blue-600' : 
-                        cat === 'Modding' ? 'text-orange-500 border-orange-500' : 
-                        cat === 'App & Giochi' ? 'text-green-500 border-green-500' : 
-                        cat === 'Recensioni' ? 'text-purple-600 border-purple-600' : 
-                        cat === 'Guide' ? 'text-cyan-600 border-cyan-600' : 
-                        cat === 'Offerte' ? 'text-yellow-500 border-yellow-500' : 
-                        cat === 'Wearable' ? 'text-pink-500 border-pink-500' : 
-                        'text-[#e31b23] border-[#e31b23]';
-                        
-                      const hoverColorClass = 
-                        cat === 'Smartphone' ? 'hover:text-blue-600' : 
-                        cat === 'Modding' ? 'hover:text-orange-500' : 
-                        cat === 'App & Giochi' ? 'hover:text-green-500' : 
-                        cat === 'Recensioni' ? 'hover:text-purple-600' : 
-                        cat === 'Guide' ? 'hover:text-cyan-600' : 
-                        cat === 'Offerte' ? 'hover:text-yellow-500' : 
-                        cat === 'Wearable' ? 'hover:text-pink-500' : 
-                        'hover:text-[#e31b23]';
-
+                  <div className="flex items-center gap-5 overflow-x-auto no-scrollbar mt-4 md:mt-0">
+                    {ALL_CATEGORIES.filter(c => c !== 'Tutti').map(cat => {
+                      const catColor = CATEGORY_COLORS[cat] || '#e31b23';
+                      const isActive = activeCategory === cat;
                       return (
                         <button 
                           key={cat} 
                           onClick={() => handleNavClick(cat)}
-                          className={`text-[10px] md:text-xs font-black uppercase tracking-widest whitespace-nowrap transition-colors pb-1 ${activeCategory === cat ? `${activeColorClass} border-b-2` : `text-gray-400 ${hoverColorClass}`}`}
+                          className={`group relative text-[10px] md:text-xs font-black uppercase tracking-widest whitespace-nowrap pb-1 transition-all duration-200 ease-out active:scale-[0.98] ${isActive ? 'border-b-2' : 'text-gray-400 hover:text-white/80'}`}
+                          style={isActive ? { color: catColor, borderColor: catColor } : { color: undefined }}
+                          onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = catColor; }}
+                          onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = ''; }}
                         >
                           {cat}
+                          {/* Subtle engaging underline pop on hover for non-active */}
+                          {!isActive && (
+                            <span 
+                              className="absolute bottom-0 left-0 h-[1.5px] w-0 bg-current transition-all duration-200 group-hover:w-full" 
+                              style={{ backgroundColor: catColor }}
+                            />
+                          )}
                         </button>
                       );
                     })}
@@ -934,7 +1154,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="hidden lg:block">
-                      <SocialSidebar />
+                      <SocialSidebar articles={displayArticles.length > 0 ? displayArticles : articles} onArticleClick={handleArticleClick} />
                   </div>
                 </div>
               </div>

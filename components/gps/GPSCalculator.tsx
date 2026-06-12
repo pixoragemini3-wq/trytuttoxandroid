@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { GPSState, INITIAL_STATE } from './types';
 import Step1Setup from './Step1Setup';
 import Step2Access from './Step2Access';
@@ -139,16 +138,6 @@ const GPSCalculator: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 pb-32 md:pb-8" ref={calculatorRef}>
-      <Helmet>
-        <title>Calcolatore GPS 2026 | Simula il tuo punteggio</title>
-        <meta property="og:title" content="Calcolatore GPS 2026 | Simula il tuo punteggio" />
-        <meta property="og:description" content="Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!" />
-        <meta property="og:image" content="https://i.imgur.com/sTIlIOc.png" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content="https://i.imgur.com/sTIlIOc.png" />
-        <meta name="twitter:description" content="Calcolatore GPS 2026 gratuito: scopri il tuo punteggio in pochi click. Uno strumento semplice e utile per avere tutto sotto controllo. Provalo ora!" />
-      </Helmet>
-
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="font-condensed text-4xl md:text-5xl font-black uppercase text-gray-900 mb-2">

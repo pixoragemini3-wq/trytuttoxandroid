@@ -37,11 +37,13 @@ const extractDealWidgetData = (content: string, defaultLink: string, defaultTitl
 
 const cleanBloggerHtml = (html: string): string => {
   if (!html) return "";
-  // 1. Remove all inline styles (style="...")
+  // 1. Remove all inline styles (style="...") - but preserve for known safe cases if needed
   let clean = html.replace(/\sstyle="[^"]*"/gi, '');
   // 2. Remove junk classes (class="...") often added by Blogger or Word
+  // Keep classes that are part of our cascata/expandable system or standard
   clean = clean.replace(/\sclass="css-[^"]*"/gi, '');
   clean = clean.replace(/\sclass="Mso[^"]*"/gi, '');
+  // Do not strip expandable-*, faq-*, or common list classes so cascata and copy work
   // 3. Remove empty spans that Blogger often leaves behind
   clean = clean.replace(/<span>\s*<\/span>/gi, '');
   return clean;
@@ -106,6 +108,20 @@ const getFirstImageFromContent = (htmlContent: string): string | null => {
 // --- CORS PROXY CONFIGURATION ---
 const TARGET_DOMAIN = 'https://www.tuttoxandroid.com';
 
+// Helper to use Vite proxy (/blogger) in local dev for real Blogger data without CORS issues
+const getBloggerTargetUrl = (feedPath: string) => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      return `/blogger${feedPath}`;
+    }
+    if (host === 'www.tuttoxandroid.com' || host === 'tuttoxandroid.com') {
+      return feedPath;
+    }
+  }
+  return `${TARGET_DOMAIN}${feedPath}`;
+};
+
 // List of available proxies
 const PROXY_LIST = [
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -168,8 +184,10 @@ export const fetchArticleById = async (id: string): Promise<string | null> => {
       return mock ? mock.content : null;
   }
   try {
-    const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/${id}?alt=json`;
-    const response = await fetchWithProxyFallback(targetUrl);
+    const targetUrl = getBloggerTargetUrl(`/feeds/posts/default/${id}?alt=json`);
+    const response = targetUrl.startsWith('/blogger') 
+      ? await fetchWithTimeout(targetUrl)
+      : await fetchWithProxyFallback(targetUrl);
     if (!response.ok) return null;
     const data = await response.json();
     const rawContent = data.entry?.content?.$t || data.entry?.summary?.$t || "";
@@ -231,8 +249,10 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100&start-index=${startIndex}`;
     }
     
-    const targetUrl = `${TARGET_DOMAIN}${feedPath}`;
-    const response = await fetchWithProxyFallback(targetUrl, 10000);
+    const targetUrl = getBloggerTargetUrl(feedPath);
+    const response = targetUrl.startsWith('/blogger') 
+      ? await fetchWithTimeout(targetUrl, 10000)
+      : await fetchWithProxyFallback(targetUrl, 10000);
     
     if (!response.ok) return [];
     
@@ -328,8 +348,10 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
     const bloggerPromise = (async () => {
         try {
-            const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20`;
-            const response = await fetchWithProxyFallback(targetUrl, 5000);
+            const targetUrl = getBloggerTargetUrl(`/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20`);
+            const response = targetUrl.startsWith('/blogger') 
+              ? await fetchWithTimeout(targetUrl, 5000)
+              : await fetchWithProxyFallback(targetUrl, 5000);
             if (!response.ok) return [];
             const data = await response.json();
             const entries = data.feed.entry || [];

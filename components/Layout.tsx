@@ -6,7 +6,7 @@ import MegaMenu from './MegaMenu';
 import CookieConsent from './CookieConsent';
 import TelegramPopup from './TelegramPopup';
 import TopStoriesMobile from './TopStoriesMobile';
-import { LOGO_URL, NAV_CATEGORIES } from '../constants';
+import { LOGO_URL, NAV_CATEGORIES, CATEGORY_COLORS } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -80,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Main header row */}
         <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-16 md:h-[72px]">
+          <div className="flex items-center justify-between h-20 md:h-[215px]">
 
             {/* Logo */}
             <div
@@ -90,26 +90,38 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-12 md:h-[58px] w-auto object-contain"
+                className="h-16 md:h-[205px] w-auto object-contain"
               />
             </div>
 
             {/* Desktop nav */}
-            <nav className={`hidden lg:flex items-center gap-1 ${isSearchVisible ? 'invisible' : ''}`}>
-              {NAV_CATEGORIES.slice(0, 7).map(nav => (
-                <button
-                  key={nav}
-                  onMouseEnter={() => setActiveMegaMenu(nav)}
-                  onClick={() => handleNavClick(nav)}
-                  className={`px-3 py-1.5 text-[12.5px] font-semibold tracking-wide uppercase rounded transition-all duration-150 ${
-                    activeCategory === nav
-                      ? 'text-white bg-[#e31b23]'
-                      : 'text-white/55 hover:text-white hover:bg-white/[0.07]'
-                  }`}
-                >
-                  {nav}
-                </button>
-              ))}
+            <nav className={`hidden lg:flex items-center gap-1.5 ${isSearchVisible ? 'invisible' : ''}`}>
+              {NAV_CATEGORIES.map(nav => {
+                const isActive = activeCategory === nav;
+                const catColor = CATEGORY_COLORS[nav] || '#e31b23';
+                return (
+                  <button
+                    key={nav}
+                    onMouseEnter={() => setActiveMegaMenu(nav)}
+                    onClick={() => handleNavClick(nav)}
+                    className={`group relative px-4 py-1.5 text-[12px] font-semibold tracking-[0.75px] uppercase rounded-full transition-all duration-200 ease-out active:scale-[0.985] ${
+                      isActive 
+                        ? 'text-white shadow-sm' 
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                    style={isActive ? { backgroundColor: catColor } : {}}
+                  >
+                    {nav}
+                    {/* Engaging hover animation: colored underline draws in the category's own color */}
+                    {!isActive && (
+                      <span 
+                        className="absolute -bottom-[1px] left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full transition-all duration-200 ease-out group-hover:left-0 group-hover:w-full group-hover:-translate-x-0" 
+                        style={{ backgroundColor: catColor }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </nav>
 
             {/* Right controls */}
@@ -240,15 +252,21 @@ const Layout: React.FC<LayoutProps> = ({
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            {NAV_CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                onClick={() => { handleNavClick(cat); setIsMobileMenuOpen(false); }}
-                className="w-full text-left py-3 text-[15px] font-semibold tracking-wide uppercase text-white/60 hover:text-white border-b border-white/[0.05] transition-colors"
-              >
-                {cat}
-              </button>
-            ))}
+            {NAV_CATEGORIES.map(cat => {
+              const catColor = CATEGORY_COLORS[cat] || '#e31b23';
+              return (
+                <button
+                  key={cat}
+                  onClick={() => { handleNavClick(cat); setIsMobileMenuOpen(false); }}
+                  className="group w-full flex items-center text-left py-3 text-[15px] font-semibold tracking-wide uppercase text-white/60 hover:text-white border-b border-white/[0.05] transition-all duration-150 active:scale-[0.985]"
+                  onMouseEnter={e => { e.currentTarget.style.color = catColor; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = ''; }}
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full mr-3 opacity-60 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: catColor }} />
+                  {cat}
+                </button>
+              );
+            })}
             <div className="pt-6 flex flex-col gap-3">
               <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Chi Siamo</button>
               <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Collabora</button>

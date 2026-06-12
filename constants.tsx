@@ -4,6 +4,18 @@ import { Article, Deal } from './types';
 export const LOGO_URL = "https://i.imgur.com/l7YwbQe.png";
 export const NAV_CATEGORIES = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'App & Giochi'];
 
+export const CATEGORY_COLORS: Record<string, string> = {
+  'News': '#e31b23',
+  'Smartphone': '#2563eb',
+  'Guide': '#14b8a6',      // verde/azzurro teal per Guide
+  'Recensioni': '#7c3aed',
+  'Offerte': '#f59e0b',
+  'App & Giochi': '#22c55e',
+  'Modding': '#ea580c',
+  'Wearable': '#db2777',
+  'Tutti': '#64748b',
+};
+
 const DUMMY_CONTENT = `
 <p class="lead">Benvenuti in questo nuovo approfondimento di TuttoXAndroid. Oggi analizzeremo nel dettaglio le ultime novità del settore tech, concentrandoci su come queste innovazioni cambieranno il nostro modo di interagire con i dispositivi mobili.</p>
 <p>Il panorama tecnologico attuale è in continua evoluzione, e restare aggiornati è fondamentale per sfruttare al meglio le potenzialità dei nostri smartphone. In questo articolo vedremo i punti chiave che rendono questa notizia così rilevante per la community.</p>

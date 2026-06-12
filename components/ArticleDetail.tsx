@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { Helmet } from 'react-helmet-async';
 import { fetchArticleById } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 
@@ -65,6 +64,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [fullContentLoaded, setFullContentLoaded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [portalNodes, setPortalNodes] = useState<{
     deals: Element | null, 
@@ -84,6 +84,45 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [sidebarEmail, setSidebarEmail] = useState('');
   const [sidebarSubscribeStatus, setSidebarSubscribeStatus] = useState<'idle' | 'success'>('idle');
 
+  // --- BASIC DYNAMIC SEO (per-article title + meta, since no Helmet) ---
+  useEffect(() => {
+    if (!article) return;
+
+    const pageTitle = `${article.title} | TuttoXAndroid`;
+    document.title = pageTitle;
+
+    // Description (excerpt or fallback)
+    const descContent = (article.excerpt || article.title).slice(0, 155);
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', descContent);
+
+    // OG / Twitter basic
+    const setMeta = (selector: string, attr: string, value: string) => {
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement('meta');
+        if (selector.includes('property')) el.setAttribute('property', selector.split('"')[1]);
+        else el.setAttribute('name', selector.split('"')[1]);
+        document.head.appendChild(el);
+      }
+      el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[property="og:title"]', 'content', pageTitle);
+    setMeta('meta[property="og:description"]', 'content', descContent);
+    if (article.imageUrl) {
+      setMeta('meta[property="og:image"]', 'content', article.imageUrl);
+    }
+    setMeta('meta[name="twitter:title"]', 'content', pageTitle);
+    setMeta('meta[name="twitter:description"]', 'content', descContent);
+
+    // Canonical
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (canonical && article.url) {
+      canonical.href = article.url;
+    }
+  }, [article]);
+
   const handleSidebarSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sidebarEmail.includes('@')) return;
@@ -98,10 +137,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   }, [article]);
 
   // Check if content appears truncated
+  // Only show "continua a leggere" fallback if we haven't successfully loaded the full version yet
   const isTruncated = useMemo(() => {
+     if (fullContentLoaded) return false;
      const hasMoreTag = fullContent?.includes('<!--more-->') || fullContent?.includes('name="more"');
      return ((!fullContent || fullContent.length < 600) || hasMoreTag) && article.url;
-  }, [fullContent, article.url]);
+  }, [fullContent, article.url, fullContentLoaded]);
 
   const catColor = 
     article.category === 'Smartphone' ? 'text-blue-600' : 
@@ -116,6 +157,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const { displayLead, displayBody } = useMemo(() => {
     let content = fullContent || article.content;
     if (!content) return { displayLead: article.excerpt, displayBody: "" };
+
+    // Skip lead extraction for articles that use "cascata" / expandable FAQ structure
+    // (e.g. "DOMANDE FREQUENTI", or contain the expandable classes).
+    // These posts rely on their full original HTML structure for the JS cascade to work.
+    const lower = content.toLowerCase();
+    if (lower.includes('domande frequenti') || 
+        content.includes('expandable-row') || 
+        content.includes('expandable-description') ||
+        lower.includes('cascata')) {
+      return { displayLead: article.excerpt, displayBody: content };
+    }
 
     // Find the first bold block (<b> or <strong>) with more than 6 words
     const boldRegex = /<(b|strong)>(.*?)<\/\1>/gi;
@@ -168,13 +220,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   useEffect(() => {
     setFullContent(article.content);
+    // If the initial content from the list is already reasonably full (no more tag and decent length), consider it loaded
+    const initialHasMore = article.content?.includes('<!--more-->') || article.content?.includes('name="more"');
+    const initialLongEnough = article.content && article.content.length >= 600;
+    setFullContentLoaded(initialLongEnough && !initialHasMore);
     
     const loadFull = async () => {
       setIsUpdating(true);
       try {
         const freshContent = await fetchArticleById(article.id);
-        if (freshContent && freshContent.length > (article.content?.length || 0)) {
-          setFullContent(freshContent);
+        if (freshContent) {
+          if (freshContent.length > (article.content?.length || 0)) {
+            setFullContent(freshContent);
+          }
+          setFullContentLoaded(true);
         }
       } catch(e) {
         console.error("Failed to load full article", e);
@@ -197,16 +256,31 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       link.setAttribute('rel', 'noopener noreferrer');
     });
 
-    // 2. Expandable Rows
-    const expandableRows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
-    const handleRowClick = function(this: HTMLElement, e: Event) {
-      e.stopPropagation(); e.preventDefault();
-      this.classList.toggle('expanded');
+    // 2. Expandable Rows (Cascata) - direct attach + delegation (for reliability with Blogger HTML structures)
+    const setupCascade = () => {
+      const rows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
+      rows.forEach((row: Element) => {
+        const el = row as HTMLElement;
+        // remove previous to avoid multiples
+        el.onclick = null;
+        el.addEventListener('click', function(this: HTMLElement, e: Event) {
+          e.stopPropagation();
+          e.preventDefault();
+          this.classList.toggle('expanded');
+
+          // support sibling description (common pattern)
+          let next = this.nextElementSibling as HTMLElement | null;
+          if (next && next.classList.contains('expandable-description')) {
+            next.classList.toggle('expanded');
+          }
+        });
+      });
     };
-    expandableRows.forEach(row => {
-      row.removeEventListener('click', handleRowClick as EventListener);
-      row.addEventListener('click', handleRowClick as EventListener);
-    });
+    // run immediately and after a tick for any injected content
+    setupCascade();
+    setTimeout(setupCascade, 0);
+
+    // 3. Expandable Rows (Cascata) handled by dedicated useEffect below for reliability
 
     // 3. Inject Portal Nodes
     const paragraphs = Array.from(container.querySelectorAll('p'));
@@ -279,12 +353,54 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     }
 
     return () => {
-      expandableRows.forEach(row => row.removeEventListener('click', handleRowClick as EventListener));
       if (dealsNode) dealsNode.remove();
       if (readAlso1Node) readAlso1Node.remove();
       if (readAlso2Node) readAlso2Node.remove();
     };
   }, [article.id, fullContent]); 
+
+  // Dedicated reliable event delegation for Expandable Rows (Cascata / Accordion)
+  // This ensures clicks on .expandable-row (from Blogger HTML) toggle 'expanded' even if content is injected dynamically.
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    const handleCascadeClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const row = target.closest('tr.expandable-row, div.expandable-row, .expandable-row') as HTMLElement | null;
+      if (row) {
+        e.stopPropagation();
+        e.preventDefault();
+        row.classList.toggle('expanded');
+
+        // Support common "cascata" pattern where the description is the immediate next sibling
+        // (often used in Blogger table-based or div-based FAQ/accordion structures)
+        let next = row.nextElementSibling as HTMLElement | null;
+        if (next && next.classList.contains('expandable-description')) {
+          next.classList.toggle('expanded');
+        }
+      }
+    };
+
+    // Remove any previous to avoid duplicates on re-runs
+    const previous = (container as any)._cascadeHandler;
+    if (previous) {
+      container.removeEventListener('click', previous);
+    }
+
+    // Use microtask timeout to ensure the innerHTML + any portal injections have settled
+    const attach = () => {
+      container.addEventListener('click', handleCascadeClick as EventListener);
+      (container as any)._cascadeHandler = handleCascadeClick;
+    };
+    const timeoutId = setTimeout(attach, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      container.removeEventListener('click', handleCascadeClick as EventListener);
+      delete (container as any)._cascadeHandler;
+    };
+  }, [article.id, fullContent]); // re-attach when content updates too
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) onArticleClick(art);
@@ -452,36 +568,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
-      <Helmet>
-        <title>{article.title} | TuttoXAndroid</title>
-        <meta name="description" content={article.excerpt} />
-        <meta name="robots" content="index, follow, max-image-preview:large" />
-        <link rel="canonical" href={`https://www.tuttoxandroid.com${window.location.pathname}`} />
-        
-        {/* Open Graph / Social */}
-        <meta property="og:title" content={article.title} />
-        <meta property="og:description" content={article.excerpt} />
-        <meta property="og:image" content={article.imageUrl} />
-        <meta property="og:type" content="article" />
-        <meta property="og:url" content={article.url || window.location.href} />
-        <meta property="article:published_time" content={article.date} />
-        
-        {/* Twitter Cards */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@tuttoxandroid" />
-        <meta name="twitter:creator" content="@tuttoxandroid" />
-        <meta name="twitter:title" content={article.title} />
-        <meta name="twitter:description" content={article.excerpt} />
-        <meta name="twitter:image" content={article.imageUrl} />
-
-        <script 
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ 
-            __html: JSON.stringify(schemaData).replace(/<\/script>/g, '<\\/script>') 
-          }}
-        />
-      </Helmet>
-
       {/* Loading Indicator */}
       {isUpdating && (
          <div className="fixed top-20 right-4 z-[99999] bg-black text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg flex items-center gap-2 animate-pulse">
@@ -655,7 +741,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                    <p className="text-xs font-bold text-yellow-300 mb-4 px-2">Errori di prezzo e sconti esclusivi in tempo reale.</p>
                    <span className="inline-block bg-white text-[#24A1DE] px-8 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black hover:text-white transition-colors">Unisciti Ora</span>
                 </a>
-                <SocialSidebar />
+                <SocialSidebar articles={moreArticles || []} onArticleClick={onArticleClick} />
                 <div className="bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm">
                    <h3 className="font-condensed text-2xl font-black uppercase italic mb-4 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">I Più Letti</h3>
                    <div className="flex flex-col gap-4">
@@ -666,7 +752,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                            </span>
                            <div className="border-b border-gray-50 pb-3 w-full">
                               <span className="text-[9px] font-black uppercase text-[#e31b23] mb-1 block">{art.category}</span>
-                              <h4 className="text-sm font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors line-clamp-2">
+                              <h4 className="text-[15px] font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors line-clamp-2">
                                 {art.title}
                               </h4>
                            </div>
@@ -700,7 +786,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                           </form>
                         )}
                     </div>
-                    <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                 </div>
             </div>
         </div>

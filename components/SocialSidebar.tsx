@@ -1,7 +1,8 @@
 
 import React from 'react';
+import { Article } from '../types';
 
-const SocialSidebar: React.FC = () => {
+const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article: Article) => void }> = ({ articles = [], onArticleClick }) => {
   const socialLinks = [
     {
       name: 'Telegram',
@@ -47,6 +48,10 @@ const SocialSidebar: React.FC = () => {
     }
   ];
 
+  // Suggested articles widget for user retention (proporre altri articoli)
+  // Almeno 7-8 notizie che circolano, con animazione hover come richiesto
+  const suggested = (articles || []).slice(0, 8);
+
   return (
     <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
       <h3 className="font-condensed text-3xl font-black uppercase italic mb-6 tracking-tight text-gray-900 border-b-4 border-[#e31b23] pb-1 w-fit">Seguici</h3>
@@ -66,6 +71,56 @@ const SocialSidebar: React.FC = () => {
           </a>
         ))}
       </div>
+
+      {/* LEGGI ANCHE - almeno 7 notizie, layout orizzontale con animazione hover */}
+      {suggested.length > 0 && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h3 className="font-condensed text-xl font-black uppercase tracking-tight mb-3 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">LEGGI ANCHE</h3>
+          <div className="space-y-1.5">
+            {suggested.map((art) => (
+              <div
+                key={art.id}
+                onClick={() => onArticleClick && onArticleClick(art)}
+                className="group relative flex h-11 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
+              >
+                {/* Immagine orizzontale: 1/4 a sinistra di default, si allarga verso destra su hover */}
+                <div className="relative w-[26%] flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out group-hover:w-[60%]">
+                  {art.imageUrl ? (
+                    <img
+                      src={art.imageUrl}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gray-200" />
+                  )}
+                  {/* Leggero gradient per leggibilità base */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent" />
+                </div>
+
+                {/* Testo a destra (iniziale) - svanisce su hover */}
+                <div className="flex-1 min-w-0 px-2 py-1 flex flex-col justify-center transition-opacity duration-200 group-hover:opacity-0">
+                  <span className="text-[9px] font-extrabold text-[#e31b23] tracking-wide leading-none mb-0.5">{art.category}</span>
+                  <div className="text-[11px] font-semibold leading-tight text-gray-900 line-clamp-2 pr-1">
+                    {art.title}
+                  </div>
+                </div>
+
+                {/* Testo inglobato nell'immagine su hover (overlay con gradient scuro) */}
+                <div className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <div className="w-full bg-gradient-to-t from-black/85 via-black/55 to-transparent p-2">
+                    <span className="text-[9px] font-bold text-white/75 tracking-wide">{art.category}</span>
+                    <div className="text-white text-[11px] font-semibold leading-tight line-clamp-2 mt-0.5">
+                      {art.title}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-[10px] text-gray-400 font-medium">Altri articoli ti aspettano →</div>
+        </div>
+      )}
     </div>
   );
 };

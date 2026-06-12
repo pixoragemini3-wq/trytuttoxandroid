@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom design tokens and overrides (originally in index.html <style>) */
+:root {
+  --brand-red: #e31b23;
+  --brand-green: #c0ff8c;
+  --surface-dark: #0a0a0a;
+  --surface-card: #ffffff;
+  --text-primary: #0a0a0a;
+  --text-secondary: #6b7280;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e31b23; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #c0ff8c; }
+
+/* Selection color */
+::selection { background: #e31b23; color: white; }
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Additional prose and layout overrides kept in head style for Blogger compatibility */
+/* The heavy .prose rules etc. remain in index.html <style> for now */

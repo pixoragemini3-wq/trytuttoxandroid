@@ -12,18 +12,18 @@ interface ArticleCardProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Smartphone':   '#2563eb',
-  'Modding':      '#ea580c',
-  'App & Giochi': '#16a34a',
-  'Recensioni':   '#7c3aed',
-  'Guide':        '#0891b2',
-  'Offerte':      '#ca8a04',
-  'Wearable':     '#db2777',
-  'News':         '#e31b23',
+  'Smartphone':   '#1e3a8a',
+  'Modding':      '#9a3412',
+  'App & Giochi': '#166534',
+  'Recensioni':   '#581c87',
+  'Guide':        '#164e63',
+  'Offerte':      '#854d0e',
+  'Wearable':     '#9d174d',
+  'News':         '#9f1239',
 };
 
-// For arbitrary blog labels → consistent color from palette
-const TAG_PALETTE = ['#e31b23','#2563eb','#7c3aed','#0891b2','#16a34a','#ea580c','#db2777','#0d9488','#ca8a04','#6366f1'];
+// For arbitrary blog labels → consistent color from palette (muted, less joyful)
+const TAG_PALETTE = ['#9f1239','#1e40af','#581c87','#0f766e','#166534','#854d0e','#831843','#0d5c63','#713f12','#4338ca'];
 const hashColor = (str: string): string => {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
@@ -60,19 +60,21 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
       <div
         ref={cardRef}
         onClick={onClick}
-        className={`group cursor-pointer flex flex-col md:flex-row bg-white overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 ${className}`}
+        className={`group cursor-pointer flex flex-col md:flex-row bg-white overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full ${className}`}
       >
-        <div className="relative w-full md:w-[58%] aspect-video md:aspect-auto shrink-0 overflow-hidden bg-gray-100">
+        <div className="relative w-full md:w-[58%] h-full shrink-0 overflow-hidden bg-[#f8f8f8] p-3 md:p-4">
           {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
-          <img
-            src={article.imageUrl}
-            alt={article.title}
-            onError={e => { e.currentTarget.src = FALLBACK; }}
-            onLoad={() => setImgLoaded(true)}
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-          />
+          <div className="relative w-full h-full rounded-2xl overflow-hidden">
+            <img
+              src={article.imageUrl}
+              alt={article.title}
+              onError={e => { e.currentTarget.src = FALLBACK; }}
+              onLoad={() => setImgLoaded(true)}
+              className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
           <span
-            className="absolute top-3 left-3 text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+            className="absolute top-5 left-5 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-flex items-center min-h-[24px]"
             style={{ backgroundColor: color }}
           >
             {article.category}
@@ -107,15 +109,15 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           onLoad={() => setImgLoaded(true)}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] ${imgLoaded ? 'opacity-75' : 'opacity-0'}`}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <span
-            className="inline-block text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
+            className="inline-flex items-center text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-2 min-h-[24px]"
             style={{ backgroundColor: color }}
           >
             {article.category}
           </span>
-          <h3 className="text-white font-condensed text-[18px] font-black leading-[1.1] tracking-tight group-hover:text-[#e5e5e5] transition-colors line-clamp-3">
+          <h3 className="text-[#f4f1e9] font-condensed text-[22px] md:text-[23px] font-black leading-[1.05] tracking-[-0.2px] group-hover:text-[#e8e4d9] transition-colors line-clamp-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
             {article.title}
           </h3>
           <div className="flex items-center gap-1.5 mt-2">
@@ -152,7 +154,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
         >
           {article.category}
         </span>
-        <h3 className="font-condensed text-[20px] md:text-[21px] font-black leading-[1.1] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
+        <h3 className="font-condensed text-[24px] md:text-[26px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
           {article.title}
         </h3>
         <p className="text-[13px] text-gray-400 leading-relaxed line-clamp-2 mb-3 hidden sm:block">
