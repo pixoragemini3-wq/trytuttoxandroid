@@ -883,7 +883,14 @@ const App: React.FC = () => {
           {/* Promo card - alterna con la categoria in evidenza (la "scheda verde" circola) */}
           {(() => {
             const promo = spotlightCat === 'Offerte' 
-              ? { bg: 'bg-[#e31b23]', title: 'OFFERTE DEL GIORNO', desc: 'Le migliori occasioni tech e smartphone con prezzi aggiornati ogni giorno.', btn: 'SCOPRI LE OFFERTE', action: () => handleNavClick('Offerte') }
+              ? { 
+                  bg: 'bg-gradient-to-br from-[#e31b23] via-[#c41e22] to-[#9f1239]', 
+                  title: 'OFFERTE DEL GIORNO', 
+                  desc: 'Le migliori occasioni tech e smartphone con prezzi aggiornati ogni giorno. Solo le vere occasioni, senza fuffa.', 
+                  btn: 'SCOPRI LE OFFERTE', 
+                  action: () => handleNavClick('Offerte'),
+                  badge: 'HOT'
+                }
               : spotlightCat === 'Smartphone'
               ? { bg: 'bg-[#1e40af]', title: 'TOP SMARTPHONE', desc: 'Le ultime uscite, test e confronti sui migliori device Android del momento.', btn: 'LEGGI LE RECENSIONI', action: () => handleNavClick('Smartphone') }
               : spotlightCat === 'Guide'
@@ -898,15 +905,20 @@ const App: React.FC = () => {
                 className={`${promo.bg} text-white rounded-2xl p-5 flex flex-col justify-between shadow-xl relative overflow-hidden group cursor-pointer`}
               >
                 <div className="relative z-10">
-                  <div className="absolute -top-1 -right-1 w-20 h-20 bg-white opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-                  <h4 className="font-condensed text-[21px] font-black uppercase tracking-tight leading-none mb-2">{promo.title}</h4>
+                  <div className="absolute -top-2 -right-2 w-24 h-24 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-125 transition-transform"></div>
+                  {promo.badge && (
+                    <span className="absolute top-0 right-0 bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded-bl tracking-widest">
+                      {promo.badge}
+                    </span>
+                  )}
+                  <h4 className="font-condensed text-[22px] font-black uppercase tracking-tight leading-none mb-2 drop-shadow-sm">{promo.title}</h4>
                   <p className="text-[11px] text-white/90 leading-snug pr-1">
                     {promo.desc}
                   </p>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); promo.action(); }}
-                  className="mt-4 self-start bg-white text-green-700 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-100 active:scale-[0.985] transition shadow"
+                  className="mt-4 self-start bg-white text-[#e31b23] px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#e31b23] hover:text-white active:scale-[0.985] transition-all shadow-md group-hover:shadow-lg"
                 >
                   {promo.btn}
                 </button>
