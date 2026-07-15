@@ -116,6 +116,63 @@ const truncateExcerpt = (text: string, maxLen: number): string => {
   return `${cut.trim()}...`;
 };
 
+const QUOTE_MAX_CHARS = 280;
+const QUOTE_MAX_WORDS = 52;
+
+/** Riassunto breve per il box quote in pagina articolo (3-4 righe max). */
+export const truncateLeadForQuote = (text: string): string => {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  if (t.length <= QUOTE_MAX_CHARS && t.split(/\s+/).length <= QUOTE_MAX_WORDS) return t;
+
+  const sentences = t.match(/[^.!?]+[.!?]+/g) || [t];
+  let acc = '';
+  for (const sentence of sentences) {
+    const next = `${acc}${sentence}`.trim();
+    if (next.length > QUOTE_MAX_CHARS || next.split(/\s+/).length > QUOTE_MAX_WORDS) break;
+    acc = next;
+  }
+  if (acc.length >= 50) return acc.trim();
+  return truncateExcerpt(t, QUOTE_MAX_CHARS);
+};
+
+/** Lead per il box quote: solo riassunto, mai l'intero primo paragrafo. */
+export const getQuoteLeadText = (html: string, fallbackExcerpt?: string): string => {
+  if (!html) return fallbackExcerpt ? truncateLeadForQuote(fallbackExcerpt) : '';
+
+  const leadExcerpt = extractTxaLeadExcerpt(html);
+  if (leadExcerpt && leadExcerpt.length >= 20 && !isGarbledLead(leadExcerpt)) {
+    return truncateLeadForQuote(leadExcerpt);
+  }
+
+  const sintesiExcerpt = extractInSintesiExcerpt(html);
+  if (sintesiExcerpt && !isGarbledLead(sintesiExcerpt)) {
+    return truncateLeadForQuote(sintesiExcerpt);
+  }
+
+  if (fallbackExcerpt?.trim() && !isGarbledLead(fallbackExcerpt)) {
+    return truncateLeadForQuote(fallbackExcerpt);
+  }
+
+  const contentForExcerpt = stripTocAndLeadForExcerpt(html).replace(/<table[\s\S]*?<\/table>/gi, ' ');
+
+  const bestSentence = pickBestSentence(html, contentForExcerpt);
+  if (bestSentence && !isGarbledLead(bestSentence)) {
+    return truncateLeadForQuote(bestSentence);
+  }
+
+  const plain = stripHtml(contentForExcerpt).trim();
+  const sentences = (plain.match(/[^.!?]+[.!?]+/g) || []).map((s) => s.trim()).filter(Boolean);
+  for (let i = 1; i < Math.min(sentences.length, 10); i++) {
+    const s = sentences[i];
+    if (s.length >= 35 && !isGarbledLead(s)) return truncateLeadForQuote(s);
+  }
+  if (sentences[0] && !isGarbledLead(sentences[0])) {
+    return truncateLeadForQuote(sentences[0]);
+  }
+  return truncateLeadForQuote(plain);
+};
+
 /** Lead completa per la pagina articolo — mai troncata con "..." */
 export const getFullLeadText = (html: string): string => {
   if (!html) return '';
@@ -133,14 +190,14 @@ export const getFullLeadText = (html: string): string => {
   const contentForExcerpt = stripTocAndLeadForExcerpt(html);
   const withoutTables = contentForExcerpt.replace(/<table[\s\S]*?<\/table>/gi, ' ');
 
+  const bestSentence = pickBestSentence(html, withoutTables);
+  if (bestSentence && !isGarbledLead(bestSentence)) return bestSentence;
+
   const firstParagraph = withoutTables.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
   if (firstParagraph?.[1]) {
     const plain = stripHtml(firstParagraph[1]).trim();
     if (plain.length >= 40 && !isGarbledLead(plain)) return plain;
   }
-
-  const bestSentence = pickBestSentence(html, withoutTables);
-  if (bestSentence && !isGarbledLead(bestSentence)) return bestSentence;
 
   const boldRegex = /<(b|strong)[^>]*>([\s\S]*?)<\/\1>/gi;
   let longestBold = '';
@@ -161,9 +218,9 @@ export const getFullLeadText = (html: string): string => {
 
 // Smart excerpt: anteprima breve per card/liste (può essere troncata)
 const getSmartExcerpt = (html: string, maxLen: number = 220): string => {
-  const full = getFullLeadText(html);
-  if (!full) return '';
-  return truncateExcerpt(full, maxLen);
+  const quote = getQuoteLeadText(html);
+  if (quote) return truncateExcerpt(quote, maxLen);
+  return '';
 };
 
 // Helper per estrarre dati DEAL

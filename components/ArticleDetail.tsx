@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { fetchArticleById, getFullLeadText } from '../services/bloggerService';
+import { fetchArticleById, getQuoteLeadText, truncateLeadForQuote } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 
 interface ArticleDetailProps {
@@ -183,18 +183,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     return out;
   };
 
-  const extractFirstParagraphLead = (html: string): string => {
-    const stripped = html
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, ' ')
-      .replace(/<table[\s\S]*?<\/table>/gi, ' ');
-    const pMatch = stripped.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
-    if (!pMatch) return '';
-    const plain = plainFromHtml(pMatch[1]);
-    if (plain.length >= 40 && !isGarbledLead(plain)) return plain;
-    return '';
-  };
-
   const stripDuplicateLeadFromBody = (html: string): string => {
     if (!html) return '';
     return html
@@ -359,9 +347,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       repairTocLayoutHtml(fullContent || article.content || '')
     );
     if (!content) {
-      const fullLead = getFullLeadText(article.content || '');
+      const quoteLead = getQuoteLeadText(article.content || '', article.excerpt);
       return {
-        displayLead: fullLead,
+        displayLead: quoteLead,
         displayLeadHtml: '',
         displayBody: stripDuplicateLeadFromBody(article.content || ''),
       };
@@ -379,7 +367,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
             removeFirstSintesiBox(content.replace(hiddenExcerpt[0], '').trim())
           )
         );
-        return { displayLead: plain, displayLeadHtml: '', displayBody: bodyWithoutHidden };
+        return {
+          displayLead: truncateLeadForQuote(plain),
+          displayLeadHtml: '',
+          displayBody: bodyWithoutHidden,
+        };
       }
     }
 
@@ -395,7 +387,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           stripDuplicateLeadFromBody(removeFirstSintesiBox(bodyWithoutLead))
         );
         return {
-          displayLead: leadPlain,
+          displayLead: truncateLeadForQuote(leadPlain),
           displayLeadHtml: leadBox[1].trim(),
           displayBody: bodyClean,
         };
@@ -405,23 +397,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     const sintesiText = extractSintesiText(content);
     if (sintesiText.length >= 20 && !isGarbledLead(sintesiText)) {
       return {
-        displayLead: sintesiText,
+        displayLead: truncateLeadForQuote(sintesiText),
         displayLeadHtml: '',
         displayBody: stripLeadDuplicateFromBodyStart(
           sintesiText,
           stripDuplicateLeadFromBody(removeFirstSintesiBox(content))
-        ),
-      };
-    }
-
-    const firstParaLead = extractFirstParagraphLead(content);
-    if (firstParaLead) {
-      return {
-        displayLead: firstParaLead,
-        displayLeadHtml: '',
-        displayBody: stripLeadDuplicateFromBodyStart(
-          firstParaLead,
-          stripDuplicateLeadFromBody(content)
         ),
       };
     }
@@ -475,24 +455,23 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
           (content.slice(0, start) + content.slice(end)).trim()
         );
         return {
-          displayLead: leadPlain,
+          displayLead: truncateLeadForQuote(leadPlain),
           displayLeadHtml: '',
           displayBody: stripLeadDuplicateFromBodyStart(leadPlain, bodyAfterBold),
         };
       }
     }
 
-    // Fallback: lead completa dal corpo (mai l'excerpt troncato delle card)
-    const fullLead = getFullLeadText(content);
-    if (fullLead.length >= 20 && !isGarbledLead(fullLead)) {
+    const quoteLead = getQuoteLeadText(content, article.excerpt);
+    if (quoteLead.length >= 20 && !isGarbledLead(quoteLead)) {
       const bodyClean = stripLeadDuplicateFromBodyStart(
-        fullLead,
+        quoteLead,
         stripDuplicateLeadFromBody(content)
       );
-      return { displayLead: fullLead, displayLeadHtml: '', displayBody: bodyClean };
+      return { displayLead: quoteLead, displayLeadHtml: '', displayBody: bodyClean };
     }
     return { displayLead: '', displayLeadHtml: '', displayBody: stripDuplicateLeadFromBody(content) };
-  }, [fullContent, article.content]);
+  }, [fullContent, article.content, article.excerpt]);
 
   const { featuredImages, proseBody } = useMemo(() => {
     const hero = (article.imageUrl || '').trim();
