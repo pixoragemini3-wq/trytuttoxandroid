@@ -604,8 +604,10 @@ const App: React.FC = () => {
     }
   };
 
+  const dealsToShow = activeCategory === 'Offerte' ? 8 : 4;
+
   const DealsSection = () => (
-    <section className="py-6 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] text-white rounded-[1.5rem] mx-0 lg:mx-0 overflow-hidden shadow-2xl relative border-t-4 border-[#e31b23] mb-4 animate-in slide-in-from-right duration-500">
+    <section className="py-6 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] text-white rounded-[1.5rem] mx-0 lg:mx-0 overflow-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-4 animate-in slide-in-from-right duration-500">
       <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
       
       <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10">
@@ -627,18 +629,17 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {/* Mobile Friendly Grid for Deals - Improved spacing and font sizing */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {deals.slice(0, 4).map(deal => (
-            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-lg hover:bg-black/50 transition-all group flex flex-col sm:flex-row items-center sm:items-start gap-3 p-3 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50">
-              <div className="w-16 h-16 shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center self-center sm:self-start">
-                <img src={deal.imageUrl} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
+        <div className={`grid gap-3 ${dealsToShow > 4 ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'} items-stretch`}>
+          {deals.slice(0, dealsToShow).map(deal => (
+            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-4 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[170px]">
+              <div className="w-full h-20 shrink-0 bg-white rounded-lg p-2 flex items-center justify-center">
+                <img src={deal.imageUrl} alt={deal.product} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <div className="flex-1 min-w-0 text-center sm:text-left w-full">
-                <h4 className="font-bold text-[10px] sm:text-[11px] text-white mb-1 leading-tight line-clamp-2 group-hover:text-yellow-400 transition-colors h-8">{deal.product}</h4>
-                <div className="flex items-center justify-center sm:justify-start gap-2">
+              <div className="flex-1 min-w-0 flex flex-col justify-between">
+                <h4 className="font-bold text-xs text-white mb-2 leading-snug line-clamp-3 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
+                <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-sm sm:text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
-                    <span className="text-xs sm:text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>
+                    {deal.oldPrice && <span className="text-xs font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
                 </div>
               </div>
             </a>
@@ -978,7 +979,7 @@ const App: React.FC = () => {
             <section className="bg-white pb-4">
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
-                {isHome && (
+                {isHome && activeCategory === 'Tutti' && (
                   <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0 mt-4 md:mt-1.5">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
@@ -1003,7 +1004,7 @@ const App: React.FC = () => {
                 )}
 
                 {/* FEATURED CAROUSEL - STATIC (Visible on Home) */}
-                {isHome && (
+                {isHome && activeCategory === 'Tutti' && (
                   <div className="px-4 lg:px-0 py-2 mt-1 mb-0">
                     <div className="flex items-end justify-between mb-2">
                         <h3 className="font-condensed text-[23px] lg:text-[28px] font-black uppercase text-gray-900 tracking-[-0.5px] leading-none">
@@ -1043,8 +1044,8 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {isHome && !isSearch && deals.length > 0 && (
-                   <div className="mt-4 px-4 lg:px-0">
+                {isHome && !isSearch && deals.length > 0 && (activeCategory === 'Tutti' || activeCategory === 'Offerte') && (
+                   <div className={`px-4 lg:px-0 ${activeCategory === 'Offerte' ? 'mt-6' : 'mt-4'}`}>
                       <DealsSection />
                    </div>
                 )}

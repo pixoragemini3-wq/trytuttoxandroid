@@ -129,7 +129,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // Check if article is deals related
   const isDealCategory = useMemo(() => {
-    return article.category === 'Offerte' || (article.tags && article.tags.some(t => t.toLowerCase() === 'offerte' || t.toLowerCase() === 'amazon'));
+    if (article.category === 'Offerte') return true;
+    if (article.dealData?.link) return true;
+    const tags = (article.tags || []).map((t) => t.toLowerCase().trim());
+    return tags.some((t) => t === 'offerteimperdibili');
   }, [article]);
 
   // Check if content appears truncated
@@ -846,8 +849,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
               <div className="w-full aspect-square bg-gray-50 rounded-lg mb-2 p-2 flex items-center justify-center">
                  <img src={deal.imageUrl} className="w-full h-full object-contain mix-blend-multiply" loading="lazy" alt="Product" />
               </div>
-              <div>
-                 <p className="text-[10px] font-bold text-gray-900 leading-tight line-clamp-2 mb-1">{deal.product}</p>
+              <div className="flex-1 flex flex-col justify-between min-h-[72px]">
+                 <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-3 mb-2">{deal.product}</p>
                  <span className="block text-sm font-black text-[#e31b23]">{deal.newPrice}</span>
               </div>
            </a>
@@ -857,26 +860,29 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   );
 
   const DesktopDealsBanner = () => (
-    <div className="hidden lg:block not-prose my-10 bg-gradient-to-r from-gray-900 to-[#e31b23] rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+    <div className="hidden lg:block not-prose my-10 bg-gradient-to-r from-gray-900 to-[#e31b23] rounded-2xl p-6 text-white shadow-xl relative overflow-visible">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
-        <div className="flex items-center justify-between mb-6 relative z-10">
+        <div className="flex items-center justify-between mb-6 relative z-10 gap-4">
            <div>
               <h3 className="font-condensed text-3xl font-black uppercase italic leading-none">Offerte del Giorno</h3>
               <p className="text-xs text-white/80 mt-1">Selezionate in tempo reale dal nostro canale Telegram.</p>
            </div>
-           <a href="https://t.me/tuttoxandroid" target="_blank" className="bg-white text-black px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#24A1DE] hover:text-white transition-colors">
+           <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="shrink-0 bg-white text-black px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#24A1DE] hover:text-white transition-colors">
               Vedi tutte su Telegram
            </a>
         </div>
-        <div className="grid grid-cols-4 gap-4 relative z-10">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
            {deals.slice(0, 4).map(deal => (
-              <a key={deal.id} href={deal.link} target="_blank" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-3 flex gap-3 hover:bg-black/60 transition-colors group">
-                 <div className="w-14 h-14 bg-white rounded-lg p-1 shrink-0 flex items-center justify-center">
-                    <img src={deal.imageUrl} className="max-w-full max-h-full object-contain" alt="Prod" />
+              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group min-h-[180px]">
+                 <div className="w-full h-20 bg-white rounded-lg p-2 flex items-center justify-center">
+                    <img src={deal.imageUrl} className="max-w-full max-h-full object-contain" alt={deal.product} />
                  </div>
-                 <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-white leading-tight line-clamp-2 mb-1 group-hover:text-yellow-400">{deal.product}</p>
-                    <span className="text-lg font-black text-yellow-400">{deal.newPrice}</span>
+                 <div className="min-w-0 flex-1 flex flex-col justify-between">
+                    <p className="text-xs font-bold text-white leading-snug line-clamp-3 mb-2 group-hover:text-yellow-400">{deal.product}</p>
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="text-lg font-black text-yellow-400">{deal.newPrice}</span>
+                      {deal.oldPrice && <span className="text-xs font-bold text-white/50 line-through">{deal.oldPrice}</span>}
+                    </div>
                  </div>
               </a>
            ))}

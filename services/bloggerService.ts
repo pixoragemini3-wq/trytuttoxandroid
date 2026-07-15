@@ -684,15 +684,34 @@ export const fetchArticleByUrl = async (url: string): Promise<Article | null> =>
   }
 };
 
+const formatDealProductTitle = (raw: string): string => {
+  let product = (raw || 'Offerta Tech').replace(/^[\p{Emoji}\s]+/gu, '').trim();
+  product = product.replace(/\s+/g, ' ');
+  if (product.length > 110) product = `${product.slice(0, 107).trim()}…`;
+  return product;
+};
+
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
     const bloggerPromise = (async () => {
         try {
-            const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20`;
-            const response = await fetchWithProxyFallback(targetUrl, 5000);
-            if (!response.ok) return [];
-            const data = await response.json();
-            const entries = data.feed.entry || [];
+            const labels = ['offerte', 'offerteimperdibili'];
+            let entries: any[] = [];
+            const seen = new Set<string>();
+            for (const label of labels) {
+              const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=20`;
+              const response = await fetchWithProxyFallback(targetUrl, 5000);
+              if (!response.ok) continue;
+              const data = await response.json();
+              for (const entry of data.feed.entry || []) {
+                const entryId = entry.id?.$t;
+                if (entryId && !seen.has(entryId)) {
+                  seen.add(entryId);
+                  entries.push(entry);
+                }
+              }
+            }
+            if (!entries.length) return [];
             const generatedDeals: Deal[] = [];
             
             entries.forEach((entry: any, index: number) => {
@@ -788,7 +807,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
                 
                 // Remove initial emojis
                 product = product.replace(/^[\p{Emoji}\s]+/gu, '').trim();
-                if (product.length > 65) product = product.substring(0, 65) + '...';
+                product = formatDealProductTitle(product);
 
                 // Price Extraction - Improved
                 const priceRegex = /(\d+[.,]\d{0,2})\s?€/g;
