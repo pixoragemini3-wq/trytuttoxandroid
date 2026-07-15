@@ -843,21 +843,45 @@ button:hover:not(.pill) {
 }
 
 .txa-featured-dual-cell {
+  position: relative;
   overflow: hidden;
   background: #f4f4f5;
   border: 1px solid #e4e4e7;
   border-radius: 4px;
+  aspect-ratio: 16 / 9;
 }
 
-.txa-featured-dual img {
+.txa-featured-dual img,
+.txa-crop-watermark {
   display: block !important;
   width: 100% !important;
-  height: auto !important;
+  height: 117.65% !important;
   max-width: 100% !important;
   margin: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  object-fit: cover;
+  object-fit: cover !important;
+  object-position: top center !important;
+}
+
+.prose figure.txa-crop-wrap,
+.prose p.txa-crop-wrap,
+.prose .txa-crop-wrap {
+  overflow: hidden;
+  line-height: 0;
+  border-radius: 12px;
+  display: block;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.prose figure.txa-crop-wrap img,
+.prose p.txa-crop-wrap img,
+.prose .txa-crop-wrap img {
+  clip-path: inset(0 0 15% 0);
+  -webkit-clip-path: inset(0 0 15% 0);
+  margin-bottom: 0 !important;
 }
 
 .leggi-anche-item img {

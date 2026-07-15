@@ -685,6 +685,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       }
     });
 
+    const trimCropWrapHeight = (img: HTMLImageElement) => {
+      const wrap = img.closest('.txa-crop-wrap') as HTMLElement | null;
+      if (!wrap || img.closest('.txa-featured-dual')) return;
+      const h = img.getBoundingClientRect().height;
+      if (h > 0) wrap.style.height = `${h * 0.85}px`;
+    };
+
+    const applyWatermarkCrop = (img: HTMLImageElement) => {
+      if (img.closest('nav.txa-toc') || img.closest('.leggi-anche') || img.closest('.amz-safe-card') || img.closest('.txa-featured-dual')) return;
+      img.classList.add('txa-crop-watermark');
+      const parent = img.parentElement;
+      if (!parent || parent.classList.contains('txa-crop-wrap')) return;
+      if (parent.tagName === 'P' || parent.tagName === 'FIGURE') {
+        parent.classList.add('txa-crop-wrap');
+      } else {
+        const wrap = document.createElement('div');
+        wrap.className = 'txa-crop-wrap';
+        parent.insertBefore(wrap, img);
+        wrap.appendChild(img);
+      }
+      const sync = () => trimCropWrapHeight(img);
+      if (img.complete) sync();
+      else img.addEventListener('load', sync, { once: true });
+    };
+
+    container.querySelectorAll('img').forEach((node) => applyWatermarkCrop(node as HTMLImageElement));
+
     // 2. Expandable Rows
     const expandableRows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
     const handleRowClick = function(this: HTMLElement, e: Event) {
@@ -1044,7 +1071,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                   >
                     {featuredImages.map((src, idx) => (
                       <div key={`${src}-${idx}`} className="txa-featured-dual-cell">
-                        <img src={src} alt={article.title} loading={idx === 0 ? 'eager' : 'lazy'} />
+                        <img className="txa-crop-watermark" src={src} alt={article.title} loading={idx === 0 ? 'eager' : 'lazy'} />
                       </div>
                     ))}
                   </div>
