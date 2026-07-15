@@ -506,12 +506,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       picked.push(src);
     };
 
-    for (const src of bodySrcs) {
-      if (picked.length >= 2) break;
-      pushUnique(src);
-    }
-    if (hero && picked.length < 2) pushUnique(hero);
-    if (!picked.length && bodySrcs[0]) pushUnique(bodySrcs[0]);
+    // Una sola immagine in evidenza: le altre restano nel corpo dove le ha meso l'editor
+    if (hero) pushUnique(hero);
+    else if (bodySrcs[0]) pushUnique(bodySrcs[0]);
 
     let cleaned = removeImageBlocksBySrc(displayBody, picked);
     cleaned = cleaned.replace(
@@ -535,7 +532,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       }
     );
 
-    return { featuredImages: picked.slice(0, 2), proseBody: cleaned };
+    return { featuredImages: picked.slice(0, 1), proseBody: cleaned };
   }, [displayBody, article.imageUrl]);
 
   useEffect(() => {

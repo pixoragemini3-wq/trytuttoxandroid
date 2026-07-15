@@ -884,6 +884,13 @@ button:hover:not(.pill) {
   margin-bottom: 0 !important;
 }
 
+.prose img + img,
+.prose .txa-crop-wrap + .txa-crop-wrap,
+.prose .txa-crop-wrap + img,
+.prose img + .txa-crop-wrap {
+  margin-top: 1.75rem !important;
+}
+
 .leggi-anche-item img {
   display: block !important;
   width: 100% !important;
