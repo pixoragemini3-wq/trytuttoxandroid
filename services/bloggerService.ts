@@ -26,6 +26,8 @@ const isGarbledLead = (text: string): boolean => {
   const punct = (t.match(/[.!?]/g) || []).length;
   if (t.length > 90 && headingRuns.length >= 3 && punct < 2) return true;
   if (t.length > 160 && punct === 0) return true;
+  // Etichette tabella / titoletti brevi (es. "Fotocamera e sensori ambientali")
+  if (t.length < 90 && punct === 0 && t.split(/\s+/).length < 8) return true;
   return false;
 };
 
@@ -129,27 +131,29 @@ export const getFullLeadText = (html: string): string => {
   }
 
   const contentForExcerpt = stripTocAndLeadForExcerpt(html);
+  const withoutTables = contentForExcerpt.replace(/<table[\s\S]*?<\/table>/gi, ' ');
 
-  const boldRegex = /<(b|strong)[^>]*>([\s\S]*?)<\/\1>/gi;
-  let longestBold = '';
-  let match;
-  while ((match = boldRegex.exec(contentForExcerpt)) !== null) {
-    const plain = stripHtml(match[2]).trim();
-    if (/^indice$/i.test(plain) || isGarbledLead(plain) || plain.length < 20) continue;
-    if (plain.length > longestBold.length) {
-      longestBold = plain;
-    }
-  }
-  if (longestBold) return longestBold;
-
-  const firstParagraph = contentForExcerpt.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+  const firstParagraph = withoutTables.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
   if (firstParagraph?.[1]) {
     const plain = stripHtml(firstParagraph[1]).trim();
     if (plain.length >= 40 && !isGarbledLead(plain)) return plain;
   }
 
-  const bestSentence = pickBestSentence(html, contentForExcerpt);
-  if (bestSentence) return bestSentence;
+  const bestSentence = pickBestSentence(html, withoutTables);
+  if (bestSentence && !isGarbledLead(bestSentence)) return bestSentence;
+
+  const boldRegex = /<(b|strong)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let longestBold = '';
+  let match;
+  while ((match = boldRegex.exec(withoutTables)) !== null) {
+    const plain = stripHtml(match[2]).trim();
+    if (/^indice$/i.test(plain) || isGarbledLead(plain) || plain.length < 20) continue;
+    if (!/[.!?]/.test(plain) && plain.split(/\s+/).length < 8) continue;
+    if (plain.length > longestBold.length) {
+      longestBold = plain;
+    }
+  }
+  if (longestBold) return longestBold;
 
   const text = stripHtml(contentForExcerpt).trim();
   return text;

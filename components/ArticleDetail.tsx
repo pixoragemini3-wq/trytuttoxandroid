@@ -158,7 +158,41 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     const punct = (t.match(/[.!?]/g) || []).length;
     if (t.length > 90 && headingRuns.length >= 3 && punct < 2) return true;
     if (t.length > 160 && punct === 0) return true;
+    if (t.length < 90 && punct === 0 && t.split(/\s+/).length < 8) return true;
     return false;
+  };
+
+  const sanitizeArticleHtml = (html: string): string => {
+    let out = html;
+    out = out.replace(/<div[^>]*\bclass=["'][^"']*txa-img[^"']*["'][^>]*>\s*<\/div>/gi, '');
+    const navMatch = out.match(
+      /<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/i
+    );
+    if (navMatch) {
+      const nav = navMatch[0];
+      out = out.replace(
+        /<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi,
+        ''
+      );
+      if (/<h2[^>]*\bid=["']txa-sec/i.test(out)) {
+        out = out.replace(/(<h2[^>]*\bid=["']txa-sec)/i, `${nav}$1`);
+      } else {
+        out = out.replace(/<\/style>\s*/i, `</style>\n${nav}`);
+      }
+    }
+    return out;
+  };
+
+  const extractFirstParagraphLead = (html: string): string => {
+    const stripped = html
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<table[\s\S]*?<\/table>/gi, ' ');
+    const pMatch = stripped.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+    if (!pMatch) return '';
+    const plain = plainFromHtml(pMatch[1]);
+    if (plain.length >= 40 && !isGarbledLead(plain)) return plain;
+    return '';
   };
 
   const stripDuplicateLeadFromBody = (html: string): string => {
@@ -266,7 +300,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     );
 
   const normalizeImgSrc = (src: string): string =>
-    (src || '').split('?')[0].toLowerCase();
+    (src || '')
+      .replace(/\/s\d+(-c)?\//g, '/')
+      .split('?')[0]
+      .toLowerCase();
 
   const collectImgSrcs = (html: string): string[] => {
     const srcs: string[] = [];
@@ -308,12 +345,19 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       return tag;
     });
 
+    result = result.replace(
+      /<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>\s*<\/div>/gi,
+      ''
+    );
+
     return result.replace(/\n{3,}/g, '\n\n').trim();
   };
 
   // --- CONTENT PRE-PROCESSING (Lead-in Text) ---
   const { displayLead, displayLeadHtml, displayBody } = useMemo(() => {
-    let content = repairTocLayoutHtml(fullContent || article.content || '');
+    let content = sanitizeArticleHtml(
+      repairTocLayoutHtml(fullContent || article.content || '')
+    );
     if (!content) {
       const fullLead = getFullLeadText(article.content || '');
       return {
@@ -370,6 +414,18 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       };
     }
 
+    const firstParaLead = extractFirstParagraphLead(content);
+    if (firstParaLead) {
+      return {
+        displayLead: firstParaLead,
+        displayLeadHtml: '',
+        displayBody: stripLeadDuplicateFromBodyStart(
+          firstParaLead,
+          stripDuplicateLeadFromBody(content)
+        ),
+      };
+    }
+
     // Find the LONGEST run of consecutive bold/strong text (user's highlighted key phrase)
     const boldRegex = /<(b|strong)[^>]*>([\s\S]*?)<\/\1>/gi;
     let bestLead = null;
@@ -379,6 +435,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
     const searchArea = content
       .replace(/<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<table[\s\S]*?<\/table>/gi, ' ')
       .slice(0, 2000);
     let match;
 
@@ -387,7 +444,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       const plainText = boldContent.replace(/<[^>]*>/g, '').trim();
       const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
 
-      if (wordCount >= 5 && plainText.length > bestLeadLength) {
+      if (
+        wordCount >= 8 &&
+        plainText.length > bestLeadLength &&
+        (/[.!?]/.test(plainText) || wordCount >= 12)
+      ) {
         bestLeadLength = plainText.length;
         bestLead = boldContent;
         bestMatchIndex = match.index;
@@ -438,22 +499,41 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     const bodySrcs = collectImgSrcs(displayBody);
     const picked: string[] = [];
 
-    if (hero) picked.push(hero);
+    const pushUnique = (src: string) => {
+      if (!src) return;
+      if (picked.some((p) => normalizeImgSrc(p) === normalizeImgSrc(src))) return;
+      picked.push(src);
+    };
+
+    if (hero) pushUnique(hero);
     for (const src of bodySrcs) {
       if (picked.length >= 2) break;
-      if (!picked.some((p) => normalizeImgSrc(p) === normalizeImgSrc(src))) {
-        picked.push(src);
-      }
+      pushUnique(src);
     }
-    if (!picked.length && bodySrcs[0]) picked.push(bodySrcs[0]);
-    if (picked.length === 1 && bodySrcs.length > 1) {
-      const second = bodySrcs.find(
-        (s) => normalizeImgSrc(s) !== normalizeImgSrc(picked[0])
-      );
-      if (second) picked.push(second);
+    if (!picked.length && bodySrcs[0]) pushUnique(bodySrcs[0]);
+    for (const src of bodySrcs) {
+      if (picked.length >= 2) break;
+      pushUnique(src);
     }
 
-    const cleaned = removeImageBlocksBySrc(displayBody, picked);
+    let cleaned = removeImageBlocksBySrc(displayBody, picked);
+    cleaned = cleaned.replace(
+      /<(h[23])([^>]*)>[\s\S]*?<\/\1>/gi,
+      (block, tag: string, attrs: string) => {
+        if (!/<img[^>]+>/i.test(block)) return block;
+        const textOnly = block
+          .replace(/<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '')
+          .replace(/<a[^>]*>[\s\S]*?<\/a>/gi, '')
+          .replace(/<img[^>]*>/gi, '')
+          .replace(/<br\s*\/?>/gi, ' ')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!textOnly) return '';
+        return `<${tag}${attrs}>${textOnly}</${tag}>`;
+      }
+    );
+
     return { featuredImages: picked.slice(0, 2), proseBody: cleaned };
   }, [displayBody, article.imageUrl]);
 
@@ -807,54 +887,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     </div>
   );
 
-  const LeggiAncheItem: React.FC<{ art: Article; showLabel?: boolean }> = ({
-    art,
-    showLabel = true,
-  }) => (
+  const ReadAlsoBlock = ({ article: art }: { article: Article }) => (
     <div
       onClick={() => handleSuggestedClick(art)}
-      className="leggi-anche-item flex gap-3 items-start cursor-pointer group py-3 border-b border-gray-100 last:border-0"
+      className="not-prose my-6 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors group"
     >
-      <div className="w-[72px] h-[56px] shrink-0 overflow-hidden rounded bg-gray-100 border border-gray-200">
-        <img
-          src={art.imageUrl}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      </div>
-      <div className="min-w-0 flex-1 pt-0.5">
-        {showLabel && (
-          <span className="text-[9px] font-black uppercase text-[#e31b23] tracking-widest block mb-1">
-            {art.category || 'News'}
-          </span>
-        )}
-        <h4 className="text-[13px] font-bold leading-snug text-gray-900 group-hover:text-[#e31b23] transition-colors line-clamp-3">
+      <h4 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Leggi Anche</h4>
+      <div className="flex gap-3 items-center">
+        <div className="w-16 h-12 bg-gray-200 shrink-0 overflow-hidden rounded">
+          <img src={art.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+        </div>
+        <h5 className="text-sm font-bold leading-tight group-hover:text-[#e31b23] transition-colors">
           {art.title}
-        </h4>
+        </h5>
       </div>
-    </div>
-  );
-
-  const LeggiAnchePanel: React.FC<{ articles: Article[]; className?: string }> = ({
-    articles,
-    className = '',
-  }) => (
-    <div className={`leggi-anche bg-white border border-gray-200 overflow-hidden ${className}`}>
-      <h3 className="font-condensed text-sm font-black uppercase tracking-widest text-white bg-[#e31b23] px-4 py-2.5">
-        Leggi anche
-      </h3>
-      <div className="px-3 pb-1">
-        {articles.map((art) => (
-          <LeggiAncheItem key={art.id} art={art} />
-        ))}
-      </div>
-    </div>
-  );
-
-  const ReadAlsoBlock = ({ article: art }: { article: Article }) => (
-    <div className="not-prose my-8">
-      <LeggiAnchePanel articles={[art]} />
     </div>
   );
 
@@ -889,9 +935,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     'bg-[#e31b23]';
 
   const recommendedGrid = moreArticles.slice(0, 4);
-  const leggiAncheArticles = [...offerNews, ...moreArticles]
+  const mostReadArticles = [...offerNews, ...moreArticles]
     .filter((a) => a.id !== article.id)
-    .slice(0, 6);
+    .slice(0, 8);
 
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
@@ -1047,13 +1093,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     )}
                 </div>
 
-                {/* LEGGI ANCHE — mobile */}
-                {leggiAncheArticles.length > 0 && (
-                  <div className="lg:hidden my-10">
-                    <LeggiAnchePanel articles={leggiAncheArticles.slice(0, 5)} />
-                  </div>
-                )}
-
                 {/* Tags */}
                 <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap gap-2 mb-8">
                     {['Tech', 'Android', article.category, 'News'].map(tag => (
@@ -1086,11 +1125,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
             </div>
 
-            {/* SIDEBAR (Right) — LEGGI ANCHE stile tuttoandroid.net */}
-            <div className="hidden lg:block lg:col-span-4 space-y-6 h-fit">
-                {leggiAncheArticles.length > 0 && (
-                  <LeggiAnchePanel articles={leggiAncheArticles} className="shadow-sm" />
-                )}
+            {/* SIDEBAR (Right) */}
+            <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
                 <AdUnit slotId="5244362740" format="auto" label="SPONSOR" />
                 <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-3xl p-6 text-center text-white shadow-xl relative overflow-hidden group hover:-translate-y-1 hover:shadow-2xl transition-all duration-200">
                    {/* Soft glow orb */}
@@ -1111,7 +1147,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                      </span>
                    </div>
                 </a>
-                <SocialSidebar />
+                <div className="bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm">
+                  <h3 className="font-condensed text-2xl font-black uppercase italic mb-4 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">
+                    I Più Letti
+                  </h3>
+                  <div className="flex flex-col gap-4">
+                    {mostReadArticles.map((art, index) => (
+                      <div
+                        key={art.id}
+                        onClick={() => handleSuggestedClick(art)}
+                        className="flex items-start gap-4 cursor-pointer group"
+                      >
+                        <span className="text-3xl font-black text-gray-200 leading-none group-hover:text-[#e31b23] transition-colors font-condensed italic select-none mt-1">
+                          {index + 1}
+                        </span>
+                        <div className="border-b border-gray-50 pb-3 w-full">
+                          <span className="text-[9px] font-black uppercase text-[#e31b23] mb-1 block">
+                            {art.category}
+                          </span>
+                          <h4 className="text-[15px] font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors line-clamp-2">
+                            {art.title}
+                          </h4>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <SocialSidebar articles={moreArticles || []} onArticleClick={onArticleClick} />
                 <div className="sticky top-24 space-y-6">
                     <div className="bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] text-center relative overflow-hidden group border border-gray-800">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-[#e31b23] rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
