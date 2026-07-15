@@ -15,6 +15,153 @@ const stripHtml = (html: string): string => {
   }
 };
 
+const isGarbledLead = (text: string): boolean => {
+  if (!text) return true;
+  const t = text.trim();
+  if (/^indice\s*[A-ZÀ-ÿ]|^indice[a-zà-ÿ]/i.test(t)) return true;
+  if (/^indice(?:potenza|domande|orbita|la |il |un )/i.test(t)) return true;
+  if (/\bindice\s*(un |il |la |l'|faq|domande)/i.test(t)) return true;
+  if (/faq\s*:/i.test(t) && t.length > 80) return true;
+  const headingRuns = t.match(/[A-ZÀ-ÿ][a-zà-ÿ]{3,}/g) || [];
+  const punct = (t.match(/[.!?]/g) || []).length;
+  if (t.length > 90 && headingRuns.length >= 3 && punct < 2) return true;
+  if (t.length > 160 && punct === 0) return true;
+  return false;
+};
+
+const stripTocAndLeadForExcerpt = (html: string): string => {
+  if (!html) return '';
+  let clean = html;
+  clean = clean.replace(/<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, ' ');
+  clean = clean.replace(/<div[^>]*\bid=["']txa-lead-single["'][^>]*>[\s\S]*?<\/div>/gi, ' ');
+  clean = clean.replace(/<span[^>]*data-txa-excerpt=["']1["'][^>]*>[\s\S]*?<\/span>/gi, ' ');
+  clean = clean.replace(/<p[^>]*>\s*(?:<strong>\s*)?Indice\s*:?[\s\S]*?<\/p>/gi, ' ');
+  return clean;
+};
+
+const extractTxaLeadExcerpt = (html: string): string => {
+  if (!html) return '';
+  const hidden = html.match(/<span[^>]*data-txa-excerpt=["']1["'][^>]*>([\s\S]*?)<\/span>/i);
+  if (hidden?.[1]) return stripHtml(hidden[1]).trim();
+  const lead = html.match(/<div[^>]*\bid=["']txa-lead-single["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (lead?.[1]) return stripHtml(lead[1]).trim();
+  return '';
+};
+
+const extractInSintesiExcerpt = (html: string): string => {
+  if (!html) return '';
+  const box = html.match(/<div[^>]*\bclass=["'][^"']*txa-highlight[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (!box?.[1]) return '';
+  let text = box[1].replace(/<strong>\s*In sintesi\s*:?\s*<\/strong>\s*/i, '');
+  text = stripHtml(text).trim();
+  return text.length >= 20 ? text : '';
+};
+
+const pickBestSentence = (html: string, contentForExcerpt: string): string => {
+  const text = stripHtml(contentForExcerpt);
+  if (!text) return '';
+
+  const sentenceRegex = /[^.!?]+[.!?]+/g;
+  const sentences = text.match(sentenceRegex) || [text];
+
+  let bestSentence = sentences[0] || '';
+  let bestScore = -Infinity;
+
+  const titleWords = (html.match(/<title[^>]*>(.*?)<\/title>/i)?.[1] || '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+
+  sentences.forEach((sentence, index) => {
+    const s = sentence.trim();
+    if (s.length < 30) return;
+
+    let score = 0;
+
+    if (s.length > 60 && s.length < 200) score += 25;
+    else if (s.length > 40) score += 10;
+
+    if (index === 0) score -= 5;
+    else if (index < 4) score += 15;
+
+    if (/\b(ora|nuovo|novità|beta|funzionalità|cambiamento|anteprima|risultato)\b/i.test(s)) {
+      score += 12;
+    }
+
+    if (/\d/.test(s)) score += 8;
+
+    titleWords.forEach((w) => {
+      if (s.toLowerCase().includes(w)) score += 6;
+    });
+
+    if (/^(la |il |una |un |questo|questa|in |per )/i.test(s) && index === 0) score -= 8;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestSentence = s;
+    }
+  });
+
+  return bestSentence.trim();
+};
+
+const truncateExcerpt = (text: string, maxLen: number): string => {
+  const t = text.trim();
+  if (!t || t.length <= maxLen) return t;
+  const slice = t.slice(0, maxLen - 3);
+  const lastSpace = slice.lastIndexOf(' ');
+  const cut = lastSpace > maxLen * 0.6 ? slice.slice(0, lastSpace) : slice;
+  return `${cut.trim()}...`;
+};
+
+/** Lead completa per la pagina articolo — mai troncata con "..." */
+export const getFullLeadText = (html: string): string => {
+  if (!html) return '';
+
+  const leadExcerpt = extractTxaLeadExcerpt(html);
+  if (leadExcerpt && leadExcerpt.length >= 20 && !isGarbledLead(leadExcerpt)) {
+    return leadExcerpt;
+  }
+
+  const sintesiExcerpt = extractInSintesiExcerpt(html);
+  if (sintesiExcerpt && !isGarbledLead(sintesiExcerpt)) {
+    return sintesiExcerpt;
+  }
+
+  const contentForExcerpt = stripTocAndLeadForExcerpt(html);
+
+  const boldRegex = /<(b|strong)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let longestBold = '';
+  let match;
+  while ((match = boldRegex.exec(contentForExcerpt)) !== null) {
+    const plain = stripHtml(match[2]).trim();
+    if (/^indice$/i.test(plain) || isGarbledLead(plain) || plain.length < 20) continue;
+    if (plain.length > longestBold.length) {
+      longestBold = plain;
+    }
+  }
+  if (longestBold) return longestBold;
+
+  const firstParagraph = contentForExcerpt.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+  if (firstParagraph?.[1]) {
+    const plain = stripHtml(firstParagraph[1]).trim();
+    if (plain.length >= 40 && !isGarbledLead(plain)) return plain;
+  }
+
+  const bestSentence = pickBestSentence(html, contentForExcerpt);
+  if (bestSentence) return bestSentence;
+
+  const text = stripHtml(contentForExcerpt).trim();
+  return text;
+};
+
+// Smart excerpt: anteprima breve per card/liste (può essere troncata)
+const getSmartExcerpt = (html: string, maxLen: number = 220): string => {
+  const full = getFullLeadText(html);
+  if (!full) return '';
+  return truncateExcerpt(full, maxLen);
+};
+
 // Helper per estrarre dati DEAL
 const extractDealWidgetData = (content: string, defaultLink: string, defaultTitle: string, defaultImage: string, id: string): Deal | null => {
   const regex = /\[DEAL\s+old="([^"]+)"\s+new="([^"]+)"(?:\s+link="([^"]+)")?\]/i;
@@ -35,23 +182,38 @@ const extractDealWidgetData = (content: string, defaultLink: string, defaultTitl
   return null;
 };
 
+const _TXA_STYLE_KEEP_RE = /txa-lead|txa-highlight|txa-toc|txa-details|txa-source|amz-safe|txa-lead-single|data-txa/i;
+
+const stripNonTxaInlineStyles = (html: string): string => {
+  return html.replace(/<([a-z][a-z0-9]*)([^>]*)>/gi, (full, _tag, attrs) => {
+    if (_TXA_STYLE_KEEP_RE.test(attrs)) return full;
+    const cleaned = attrs.replace(/\sstyle="[^"]*"/gi, '');
+    return `<${_tag}${cleaned}>`;
+  });
+};
+
 const cleanBloggerHtml = (html: string): string => {
   if (!html) return "";
-  // 1. Selectively remove inline styles: keep alignment (text-align, float, margin, clear) so Blogger editor's image alignment is respected.
-  // Remove other junk styles (mso, font-family etc) that pollute.
-  let clean = html.replace(/\sstyle="([^"]*)"/gi, (fullMatch, styles) => {
-    if (/(text-align|float|margin-left|margin-right|clear|text-align)/i.test(styles)) {
-      return fullMatch; // preserve the style attribute for alignment
-    }
-    return ''; // strip junk styles
-  });
-  // 2. Remove junk classes (class="...") often added by Blogger or Word
-  // Keep classes that are part of our cascata/expandable system or standard
+  let clean = html;
+
+  // 1. Rimuovi style solo dagli elementi generici — preserva box txa (riga rossa, highlight, TOC)
+  clean = stripNonTxaInlineStyles(clean);
+
+  // 2. Remove common Blogger/Word junk classes
   clean = clean.replace(/\sclass="css-[^"]*"/gi, '');
   clean = clean.replace(/\sclass="Mso[^"]*"/gi, '');
-  // Do not strip expandable-*, faq-*, or common list classes so cascata and copy work
-  // 3. Remove empty spans that Blogger often leaves behind
+
+  // 3. Strip alignment (left/right on images/figures often causes the left-align issue)
+  clean = clean.replace(/\s+align=["']?(left|right|center)["']?/gi, '');
+
+  // 4. Remove empty or near-empty divs/spans (the source of those light blue empty rectangles)
+  // These are often Blogger "callout" or background boxes that end up with only whitespace after style stripping.
+  clean = clean.replace(/<div[^>]*>\s*(?:&nbsp;|<br\s*\/?>|\s)*\s*<\/div>/gi, '');
+  clean = clean.replace(/<span[^>]*>\s*(?:&nbsp;|<br\s*\/?>|\s)*\s*<\/span>/gi, '');
+
+  // 5. Remove empty spans
   clean = clean.replace(/<span>\s*<\/span>/gi, '');
+
   return clean;
 };
 
@@ -112,36 +274,52 @@ const getFirstImageFromContent = (htmlContent: string): string | null => {
 };
 
 // --- CORS PROXY CONFIGURATION ---
-const TARGET_DOMAIN = 'https://www.tuttoxandroid.com';
+// Make this configurable so you can test locally against YOUR Blogger blog.
+// Set VITE_BLOGGER_DOMAIN in .env.local (e.g. https://yourblog.blogspot.com or https://your-custom-domain.com)
+// If not set, falls back to the original TuttoXAndroid domain.
+//
+// IMPORTANT: Always include https:// in the value!
+const rawDomain = (import.meta as any).env?.VITE_BLOGGER_DOMAIN || 'https://www.tuttoxandroid.com';
 
-// Helper to use Vite proxy (/blogger) in local dev for real Blogger data without CORS issues
-const getBloggerTargetUrl = (feedPath: string) => {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
-      return `/blogger${feedPath}`;
-    }
-    if (host === 'www.tuttoxandroid.com' || host === 'tuttoxandroid.com') {
-      return feedPath;
-    }
+// Normalize: ensure it has protocol (user often forgets https://)
+let TARGET_DOMAIN = rawDomain.trim();
+if (!/^https?:\/\//i.test(TARGET_DOMAIN)) {
+  TARGET_DOMAIN = 'https://' + TARGET_DOMAIN.replace(/^\/+/, '');
+}
+
+// Extract hostname for direct-fetch check
+const TARGET_HOSTNAME = (() => {
+  try {
+    return new URL(TARGET_DOMAIN).hostname;
+  } catch {
+    return 'www.tuttoxandroid.com';
   }
-  return `${TARGET_DOMAIN}${feedPath}`;
-};
+})();
 
-// List of available proxies
+// List of available proxies (used when running locally or on different domain)
+// Free CORS proxies are often unreliable (rate limits, 413 for large feeds, DNS issues).
+// The code tries them in order. For more reliable local testing, use a browser CORS extension.
 const PROXY_LIST = [
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
+  (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`,
+  (url: string) => `https://cors.bridged.cc/${url}`,
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  (url: string) => `https://yacdn.org/proxy/${url}`
 ];
 
 const getFetchUrl = (path: string) => {
-  // If we are on the target domain, fetch directly
-  if (window.location.hostname === 'www.tuttoxandroid.com') {
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  if (isLocal) {
+    // Use Vite dev proxy -> no CORS from browser
+    return `/blogger${path}`;
+  }
+
+  if (window.location.hostname === TARGET_HOSTNAME) {
     return path;
   }
-  // Otherwise, we need a proxy. We return the full target URL, 
-  // and the fetch function will handle wrapping it with a proxy.
+
   return `${TARGET_DOMAIN}${path}`;
 };
 
@@ -160,9 +338,12 @@ const fetchWithTimeout = async (url: string, timeout = 15000) => {
 
 // New helper to try multiple proxies
 const fetchWithProxyFallback = async (targetUrl: string, timeout = 10000): Promise<Response> => {
-  // If we are on the target domain, just fetch directly
-  if (window.location.hostname === 'www.tuttoxandroid.com') {
-     return fetchWithTimeout(targetUrl.replace(TARGET_DOMAIN, ''), timeout);
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  // On localhost: targetUrl is already /blogger/... (Vite proxy handles it, same-origin for browser)
+  // On real domain: direct
+  if (isLocal || window.location.hostname === TARGET_HOSTNAME) {
+    return fetchWithTimeout(targetUrl, timeout);
   }
 
   let lastError;
@@ -190,10 +371,8 @@ export const fetchArticleById = async (id: string): Promise<string | null> => {
       return mock ? mock.content : null;
   }
   try {
-    const targetUrl = getBloggerTargetUrl(`/feeds/posts/default/${id}?alt=json`);
-    const response = targetUrl.startsWith('/blogger') 
-      ? await fetchWithTimeout(targetUrl)
-      : await fetchWithProxyFallback(targetUrl);
+    const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/${id}?alt=json`;
+    const response = await fetchWithProxyFallback(targetUrl);
     if (!response.ok) return null;
     const data = await response.json();
     const rawContent = data.entry?.content?.$t || data.entry?.summary?.$t || "";
@@ -214,7 +393,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       let filtered = nativePosts.map((p: any) => {
           const isFeatured = p.category === 'Evidenza' || p.title.includes('⭐') || (p.tags && p.tags.includes('Evidenza'));
           const { cleanContent, dealData } = parseArticleContent(p.content || '');
-          const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
+          const cleanExcerpt = getSmartExcerpt(cleanContent);
           const tags = Array.isArray(p.tags) ? p.tags.map((t: string) => t.trim()) : (p.category ? [p.category] : []);
           
           let mainCategory = p.category;
@@ -255,12 +434,13 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
        feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100&start-index=${startIndex}`;
     }
     
-    const targetUrl = getBloggerTargetUrl(feedPath);
-    const response = targetUrl.startsWith('/blogger') 
-      ? await fetchWithTimeout(targetUrl, 10000)
-      : await fetchWithProxyFallback(targetUrl, 10000);
+    const targetUrl = `${TARGET_DOMAIN}${feedPath}`;
+    const response = await fetchWithProxyFallback(targetUrl, 10000);
     
-    if (!response.ok) return [];
+    if (!response.ok) {
+      (window as any).__usingMockData = true;
+      return [];
+    }
     
     const data = await response.json();
     const entries = data.feed.entry || [];
@@ -298,7 +478,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       const authorImage = entry.author?.[0]?.gd$image?.src;
 
       const { cleanContent, dealData } = parseArticleContent(rawContent);
-      const cleanExcerpt = stripHtml(cleanContent).substring(0, 180).trim() + '...';
+      const cleanExcerpt = getSmartExcerpt(cleanContent);
       const cleanTitle = stripHtml(rawTitle);
 
       return {
@@ -354,10 +534,8 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
     const bloggerPromise = (async () => {
         try {
-            const targetUrl = getBloggerTargetUrl(`/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20`);
-            const response = targetUrl.startsWith('/blogger') 
-              ? await fetchWithTimeout(targetUrl, 5000)
-              : await fetchWithProxyFallback(targetUrl, 5000);
+            const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/offerteimperdibili?alt=json&max-results=20`;
+            const response = await fetchWithProxyFallback(targetUrl, 5000);
             if (!response.ok) return [];
             const data = await response.json();
             const entries = data.feed.entry || [];

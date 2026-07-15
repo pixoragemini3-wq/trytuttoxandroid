@@ -1,40 +1,876 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ============================================
+   TUTTOXANDROID — PREMIUM 2026 EDITORIAL DESIGN
+   Trendy, clean, beautiful, high-end tech news feel.
+   Modern minimal with Android green accents + sharp red brand highlights.
+   ============================================ */
 
-/* Custom design tokens and overrides (originally in index.html <style>) */
 :root {
-  --brand-red: #e31b23;
-  --brand-green: #c0ff8c;
-  --surface-dark: #0a0a0a;
-  --surface-card: #ffffff;
-  --text-primary: #0a0a0a;
-  --text-secondary: #6b7280;
+  --accent: #e31b23;
+  --accent-600: #c4161c;
+  --fg: #0a0a0b;
+  --fg-muted: #52525b;
+  --fg-light: #71717a;
+  --bg: #ffffff;
+  --bg-elevated: #fafafa;
+  --bg-subtle: #f4f4f5;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
 }
 
+/* Global refined typography & feel */
 body {
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden;
+  font-feature-settings: "tnum", "cv02", "cv03", "ss01";
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
-/* Modern scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e31b23; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #c0ff8c; }
-
-/* Selection color */
-::selection { background: #e31b23; color: white; }
-
-/* Glassmorphism utility */
-.glass {
-  background: rgba(255,255,255,0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0,0,0,0.06);
+h1, h2, h3, .font-condensed {
+  font-feature-settings: "tnum", "cv02", "cv03";
 }
 
-/* Additional prose and layout overrides kept in head style for Blogger compatibility */
-/* The heavy .prose rules etc. remain in index.html <style> for now */
+/* Premium link treatment */
+a {
+  transition: color 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+a:hover {
+  color: var(--accent);
+}
+
+/* ============================================
+   HERO — More cinematic & editorial
+   ============================================ */
+.hero-container {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.15);
+}
+
+.hero-content {
+  background: linear-gradient(
+    to right,
+    rgba(255,255,255,0.96) 0%,
+    rgba(255,255,255,0.92) 45%,
+    rgba(255,255,255,0.75) 100%
+  );
+}
+
+/* ============================================
+   MODERN PREMIUM CARDS (big visible upgrade)
+   ============================================ */
+.article-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 0.2s ease;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
+}
+
+.article-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 70px -15px rgb(0 0 0 / 0.12), 0 10px 20px -5px rgb(0 0 0 / 0.08);
+  border-color: var(--border-strong);
+}
+
+.article-card .card-image {
+  overflow: hidden;
+  position: relative;
+}
+
+.article-card .card-image img {
+  transition: transform 0.7s cubic-bezier(0.23, 1.0, 0.32, 1);
+  will-change: transform;
+}
+
+.article-card:hover .card-image img {
+  transform: scale(1.06);
+}
+
+/* Elegant subtle gradient on image for text legibility when needed */
+.article-card .card-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.04) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.article-card:hover .card-image::after {
+  opacity: 1;
+}
+
+/* Hero card variant — more premium */
+.article-hero {
+  border: none;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-xl);
+}
+
+.article-hero .card-image {
+  border-radius: 0;
+}
+
+/* ============================================
+   TYPOGRAPHY & READING EXPERIENCE (ArticleDetail)
+   ============================================ */
+.article-title {
+  font-feature-settings: "tnum", "cv02";
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+/* Consolidated modern .prose for article body */
+.prose {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.72;
+  color: #1e2937; /* dark slate like the prova */
+  font-weight: 400;
+}
+
+.prose p {
+  margin-bottom: 1.35em;
+  text-align: left;
+}
+
+/* Force center all images in article content and small teasers to fix left alignment */
+.prose img,
+.prose figure img,
+.prose p img,
+.prose div img,
+.prose * img,
+.article-card img,
+.leggi-anche img,
+.related img,
+.not-prose img {
+  display: block !important;
+  margin: 1.5rem auto !important;
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  float: none !important;
+  clear: both !important;
+  text-align: center !important;
+}
+
+.prose figure {
+  margin: 1.75rem auto;
+  text-align: center;
+}
+
+.prose figcaption,
+.prose .caption {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* Aggressively hide empty colored / remnant boxes from old Blogger formatting (the azzurino rectangles) */
+.prose div[style*="background"],
+.prose span[style*="background"],
+.prose > div:empty,
+.prose > div:has(> br:only-child),
+.prose > div:has(> &nbsp;:only-child) {
+  display: none !important;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================
+   ELEGANT CATEGORY NAV (less shouty, more refined)
+   ============================================ */
+.cat-tab {
+  position: relative;
+  padding: 6px 2px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  color: var(--fg-light);
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+
+.cat-tab:hover {
+  color: var(--fg);
+}
+
+.cat-tab.active {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.cat-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: var(--accent);
+  border-radius: 999px;
+  transform: scaleX(1);
+  transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.cat-tab:not(.active)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  right: 50%;
+  height: 2.5px;
+  background: var(--border);
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.cat-tab:hover:not(.active)::after {
+  left: 0;
+  right: 0;
+}
+
+/* ============================================
+   MORE TRENDY / OBVIOUS MODERN UPDATES
+   (so you can clearly see the graphic refresh)
+   ============================================ */
+
+/* Modern pill category filters (used in the nav) - more stylish */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 9999px;
+  background: #fff;
+  color: #3f3f46;
+  border: 1px solid #e4e4e7;
+  transition: all .2s cubic-bezier(.23,1,.32,1);
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .03);
+}
+.pill:hover {
+  background: #f8f8f9;
+  color: #18181b;
+  border-color: #d4d4d8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgb(0 0 0 / .05);
+}
+.pill.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+  box-shadow: 0 3px 8px rgb(0 0 0 / .15);
+  position: relative;
+}
+.pill.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: var(--android-green);
+  border-radius: 2px;
+}
+
+/* Stronger, trendier card look */
+.article-card {
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 2px 4px rgb(0 0 0 / .03);
+  transition: transform .35s cubic-bezier(.23,1,.32,1), 
+              box-shadow .35s cubic-bezier(.23,1,.32,1), 
+              border-color .2s;
+}
+.article-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / .12);
+  border-color: #d4d4d8;
+}
+
+/* Hero gets a clean modern treatment */
+.article-hero {
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 15px 30px -10px rgb(0 0 0 / .08);
+}
+
+/* ============================================
+   BEAUTIFUL ANIMATIONS (framer + CSS)
+   ============================================ */
+@keyframes fadeUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(24px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes softScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.stagger > * {
+  animation: fadeUp 0.55s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 30ms; }
+.stagger > *:nth-child(2) { animation-delay: 70ms; }
+.stagger > *:nth-child(3) { animation-delay: 110ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 190ms; }
+
+.fade-in-up {
+  animation: fadeUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Premium button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border-radius: var(--radius);
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-primary {
+  background: var(--fg);
+  color: white;
+  padding: 14px 32px;
+  font-size: 0.875rem;
+}
+
+.btn-primary:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgb(227 27 35 / 0.3);
+}
+
+/* Refined share and small UI */
+.share-btn {
+  transition: transform 0.2s cubic-bezier(0.23,1,0.32,1), background 0.2s;
+}
+
+.share-btn:hover {
+  transform: scale(1.08);
+}
+
+/* Modern section spacing */
+.section {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .section {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+}
+
+/* Elegant stats on About/Collab */
+.stat-card {
+  transition: transform 0.3s cubic-bezier(0.23,1,0.32,1), box-shadow 0.3s;
+  border: 1px solid var(--border);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.06);
+}
+
+/* GPS and forms */
+input, textarea {
+  transition: all 0.2s ease;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(227, 27, 35, 0.1);
+  outline: none;
+}
+
+/* Nice loading */
+.loader {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--accent);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+
+
+/* ============================================
+   AGGIUNTA DI VERDE (Android/tech green accents)
+   per un tocco moderno e fresco senza stravolgere il design
+   ============================================ */
+
+:root {
+  --android-green: #3ddc84;
+  --android-green-dark: #2bb673;
+  --lime: #c0ff8c;
+}
+
+/* Verde sugli elementi tech / Android feel */
+.pill.active {
+  background: var(--android-green);
+  color: #111;
+  border-color: var(--android-green-dark);
+}
+
+.article-card:hover {
+  border-color: var(--android-green);
+}
+
+.btn-primary:hover {
+  background: var(--android-green);
+  color: #111;
+}
+
+/* Sidebar verde più evidente (era giallo) */
+.hidden.lg\:flex.flex-col.w-\[280px\].shrink-0 {
+  background: var(--lime) !important;
+}
+
+/* Header divider con tocco verde */
+header .h-\[4px\] {
+  background: linear-gradient(to right, var(--accent), var(--android-green)) !important;
+}
+
+/* Ulteriore verde sul nav header e link */
+nav button:hover {
+  color: var(--android-green-dark) !important;
+}
+
+/* Header top links in verde tenue */
+header a, header button {
+  color: #a1a1aa;
+}
+header a:hover, header button:hover {
+  color: var(--android-green) !important;
+}
+
+/* Logo area con glow verde */
+#logo-area .group-hover\:drop-shadow-\[0_0_15px_rgba\(227\,27\,35\,0\.3\)\] {
+  filter: drop-shadow(0 0 20px rgba(61, 220, 132, 0.5));
+}
+
+/* Bottone search e icone in verde */
+button svg {
+  transition: color 0.2s;
+}
+button:hover svg {
+  color: var(--android-green);
+}
+
+/* Sezione offerte con bordo e accenti verdi */
+#deals, .deals-section {
+  border-color: var(--android-green) !important;
+}
+
+/* Evidenze e titoli con verde */
+.font-condensed {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Ulteriore verde: ticker mobile ora lime tech */
+.bg-yellow-400 {
+  background: var(--lime) !important;
+  color: #111 !important;
+}
+
+/* Card standard con bordo verde sottile su hover */
+.article-card {
+  border: 1px solid #e4e4e7;
+}
+.article-card:hover {
+  border-color: var(--android-green);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 0 0 1px var(--android-green);
+}
+
+/* Titolo "In Evidenza" e sezioni con underline verde */
+h3.font-condensed {
+  position: relative;
+}
+h3.font-condensed::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: var(--android-green);
+  border-radius: 2px;
+}
+
+/* Pulsanti "Vedi altre" e azioni in verde */
+button.bg-black {
+  background: #111 !important;
+}
+button.bg-black:hover {
+  background: var(--android-green) !important;
+  color: #111 !important;
+}
+
+/* Badge HOT o accenti in verde lime */
+.bg-\[#e31b23\] {
+  background: var(--android-green) !important;
+}
+
+/* Link e testi secondari con hover verde */
+a, .text-gray-400 {
+  transition: color 0.2s;
+}
+a:hover, .text-gray-400:hover {
+  color: var(--android-green-dark) !important;
+}
+
+/* Sezione "In Evidenza" e offerte con accenti verdi */
+h3.font-condensed {
+  color: #111;
+}
+
+h3.font-condensed.text-4xl {
+  border-bottom: 3px solid var(--android-green);
+  padding-bottom: 8px;
+}
+
+/* Card hover con glow verde sottile */
+.article-card:hover {
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.12),
+              0 0 0 1px var(--android-green);
+}
+
+/* Pulsanti e link secondari in verde */
+a:hover,
+button:hover:not(.pill) {
+  color: var(--android-green-dark);
+}
+
+/* ============================================
+   ARTICLE BODY (prose) - Fix images, boxes, font
+   ============================================ */
+
+.prose {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.72;
+  color: #1e2937; /* dark slate like the prova */
+  font-weight: 400;
+}
+
+.prose p,
+.prose li {
+  text-align: left; /* better readability than justify for Italian */
+}
+
+/* Force center all images in article content and small teasers to fix left alignment */
+.prose img,
+.prose figure img,
+.prose p img,
+.prose div img,
+.prose * img,
+.article-card img,
+.leggi-anche img,
+.related img,
+.not-prose img {
+  display: block !important;
+  margin: 1.5rem auto !important;
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  float: none !important;
+  clear: both !important;
+  text-align: center !important;
+}
+
+.prose figure {
+  margin: 1.75rem auto;
+  text-align: center;
+}
+
+.prose figcaption,
+.prose .caption {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* Kill or hide empty colored boxes that survived cleaning (light blue rectangles etc.) */
+.prose div[style*="background"],
+.prose span[style*="background"],
+.prose div[style*="color:#"],
+.prose > div:empty,
+.prose > div:has(> br:only-child) {
+  display: none !important;
+}
+
+/* Better handling for any remaining callout-like divs */
+.prose > div {
+  margin: 1.25rem 0;
+}
+
+/* Indice articolo — riquadro separato, immagini mai dentro il nav */
+.prose nav.txa-toc {
+  background: #f8faf8;
+  border: 1px solid #e0ebe0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1.75rem 0 2rem;
+  display: block;
+  clear: both;
+}
+
+.prose nav.txa-toc img,
+.prose nav.txa-toc .separator,
+.prose nav.txa-toc .txa-img {
+  display: none !important;
+}
+
+.prose nav.txa-toc .txa-toc-title {
+  margin: 0 0 10px;
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
+.prose nav.txa-toc ul {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+
+.prose nav.txa-toc li {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.prose nav.txa-toc a {
+  color: #1a73e8;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.prose nav.txa-toc a:hover {
+  text-decoration: underline;
+}
+
+.prose nav.txa-toc > *:not(.txa-toc-title):not(ul) {
+  display: none !important;
+}
+
+.prose nav.txa-toc .injected-read-also,
+.prose nav.txa-toc .injected-deals,
+.prose nav.txa-toc img {
+  display: none !important;
+}
+
+.prose .txa-article h2[id^="txa-sec-"],
+.prose .txa-article h3[id^="txa-sec-"],
+.prose h2[id^="txa-sec-"],
+.prose h3[id^="txa-sec-"] {
+  scroll-margin-top: 88px;
+}
+
+/* Ticker o elementi top in verde lime */
+.bg-yellow-400 {
+  background-color: var(--lime) !important;
+  color: #111 !important;
+}
+
+/* Statistiche e highlight verdi */
+.stat-card {
+  border-color: var(--android-green);
+}
+
+.stat-card:hover {
+  box-shadow: 0 20px 25px -5px rgb(61 220 132 / 0.15);
+}
+
+/* ============================================
+   AD BANNERS / PUBBLICITÀ - Modern integration
+   Clean, minimal, matches site cards (white, rounded, subtle borders)
+   ============================================ */
+
+.ad-container {
+  max-width: 100%;
+}
+
+.ad-container .adsbygoogle {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Make sure AdSense doesn't break layout */
+.adsbygoogle iframe {
+  max-width: 100% !important;
+}
+
+/* Subtle treatment for sponsor sections in sidebars */
+.ad-container + .ad-container {
+  margin-top: 12px;
+}
+
+/* Premium card look for ad wrappers */
+.ad-container > div {
+  background: #fff;
+  border: 1px solid #f1f1f3;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.ad-container > div:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.06);
+  border-color: #e5e5e8;
+}
+
+/* Small sponsor label */
+.ad-container > span {
+  font-feature-settings: "tnum";
+}
+
+/* ============================================
+   MEGA MENU — modern minimal refresh
+   Cleaner hovers, premium micro-interactions, nice slider
+   ============================================ */
+
+/* Softer premium panel already handled in component, here the details */
+.mega-range {
+  height: 6px;
+  background: #fde047; /* yellow-300-ish */
+  border-radius: 999px;
+  outline: none;
+}
+.mega-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 3px solid #eab308; /* yellow-500 */
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 0 0 1px rgba(234, 179, 8, 0.3);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+.mega-range::-webkit-slider-thumb:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2), 0 0 0 2px rgba(234, 179, 8, 0.4);
+  transform: scale(1.05);
+}
+.mega-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 3px solid #eab308;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+
+/* Offer / list items inside mega get a touch more elevation on hover */
+.mega-menu .group:hover .text-yellow-700,
+.mega-menu .group:hover .text-green-700 {
+  color: inherit; /* already handled inline */
+}
+
+/* Subtle polish on the small promo/action buttons inside menus */
+.mega-menu button,
+.mega-menu a[role="button"] {
+  transition: transform 0.1s cubic-bezier(0.23, 1, 0.32, 1), 
+              box-shadow 0.2s ease,
+              background-color 0.2s ease,
+              color 0.2s ease;
+}
+.mega-menu button:active {
+  transform: scale(0.985);
+}
+
+/* Per i filtri categoria "App & Giochi" e tech */
+.text-green-500 {
+  color: var(--android-green) !important;
+}
+
+/* Piccolo tocco sul logo hover */
+.group:hover .drop-shadow-\[0_0_15px_rgba\(227\,27\,35\,0\.3\)\] {
+  filter: drop-shadow(0 0 15px rgba(61, 220, 132, 0.4));
+}
+
+/* ============================================
+   ARTICLE DETAIL — layout tuttoandroid.net
+   Lead → SPONSOR → dual images → body + sidebar LEGGI ANCHE
+   ============================================ */
+
+.txa-featured-dual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.txa-featured-dual.single {
+  grid-template-columns: 1fr;
+}
+
+.txa-featured-dual-cell {
+  overflow: hidden;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 4px;
+}
+
+.txa-featured-dual img {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  object-fit: cover;
+}
+
+.leggi-anche-item img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  object-fit: cover;
+}
+
+.leggi-anche-item:hover img {
+  opacity: 0.92;
+}

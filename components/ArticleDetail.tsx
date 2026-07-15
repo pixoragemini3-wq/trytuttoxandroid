@@ -4,7 +4,8 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { fetchArticleById } from '../services/bloggerService';
+import { Helmet } from 'react-helmet-async';
+import { fetchArticleById, getFullLeadText } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 
 interface ArticleDetailProps {
@@ -64,7 +65,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [fullContentLoaded, setFullContentLoaded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [portalNodes, setPortalNodes] = useState<{
     deals: Element | null, 
@@ -84,45 +84,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [sidebarEmail, setSidebarEmail] = useState('');
   const [sidebarSubscribeStatus, setSidebarSubscribeStatus] = useState<'idle' | 'success'>('idle');
 
-  // --- BASIC DYNAMIC SEO (per-article title + meta, since no Helmet) ---
-  useEffect(() => {
-    if (!article) return;
-
-    const pageTitle = `${article.title} | TuttoXAndroid`;
-    document.title = pageTitle;
-
-    // Description (excerpt or fallback)
-    const descContent = (article.excerpt || article.title).slice(0, 155);
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute('content', descContent);
-
-    // OG / Twitter basic
-    const setMeta = (selector: string, attr: string, value: string) => {
-      let el = document.querySelector(selector) as HTMLMetaElement | null;
-      if (!el) {
-        el = document.createElement('meta');
-        if (selector.includes('property')) el.setAttribute('property', selector.split('"')[1]);
-        else el.setAttribute('name', selector.split('"')[1]);
-        document.head.appendChild(el);
-      }
-      el.setAttribute(attr, value);
-    };
-
-    setMeta('meta[property="og:title"]', 'content', pageTitle);
-    setMeta('meta[property="og:description"]', 'content', descContent);
-    if (article.imageUrl) {
-      setMeta('meta[property="og:image"]', 'content', article.imageUrl);
-    }
-    setMeta('meta[name="twitter:title"]', 'content', pageTitle);
-    setMeta('meta[name="twitter:description"]', 'content', descContent);
-
-    // Canonical
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (canonical && article.url) {
-      canonical.href = article.url;
-    }
-  }, [article]);
-
   const handleSidebarSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sidebarEmail.includes('@')) return;
@@ -137,12 +98,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   }, [article]);
 
   // Check if content appears truncated
-  // Only show "continua a leggere" fallback if we haven't successfully loaded the full version yet
   const isTruncated = useMemo(() => {
-     if (fullContentLoaded) return false;
      const hasMoreTag = fullContent?.includes('<!--more-->') || fullContent?.includes('name="more"');
      return ((!fullContent || fullContent.length < 600) || hasMoreTag) && article.url;
-  }, [fullContent, article.url, fullContentLoaded]);
+  }, [fullContent, article.url]);
 
   const catColor = 
     article.category === 'Smartphone' ? 'text-blue-600' : 
@@ -153,87 +112,325 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     article.category === 'Offerte' ? 'text-yellow-500' : 
     'text-[#e31b23]';
 
-  // --- CONTENT PRE-PROCESSING (Lead-in Text) ---
-  const { displayLead, displayBody } = useMemo(() => {
-    let content = fullContent || article.content;
-    if (!content) return { displayLead: article.excerpt, displayBody: "" };
+  const isGarbledLead = (text: string): boolean => {
+    if (!text) return true;
+    const t = text.trim();
+    if (/^indice\s*[A-ZÀ-ÿ]|^indice[a-zà-ÿ]/i.test(t)) return true;
+    if (/^indice(?:potenza|domande|orbita|la |il |un )/i.test(t)) return true;
+    if (/\bindice\s*(un |il |la |l'|faq|domande)/i.test(t)) return true;
+    if (/faq\s*:/i.test(t) && t.length > 80) return true;
+    const headingRuns = t.match(/[A-ZÀ-ÿ][a-zà-ÿ]{3,}/g) || [];
+    const punct = (t.match(/[.!?]/g) || []).length;
+    if (t.length > 90 && headingRuns.length >= 3 && punct < 2) return true;
+    if (t.length > 160 && punct === 0) return true;
+    return false;
+  };
 
-    // Skip lead extraction for articles that use "cascata" / expandable FAQ structure
-    // (e.g. "DOMANDE FREQUENTI", or contain the expandable classes).
-    // These posts rely on their full original HTML structure for the JS cascade to work.
-    const lower = content.toLowerCase();
-    if (lower.includes('domande frequenti') || 
-        content.includes('expandable-row') || 
-        content.includes('expandable-description') ||
-        lower.includes('cascata')) {
-      return { displayLead: article.excerpt, displayBody: content };
+  const stripDuplicateLeadFromBody = (html: string): string => {
+    if (!html) return '';
+    return html
+      .replace(/<div[^>]*\bid=["']txa-lead-single["'][^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<span[^>]*data-txa-excerpt=["']1["'][^>]*>[\s\S]*?<\/span>/gi, '')
+      .replace(/<p[^>]*>\s*(?:<strong>\s*)?Indice\s*:?[\s\S]*?<\/p>/gi, '')
+      .trim();
+  };
+
+  const normalizeLeadText = (text: string): string =>
+    text.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  const textsAreSimilar = (a: string, b: string, minLen = 20): boolean => {
+    const na = normalizeLeadText(a);
+    const nb = normalizeLeadText(b);
+    if (!na || !nb) return false;
+    const shorter = na.length <= nb.length ? na : nb;
+    const longer = na.length > nb.length ? na : nb;
+    if (shorter.length < minLen) return false;
+    if (longer.startsWith(shorter.slice(0, Math.min(shorter.length, 80)))) return true;
+    if (shorter.startsWith(longer.slice(0, Math.min(longer.length, 80)))) return true;
+    return false;
+  };
+
+  const stripLeadDuplicateFromBodyStart = (lead: string, html: string): string => {
+    if (!lead.trim() || !html) return html;
+    let result = html;
+    for (let i = 0; i < 6; i++) {
+      const blockMatch = result.match(
+        /^\s*<(p|div|blockquote)(?:\s[^>]*)?>[\s\S]*?<\/\1>/i
+      );
+      if (!blockMatch) break;
+      const blockPlain = plainFromHtml(blockMatch[0]);
+      if (!textsAreSimilar(blockPlain, lead)) break;
+      result = result.slice(blockMatch[0].length).trim();
+    }
+    return result;
+  };
+
+  const stripStrayIndiceAfterToc = (html: string): string =>
+    html
+      .replace(/<\/nav>\s*(?:<strong>\s*Indice\s*<\/strong>\s*)+/gi, '</nav>')
+      .replace(/<\/nav>\s*(?:Indice\s*){2,}/gi, '</nav>')
+      .replace(
+        /<p[^>]*>\s*(?:<strong>\s*)?Indice(?:\s*<\/strong>)?\s*(?:Indice\s*)+<\/p>/gi,
+        ''
+      );
+
+  const repairTocLayoutHtml = (html: string): string => {
+    const navMatch = html.match(
+      /(<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>)([\s\S]*?)(<\/nav>)/i
+    );
+    if (!navMatch) return stripStrayIndiceAfterToc(html);
+    const [, open, inner, close] = navMatch;
+    const discardPatterns = [
+      /<p[^>]*\bclass=["'][^"']*txa-toc-title[^"']*["'][^>]*>[\s\S]*?<\/p>/gi,
+      /<strong>\s*Indice\s*<\/strong>/gi,
+      /<div[^>]*\binjected-read-also\b[^>]*>[\s\S]*?<\/div>/gi,
+      /<div[^>]*\binjected-deals\b[^>]*>[\s\S]*?<\/div>/gi,
+    ];
+    const junkPatterns = [
+      /<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,
+      /<a[^>]*>\s*<img[^>]*>\s*<\/a>/gi,
+      /<img[^>]*>/gi,
+      /<p[^>]*>\s*<\/p>/gi,
+    ];
+    let extracted = '';
+    let cleaned = inner;
+    for (const pattern of discardPatterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+    for (const pattern of junkPatterns) {
+      const hits = cleaned.match(pattern) || [];
+      extracted += hits.join('');
+      cleaned = cleaned.replace(pattern, '');
+    }
+    const ulMatch = cleaned.match(/<ul[^>]*>[\s\S]*?<\/ul>/i);
+    if (!ulMatch) return stripStrayIndiceAfterToc(html);
+    const cleanNav =
+      `${open}<p class="txa-toc-title"><strong>Indice</strong></p>${ulMatch[0]}${close}`;
+    return stripStrayIndiceAfterToc(html.replace(navMatch[0], cleanNav + extracted));
+  };
+
+  const plainFromHtml = (html: string): string =>
+    html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const extractSintesiText = (html: string): string => {
+    const box = html.match(
+      /<div[^>]*\bclass=["'][^"']*txa-highlight[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
+    );
+    if (!box?.[1]) return '';
+    return box[1]
+      .replace(/<strong>\s*In sintesi\s*:?\s*<\/strong>\s*/i, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const removeFirstSintesiBox = (html: string): string =>
+    html.replace(
+      /<div[^>]*\bclass=["'][^"']*txa-highlight[^"']*["'][^>]*>[\s\S]*?<\/div>\s*/i,
+      ''
+    );
+
+  const normalizeImgSrc = (src: string): string =>
+    (src || '').split('?')[0].toLowerCase();
+
+  const collectImgSrcs = (html: string): string[] => {
+    const srcs: string[] = [];
+    const re = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const src = m[1].trim();
+      if (src && !srcs.some((s) => normalizeImgSrc(s) === normalizeImgSrc(src))) {
+        srcs.push(src);
+      }
+    }
+    return srcs;
+  };
+
+  const removeImageBlocksBySrc = (html: string, srcs: string[]): string => {
+    const pending = new Set(srcs.map(normalizeImgSrc));
+    if (!pending.size) return html;
+
+    let result = html.replace(
+      /<(p|div|figure|a)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi,
+      (block) => {
+        const img = block.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (!img) return block;
+        const key = normalizeImgSrc(img[1]);
+        if (!pending.has(key)) return block;
+        const text = block.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text.length > 40) return block;
+        pending.delete(key);
+        return '';
+      }
+    );
+
+    result = result.replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, (tag, src: string) => {
+      const key = normalizeImgSrc(src);
+      if (pending.has(key)) {
+        pending.delete(key);
+        return '';
+      }
+      return tag;
+    });
+
+    return result.replace(/\n{3,}/g, '\n\n').trim();
+  };
+
+  // --- CONTENT PRE-PROCESSING (Lead-in Text) ---
+  const { displayLead, displayLeadHtml, displayBody } = useMemo(() => {
+    let content = repairTocLayoutHtml(fullContent || article.content || '');
+    if (!content) {
+      const fullLead = getFullLeadText(article.content || '');
+      return {
+        displayLead: fullLead,
+        displayLeadHtml: '',
+        displayBody: stripDuplicateLeadFromBody(article.content || ''),
+      };
     }
 
-    // Find the first bold block (<b> or <strong>) with more than 6 words
-    const boldRegex = /<(b|strong)>(.*?)<\/\1>/gi;
-    let match;
-    let foundLead = null;
-    let matchIndex = -1;
-    let matchLength = 0;
-
-    // Search only in the first 1500 characters to ensure it's an intro block
-    const searchArea = content.slice(0, 1500); 
-    
-    while ((match = boldRegex.exec(searchArea)) !== null) {
-      const boldContent = match[2];
-      // Strip nested HTML to count words
-      const plainText = boldContent.replace(/<[^>]*>/g, '');
-      const words = plainText.trim().split(/\s+/).filter(w => w.length > 0);
-      
-      if (words.length > 6) {
-        foundLead = boldContent;
-        matchIndex = match.index;
-        matchLength = match[0].length;
-        break;
+    const hiddenExcerpt = content.match(
+      /<span[^>]*data-txa-excerpt=["']1["'][^>]*>([\s\S]*?)<\/span>/i
+    );
+    if (hiddenExcerpt) {
+      const plain = plainFromHtml(hiddenExcerpt[1]);
+      if (plain.length >= 20 && !isGarbledLead(plain)) {
+        const bodyWithoutHidden = stripLeadDuplicateFromBodyStart(
+          plain,
+          stripDuplicateLeadFromBody(
+            removeFirstSintesiBox(content.replace(hiddenExcerpt[0], '').trim())
+          )
+        );
+        return { displayLead: plain, displayLeadHtml: '', displayBody: bodyWithoutHidden };
       }
     }
 
-    if (foundLead && matchIndex !== -1) {
-      // We found a valid lead. Now we need to remove it from the body.
-      // We also try to remove the wrapping <p> if it exists and contains only this bold block.
-      let start = matchIndex;
-      let end = matchIndex + matchLength;
-      
-      // Check for wrapping <p>
-      const beforeMatch = content.slice(Math.max(0, start - 20), start).match(/<p[^>]*>\s*$/i);
-      const afterMatch = content.slice(end, end + 20).match(/^\s*<\/p>/i);
-      
+    const leadBox = content.match(
+      /<div[^>]*\bid=["']txa-lead-single["'][^>]*>([\s\S]*?)<\/div>/i
+    );
+    if (leadBox) {
+      const leadPlain = plainFromHtml(leadBox[1]);
+      if (leadPlain.length >= 20 && !isGarbledLead(leadPlain)) {
+        const bodyWithoutLead = content.replace(leadBox[0], '').trim();
+        const bodyClean = stripLeadDuplicateFromBodyStart(
+          leadPlain,
+          stripDuplicateLeadFromBody(removeFirstSintesiBox(bodyWithoutLead))
+        );
+        return {
+          displayLead: leadPlain,
+          displayLeadHtml: leadBox[1].trim(),
+          displayBody: bodyClean,
+        };
+      }
+    }
+
+    const sintesiText = extractSintesiText(content);
+    if (sintesiText.length >= 20 && !isGarbledLead(sintesiText)) {
+      return {
+        displayLead: sintesiText,
+        displayLeadHtml: '',
+        displayBody: stripLeadDuplicateFromBodyStart(
+          sintesiText,
+          stripDuplicateLeadFromBody(removeFirstSintesiBox(content))
+        ),
+      };
+    }
+
+    // Find the LONGEST run of consecutive bold/strong text (user's highlighted key phrase)
+    const boldRegex = /<(b|strong)[^>]*>([\s\S]*?)<\/\1>/gi;
+    let bestLead = null;
+    let bestLeadLength = 0;
+    let bestMatchIndex = -1;
+    let bestMatchFullLength = 0;
+
+    const searchArea = content
+      .replace(/<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, ' ')
+      .slice(0, 2000);
+    let match;
+
+    while ((match = boldRegex.exec(searchArea)) !== null) {
+      const boldContent = match[2];
+      const plainText = boldContent.replace(/<[^>]*>/g, '').trim();
+      const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
+
+      if (wordCount >= 5 && plainText.length > bestLeadLength) {
+        bestLeadLength = plainText.length;
+        bestLead = boldContent;
+        bestMatchIndex = match.index;
+        bestMatchFullLength = match[0].length;
+      }
+    }
+
+    if (bestLead && bestMatchIndex !== -1) {
+      let start = bestMatchIndex;
+      let end = bestMatchIndex + bestMatchFullLength;
+
+      // Try to remove wrapping <p> if the bold is the only content
+      const beforeMatch = content.slice(Math.max(0, start - 30), start).match(/<p[^>]*>\s*$/i);
+      const afterMatch = content.slice(end, end + 30).match(/^\s*<\/p>/i);
+
       if (beforeMatch && afterMatch) {
         start -= beforeMatch[0].length;
         end += afterMatch[0].length;
       }
 
-      return {
-        displayLead: foundLead,
-        displayBody: (content.slice(0, start) + content.slice(end)).trim()
-      };
+      const leadPlain = plainFromHtml(bestLead);
+      if (!isGarbledLead(leadPlain)) {
+        const bodyAfterBold = stripDuplicateLeadFromBody(
+          (content.slice(0, start) + content.slice(end)).trim()
+        );
+        return {
+          displayLead: leadPlain,
+          displayLeadHtml: '',
+          displayBody: stripLeadDuplicateFromBodyStart(leadPlain, bodyAfterBold),
+        };
+      }
     }
 
-    // Fallback: use excerpt as lead, and keep full content as body
-    return { displayLead: article.excerpt, displayBody: content };
-  }, [fullContent, article.content, article.excerpt]);
+    // Fallback: lead completa dal corpo (mai l'excerpt troncato delle card)
+    const fullLead = getFullLeadText(content);
+    if (fullLead.length >= 20 && !isGarbledLead(fullLead)) {
+      const bodyClean = stripLeadDuplicateFromBodyStart(
+        fullLead,
+        stripDuplicateLeadFromBody(content)
+      );
+      return { displayLead: fullLead, displayLeadHtml: '', displayBody: bodyClean };
+    }
+    return { displayLead: '', displayLeadHtml: '', displayBody: stripDuplicateLeadFromBody(content) };
+  }, [fullContent, article.content]);
+
+  const { featuredImages, proseBody } = useMemo(() => {
+    const hero = (article.imageUrl || '').trim();
+    const bodySrcs = collectImgSrcs(displayBody);
+    const picked: string[] = [];
+
+    if (hero) picked.push(hero);
+    for (const src of bodySrcs) {
+      if (picked.length >= 2) break;
+      if (!picked.some((p) => normalizeImgSrc(p) === normalizeImgSrc(src))) {
+        picked.push(src);
+      }
+    }
+    if (!picked.length && bodySrcs[0]) picked.push(bodySrcs[0]);
+    if (picked.length === 1 && bodySrcs.length > 1) {
+      const second = bodySrcs.find(
+        (s) => normalizeImgSrc(s) !== normalizeImgSrc(picked[0])
+      );
+      if (second) picked.push(second);
+    }
+
+    const cleaned = removeImageBlocksBySrc(displayBody, picked);
+    return { featuredImages: picked.slice(0, 2), proseBody: cleaned };
+  }, [displayBody, article.imageUrl]);
 
   useEffect(() => {
     setFullContent(article.content);
-    // If the initial content from the list is already reasonably full (no more tag and decent length), consider it loaded
-    const initialHasMore = article.content?.includes('<!--more-->') || article.content?.includes('name="more"');
-    const initialLongEnough = article.content && article.content.length >= 600;
-    setFullContentLoaded(initialLongEnough && !initialHasMore);
     
     const loadFull = async () => {
       setIsUpdating(true);
       try {
         const freshContent = await fetchArticleById(article.id);
-        if (freshContent) {
-          if (freshContent.length > (article.content?.length || 0)) {
-            setFullContent(freshContent);
-          }
-          setFullContentLoaded(true);
+        if (freshContent && freshContent.length > (article.content?.length || 0)) {
+          setFullContent(freshContent);
         }
       } catch(e) {
         console.error("Failed to load full article", e);
@@ -244,46 +441,138 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     loadFull();
   }, [article.id]);
 
+  const extractTocHash = (href: string): string => {
+    if (!href) return '';
+    if (href.startsWith('#')) return href.slice(1).split('?')[0];
+    const m = href.match(/#(txa-sec-\d+)/i);
+    if (m) return m[1];
+    if (/^txa-sec-\d+$/i.test(href)) return href;
+    return '';
+  };
+
+  const isTocLinkEl = (link: Element): boolean => {
+    if (link.getAttribute('data-txa-toc') === '1') return true;
+    if (link.classList.contains('txa-toc-link')) return true;
+    return !!link.closest('nav.txa-toc');
+  };
+
+  const scrollToTocHash = (hash: string, behavior: ScrollBehavior = 'smooth'): boolean => {
+    const id = decodeURIComponent(hash.replace(/^#/, ''));
+    if (!/^txa-sec-\d+$/i.test(id)) return false;
+    const target = document.getElementById(id);
+    if (!target) return false;
+    target.scrollIntoView({ behavior, block: 'start' });
+    history.replaceState(null, '', `#${id}`);
+    return true;
+  };
+
+  const ensureHeadingAnchors = (root: HTMLElement): void => {
+    const navToc = root.querySelector('nav.txa-toc');
+    if (!navToc) return;
+    const anchors: string[] = [];
+    navToc.querySelectorAll('a').forEach((a) => {
+      const h = extractTocHash(a.getAttribute('href') || '');
+      if (h) anchors.push(h);
+    });
+    if (!anchors.length) return;
+    const headings = Array.from(root.querySelectorAll('h2, h3')).filter(
+      (h) => !h.closest('nav.txa-toc')
+    );
+    anchors.forEach((id, idx) => {
+      const existing = root.querySelector(`#${CSS.escape(id)}`);
+      if (existing) return;
+      const heading = headings[idx];
+      if (heading && !heading.id) heading.id = id;
+    });
+  };
+
+  // Scroll al caricamento se URL contiene #txa-sec-XX (link copiato)
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, '');
+    if (!/^txa-sec-\d+$/i.test(hash)) return;
+    const tryScroll = (attempt = 0) => {
+      if (contentRef.current) ensureHeadingAnchors(contentRef.current);
+      if (scrollToTocHash(hash, attempt === 0 ? 'auto' : 'smooth')) return;
+      if (attempt < 12) window.setTimeout(() => tryScroll(attempt + 1), 250);
+    };
+    const t = window.setTimeout(() => tryScroll(0), 100);
+    return () => window.clearTimeout(t);
+  }, [article.id, fullContent, proseBody]);
+
   // --- HYDRATION & LINK FIXER LOGIC ---
   useEffect(() => {
-    if (!contentRef.current) return;
+    if (!contentRef.current || !fullContent) return;
     const container = contentRef.current;
+    try {
 
-    // 1. Fix External Links
+    // Ripara indice: solo titolo + ul dentro nav; sposta il resto fuori
+    const navToc = container.querySelector('nav.txa-toc');
+    if (navToc) {
+      Array.from(navToc.children).forEach((child) => {
+        const el = child as HTMLElement;
+        const isTitle = el.classList.contains('txa-toc-title');
+        const isList = el.tagName === 'UL';
+        if (!isTitle && !isList) navToc.after(el);
+      });
+      const toMove: Element[] = [];
+      navToc.querySelectorAll('img').forEach(img => {
+        const block = (img.closest('a') || img.closest('.separator') || img.closest('.txa-img') || img) as Element;
+        if (navToc.contains(block)) toMove.push(block);
+      });
+      toMove.forEach(node => navToc.after(node));
+    }
+
+    ensureHeadingAnchors(container);
+
+    const handleTocNavClick = (e: Event) => {
+      const a = (e.target as Element).closest('a');
+      if (!a || !container.contains(a) || !isTocLinkEl(a)) return;
+      const hash = extractTocHash(a.getAttribute('href') || '');
+      if (!hash) return;
+      e.preventDefault();
+      e.stopPropagation();
+      scrollToTocHash(hash);
+    };
+
+    container.addEventListener('click', handleTocNavClick, true);
+
     const links = container.querySelectorAll('a');
     links.forEach(link => {
-      link.setAttribute('target', '_blank');
-      link.setAttribute('rel', 'noopener noreferrer');
+      const href = link.getAttribute('href') || '';
+      const hash = extractTocHash(href);
+      if (isTocLinkEl(link) && hash) {
+        link.setAttribute('href', `#${hash}`);
+        link.removeAttribute('target');
+        link.removeAttribute('rel');
+        link.removeAttribute('onclick');
+        return;
+      }
+      if (href.startsWith('#') && hash) {
+        link.removeAttribute('target');
+        link.removeAttribute('rel');
+        return;
+      }
+      if (!href.startsWith('#') && href && !href.startsWith('javascript:')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
     });
 
-    // 2. Expandable Rows (Cascata) - direct attach + delegation (for reliability with Blogger HTML structures)
-    const setupCascade = () => {
-      const rows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
-      rows.forEach((row: Element) => {
-        const el = row as HTMLElement;
-        // remove previous to avoid multiples
-        el.onclick = null;
-        el.addEventListener('click', function(this: HTMLElement, e: Event) {
-          e.stopPropagation();
-          e.preventDefault();
-          this.classList.toggle('expanded');
-
-          // support sibling description (common pattern)
-          let next = this.nextElementSibling as HTMLElement | null;
-          if (next && next.classList.contains('expandable-description')) {
-            next.classList.toggle('expanded');
-          }
-        });
-      });
+    // 2. Expandable Rows
+    const expandableRows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
+    const handleRowClick = function(this: HTMLElement, e: Event) {
+      e.stopPropagation(); e.preventDefault();
+      this.classList.toggle('expanded');
     };
-    // run immediately and after a tick for any injected content
-    setupCascade();
-    setTimeout(setupCascade, 0);
+    expandableRows.forEach(row => {
+      row.removeEventListener('click', handleRowClick as EventListener);
+      row.addEventListener('click', handleRowClick as EventListener);
+    });
 
-    // 3. Expandable Rows (Cascata) handled by dedicated useEffect below for reliability
-
-    // 3. Inject Portal Nodes
-    const paragraphs = Array.from(container.querySelectorAll('p'));
+    // 3. Inject Portal Nodes — mai dentro nav.txa-toc
+    const paragraphs = Array.from(container.querySelectorAll('p')).filter(
+      (p) => !p.closest('nav.txa-toc')
+    );
     let dealsNode = null;
     let readAlso1Node = null;
     let readAlso2Node = null;
@@ -291,17 +580,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     if (paragraphs.length >= 2) {
       dealsNode = document.createElement('div');
       dealsNode.className = 'injected-deals my-8 not-prose';
-      (paragraphs[1] as any).after(dealsNode);
-      
+      (paragraphs[1] as HTMLElement).after(dealsNode);
+
       readAlso1Node = document.createElement('div');
       readAlso1Node.className = 'injected-read-also my-8 not-prose';
-      (paragraphs[1] as any).after(readAlso1Node);
+      (paragraphs[1] as HTMLElement).after(readAlso1Node);
     }
 
     if (paragraphs.length >= 6) {
       readAlso2Node = document.createElement('div');
       readAlso2Node.className = 'injected-read-also my-8 not-prose';
-      (paragraphs[5] as any).after(readAlso2Node);
+      (paragraphs[5] as HTMLElement).after(readAlso2Node);
     }
 
     // Custom Placeholders
@@ -353,54 +642,16 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     }
 
     return () => {
+      container.removeEventListener('click', handleTocNavClick, true);
+      expandableRows.forEach(row => row.removeEventListener('click', handleRowClick as EventListener));
       if (dealsNode) dealsNode.remove();
       if (readAlso1Node) readAlso1Node.remove();
       if (readAlso2Node) readAlso2Node.remove();
     };
-  }, [article.id, fullContent]); 
-
-  // Dedicated reliable event delegation for Expandable Rows (Cascata / Accordion)
-  // This ensures clicks on .expandable-row (from Blogger HTML) toggle 'expanded' even if content is injected dynamically.
-  useEffect(() => {
-    const container = contentRef.current;
-    if (!container) return;
-
-    const handleCascadeClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const row = target.closest('tr.expandable-row, div.expandable-row, .expandable-row') as HTMLElement | null;
-      if (row) {
-        e.stopPropagation();
-        e.preventDefault();
-        row.classList.toggle('expanded');
-
-        // Support common "cascata" pattern where the description is the immediate next sibling
-        // (often used in Blogger table-based or div-based FAQ/accordion structures)
-        let next = row.nextElementSibling as HTMLElement | null;
-        if (next && next.classList.contains('expandable-description')) {
-          next.classList.toggle('expanded');
-        }
-      }
-    };
-
-    // Remove any previous to avoid duplicates on re-runs
-    const previous = (container as any)._cascadeHandler;
-    if (previous) {
-      container.removeEventListener('click', previous);
+  } catch (e) {
+      console.warn('Article content hydration non-fatal error (safe fallback active)', e);
     }
-
-    // Use microtask timeout to ensure the innerHTML + any portal injections have settled
-    const attach = () => {
-      container.addEventListener('click', handleCascadeClick as EventListener);
-      (container as any)._cascadeHandler = handleCascadeClick;
-    };
-    const timeoutId = setTimeout(attach, 0);
-
-    return () => {
-      clearTimeout(timeoutId);
-      container.removeEventListener('click', handleCascadeClick as EventListener);
-      delete (container as any)._cascadeHandler;
-    };
-  }, [article.id, fullContent]); // re-attach when content updates too
+  }, [article.id, fullContent]); 
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) onArticleClick(art);
@@ -521,15 +772,54 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     </div>
   );
 
-  const ReadAlsoBlock = ({ article }: { article: Article }) => (
-    <div onClick={() => handleSuggestedClick(article)} className="not-prose my-6 p-4 bg-gray-50 border-l-4 border-black rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors group">
-      <h4 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Leggi Anche</h4>
-      <div className="flex gap-3 items-center">
-        <div className="w-16 h-12 bg-gray-200 shrink-0 overflow-hidden rounded">
-          <img src={article.imageUrl} className="w-full h-full object-cover" />
-        </div>
-        <h5 className="text-sm font-bold leading-tight group-hover:text-[#e31b23] transition-colors">{article.title}</h5>
+  const LeggiAncheItem: React.FC<{ art: Article; showLabel?: boolean }> = ({
+    art,
+    showLabel = true,
+  }) => (
+    <div
+      onClick={() => handleSuggestedClick(art)}
+      className="leggi-anche-item flex gap-3 items-start cursor-pointer group py-3 border-b border-gray-100 last:border-0"
+    >
+      <div className="w-[72px] h-[56px] shrink-0 overflow-hidden rounded bg-gray-100 border border-gray-200">
+        <img
+          src={art.imageUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
+      <div className="min-w-0 flex-1 pt-0.5">
+        {showLabel && (
+          <span className="text-[9px] font-black uppercase text-[#e31b23] tracking-widest block mb-1">
+            {art.category || 'News'}
+          </span>
+        )}
+        <h4 className="text-[13px] font-bold leading-snug text-gray-900 group-hover:text-[#e31b23] transition-colors line-clamp-3">
+          {art.title}
+        </h4>
+      </div>
+    </div>
+  );
+
+  const LeggiAnchePanel: React.FC<{ articles: Article[]; className?: string }> = ({
+    articles,
+    className = '',
+  }) => (
+    <div className={`leggi-anche bg-white border border-gray-200 overflow-hidden ${className}`}>
+      <h3 className="font-condensed text-sm font-black uppercase tracking-widest text-white bg-[#e31b23] px-4 py-2.5">
+        Leggi anche
+      </h3>
+      <div className="px-3 pb-1">
+        {articles.map((art) => (
+          <LeggiAncheItem key={art.id} art={art} />
+        ))}
+      </div>
+    </div>
+  );
+
+  const ReadAlsoBlock = ({ article: art }: { article: Article }) => (
+    <div className="not-prose my-8">
+      <LeggiAnchePanel articles={[art]} />
     </div>
   );
 
@@ -564,10 +854,41 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     'bg-[#e31b23]';
 
   const recommendedGrid = moreArticles.slice(0, 4);
-  const mostReadArticles = [...offerNews, ...moreArticles].slice(0, 5);
+  const leggiAncheArticles = [...offerNews, ...moreArticles]
+    .filter((a) => a.id !== article.id)
+    .slice(0, 6);
 
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
+      <Helmet>
+        <title>{article.title} | TuttoXAndroid</title>
+        <meta name="description" content={article.excerpt} />
+        <link rel="canonical" href={`${window.location.origin}${window.location.pathname}`} />
+        
+        {/* Open Graph / Social */}
+        <meta property="og:title" content={article.title} />
+        <meta property="og:description" content={article.excerpt} />
+        <meta property="og:image" content={article.imageUrl} />
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content={article.url || window.location.href} />
+        <meta property="article:published_time" content={article.date} />
+        
+        {/* Twitter Cards */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@tuttoxandroid" />
+        <meta name="twitter:creator" content="@tuttoxandroid" />
+        <meta name="twitter:title" content={article.title} />
+        <meta name="twitter:description" content={article.excerpt} />
+        <meta name="twitter:image" content={article.imageUrl} />
+
+        <script 
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ 
+            __html: JSON.stringify(schemaData).replace(/<\/script>/g, '<\\/script>') 
+          }}
+        />
+      </Helmet>
+
       {/* Loading Indicator */}
       {isUpdating && (
          <div className="fixed top-20 right-4 z-[99999] bg-black text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg flex items-center gap-2 animate-pulse">
@@ -591,13 +912,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                      </span>
                 </div>
 
-                {/* Title */}
-                <h1 className="font-condensed text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-6 leading-tight tracking-tight text-left uppercase break-words">
+                {/* Title — compatto, stile tuttoandroid.net */}
+                <h1 className="font-condensed text-2xl md:text-[1.75rem] lg:text-3xl font-black text-gray-900 mb-4 leading-snug tracking-tight text-left break-words">
                   {article.title}
                 </h1>
 
                 {/* Author & Share */}
-                <div className="flex items-center justify-between border-t border-b border-gray-100 py-3 mb-6 relative">
+                <div className="flex items-center justify-between border-t border-b border-gray-100 py-3 mb-5 relative">
                     <div className="flex items-center gap-3">
                         <img src={article.authorImageUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100"} alt={article.author} className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-100 p-0.5" />
                         <div className="flex flex-col">
@@ -622,28 +943,51 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     )}
                 </div>
 
-                {/* Main Image */}
-                <div className="w-full aspect-video rounded-xl overflow-hidden mb-6 bg-gray-100">
-                    <img src={article.imageUrl} className="w-full h-full object-cover" alt={article.title} />
-                </div>
-
-                {/* LEAD */}
+                {/* LEAD — barra rossa verticale (primo blocco editoriale) */}
                 {displayLead && (
-                  <div className={`text-lg md:text-xl font-bold mb-6 leading-relaxed border-l-4 pl-4 italic text-gray-900 ${catColor.replace('text-', 'border-')}`}>
-                    <div dangerouslySetInnerHTML={{ __html: displayLead }} />
+                  <div
+                    id="txa-lead-single"
+                    className="mb-6 block rounded-sm bg-white text-[1.05em] md:text-[1.12em] font-semibold leading-[1.55] text-gray-900 not-italic"
+                    style={{ borderLeft: '5px solid #e53935', padding: '16px 20px' }}
+                  >
+                    {displayLeadHtml ? (
+                      <div dangerouslySetInnerHTML={{ __html: displayLeadHtml }} />
+                    ) : (
+                      displayLead
+                    )}
                   </div>
                 )}
 
-                {/* Ad */}
-                <div className="not-prose mb-4 flex justify-center">
-                    <AdUnit slotId="5244362740" format="auto" className="w-full" label="Sponsor" />
+                {/* SPONSOR — sopra le immagini prodotto */}
+                <div className="not-prose mb-5">
+                  <AdUnit
+                    slotId="5244362740"
+                    format="rectangle"
+                    className="w-full"
+                    label="SPONSOR"
+                  />
                 </div>
+
+                {/* Due immagini affiancate (hero + prima img corpo) */}
+                {featuredImages.length > 0 && (
+                  <div
+                    className={`txa-featured-dual not-prose mb-6 ${
+                      featuredImages.length === 1 ? 'single' : ''
+                    }`}
+                  >
+                    {featuredImages.map((src, idx) => (
+                      <div key={`${src}-${idx}`} className="txa-featured-dual-cell">
+                        <img src={src} alt={article.title} loading={idx === 0 ? 'eager' : 'lazy'} />
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Content Body */}
                 <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto marker:text-gray-800 prose-a:text-[#e31b23] prose-a:font-bold prose-a:underline">
                     
                     {/* Full Content */}
-                    <div dangerouslySetInnerHTML={{ __html: displayBody }} />
+                    <div dangerouslySetInnerHTML={{ __html: proseBody }} />
 
                     {/* --- INJECTED PORTALS --- */}
                     {portalNodes.summaries.map((node, idx) => {
@@ -697,6 +1041,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     )}
                 </div>
 
+                {/* LEGGI ANCHE — mobile */}
+                {leggiAncheArticles.length > 0 && (
+                  <div className="lg:hidden my-10">
+                    <LeggiAnchePanel articles={leggiAncheArticles.slice(0, 5)} />
+                  </div>
+                )}
+
                 {/* Tags */}
                 <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap gap-2 mb-8">
                     {['Tech', 'Android', article.category, 'News'].map(tag => (
@@ -729,37 +1080,32 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
             </div>
 
-            {/* SIDEBAR (Right) */}
-            <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
-                <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
-                <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-[2rem] p-6 text-center text-white shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                   <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-                   <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md text-[#24A1DE]">
-                      <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg>
+            {/* SIDEBAR (Right) — LEGGI ANCHE stile tuttoandroid.net */}
+            <div className="hidden lg:block lg:col-span-4 space-y-6 h-fit">
+                {leggiAncheArticles.length > 0 && (
+                  <LeggiAnchePanel articles={leggiAncheArticles} className="shadow-sm" />
+                )}
+                <AdUnit slotId="5244362740" format="auto" label="SPONSOR" />
+                <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-3xl p-6 text-center text-white shadow-xl relative overflow-hidden group hover:-translate-y-1 hover:shadow-2xl transition-all duration-200">
+                   {/* Soft glow orb */}
+                   <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-[1.2] transition-transform duration-500"></div>
+                   
+                   {/* Icon */}
+                   <div className="relative z-10 w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-xl ring-1 ring-white/50 group-hover:scale-105 group-hover:-rotate-3 transition-all duration-200">
+                      <svg className="w-8 h-8 text-[#24A1DE]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg>
                    </div>
-                   <h3 className="font-condensed text-2xl font-black uppercase italic mb-1 leading-none text-white drop-shadow-md">Canale Offerte</h3>
-                   <p className="text-xs font-bold text-yellow-300 mb-4 px-2">Errori di prezzo e sconti esclusivi in tempo reale.</p>
-                   <span className="inline-block bg-white text-[#24A1DE] px-8 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black hover:text-white transition-colors">Unisciti Ora</span>
+                   
+                   <div className="relative z-10">
+                     <h3 className="font-condensed text-2xl font-black uppercase italic leading-none tracking-[-0.5px] mb-1.5 text-white">Canale Offerte</h3>
+                     <p className="text-[11px] font-medium text-white/90 mb-5 max-w-[18ch] mx-auto">Errori di prezzo e sconti esclusivi in tempo reale.</p>
+                     
+                     <span className="inline-flex items-center justify-center gap-2 bg-white text-[#24A1DE] px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg group-hover:bg-white group-hover:scale-[1.02] active:scale-[0.985] transition-all">
+                       UNISCITI ORA 
+                       <span className="text-base leading-none transition-transform group-hover:translate-x-0.5">→</span>
+                     </span>
+                   </div>
                 </a>
-                <SocialSidebar articles={moreArticles || []} onArticleClick={onArticleClick} />
-                <div className="bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm">
-                   <h3 className="font-condensed text-2xl font-black uppercase italic mb-4 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">I Più Letti</h3>
-                   <div className="flex flex-col gap-4">
-                      {mostReadArticles.map((art, index) => (
-                        <div key={art.id} onClick={() => handleSuggestedClick(art)} className="flex items-start gap-4 cursor-pointer group">
-                           <span className="text-3xl font-black text-gray-200 leading-none group-hover:text-[#e31b23] transition-colors font-condensed italic select-none mt-1">
-                             {index + 1}
-                           </span>
-                           <div className="border-b border-gray-50 pb-3 w-full">
-                              <span className="text-[9px] font-black uppercase text-[#e31b23] mb-1 block">{art.category}</span>
-                              <h4 className="text-[15px] font-bold leading-tight text-gray-900 group-hover:text-[#e31b23] transition-colors line-clamp-2">
-                                {art.title}
-                              </h4>
-                           </div>
-                        </div>
-                      ))}
-                   </div>
-                </div>
+                <SocialSidebar />
                 <div className="sticky top-24 space-y-6">
                     <div className="bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] text-center relative overflow-hidden group border border-gray-800">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-[#e31b23] rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
@@ -786,6 +1132,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                           </form>
                         )}
                     </div>
+                    <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                 </div>
             </div>
         </div>
