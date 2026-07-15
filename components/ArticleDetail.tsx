@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { Helmet } from 'react-helmet-async';
 import { fetchArticleById, getFullLeadText } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 
@@ -91,6 +90,42 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     setSidebarEmail('');
     setTimeout(() => setSidebarSubscribeStatus('idle'), 3000);
   };
+
+  // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
+  useEffect(() => {
+    if (!article) return;
+
+    const pageTitle = `${article.title} | TuttoXAndroid`;
+    document.title = pageTitle;
+
+    const descContent = (article.excerpt || article.title).slice(0, 155);
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', descContent);
+
+    const setMeta = (selector: string, attr: string, value: string) => {
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement('meta');
+        if (selector.includes('property')) el.setAttribute('property', selector.split('"')[1]);
+        else el.setAttribute('name', selector.split('"')[1]);
+        document.head.appendChild(el);
+      }
+      el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[property="og:title"]', 'content', pageTitle);
+    setMeta('meta[property="og:description"]', 'content', descContent);
+    if (article.imageUrl) {
+      setMeta('meta[property="og:image"]', 'content', article.imageUrl);
+    }
+    setMeta('meta[name="twitter:title"]', 'content', pageTitle);
+    setMeta('meta[name="twitter:description"]', 'content', descContent);
+
+    const canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (canonical && article.url) {
+      canonical.href = article.url;
+    }
+  }, [article]);
 
   // Check if article is deals related
   const isDealCategory = useMemo(() => {
@@ -860,35 +895,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   return (
     <div className="bg-white min-h-screen animate-in fade-in duration-500 pb-12">
-      <Helmet>
-        <title>{article.title} | TuttoXAndroid</title>
-        <meta name="description" content={article.excerpt} />
-        <link rel="canonical" href={`${window.location.origin}${window.location.pathname}`} />
-        
-        {/* Open Graph / Social */}
-        <meta property="og:title" content={article.title} />
-        <meta property="og:description" content={article.excerpt} />
-        <meta property="og:image" content={article.imageUrl} />
-        <meta property="og:type" content="article" />
-        <meta property="og:url" content={article.url || window.location.href} />
-        <meta property="article:published_time" content={article.date} />
-        
-        {/* Twitter Cards */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@tuttoxandroid" />
-        <meta name="twitter:creator" content="@tuttoxandroid" />
-        <meta name="twitter:title" content={article.title} />
-        <meta name="twitter:description" content={article.excerpt} />
-        <meta name="twitter:image" content={article.imageUrl} />
-
-        <script 
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ 
-            __html: JSON.stringify(schemaData).replace(/<\/script>/g, '<\\/script>') 
-          }}
-        />
-      </Helmet>
-
       {/* Loading Indicator */}
       {isUpdating && (
          <div className="fixed top-20 right-4 z-[99999] bg-black text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg flex items-center gap-2 animate-pulse">
