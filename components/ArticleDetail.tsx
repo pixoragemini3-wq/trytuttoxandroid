@@ -162,8 +162,19 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     return false;
   };
 
-  const sanitizeArticleHtml = (html: string): string => {
+  const stripJsonArtifacts = (html: string): string => {
     let out = html;
+    out = out.replace(
+      /(?:\s*"[\s\n]*")+\s*\}\s*(?=<(?:p|div)[^>]*\bclass=["'][^"']*txa-source)/gi,
+      ''
+    );
+    out = out.replace(/<\/div>\s*"\s*(?:\n\s*")?\s*\}\s*/gi, '</div>');
+    out = out.replace(/(?:^|>)\s*"\s*"\s*\}\s*(?=<|$)/g, '>');
+    return out;
+  };
+
+  const sanitizeArticleHtml = (html: string): string => {
+    let out = stripJsonArtifacts(html);
     out = out.replace(/<div[^>]*\bclass=["'][^"']*txa-img[^"']*["'][^>]*>\s*<\/div>/gi, '');
     const navMatch = out.match(
       /<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/i
@@ -290,8 +301,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const normalizeImgSrc = (src: string): string =>
     (src || '')
       .replace(/\/s\d+(-c)?\//g, '/')
+      .replace(/=[sNw]\d+(-c)?.*$/i, '')
+      .replace(/=w\d+-h\d+(-c)?.*$/i, '')
       .split('?')[0]
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/\/+$/, '');
 
   const collectImgSrcs = (html: string): string[] => {
     const srcs: string[] = [];
@@ -496,6 +510,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     }
 
     let cleaned = removeImageBlocksBySrc(displayBody, picked);
+    cleaned = cleaned.replace(
+      /^\s*(?:<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>[\s\S]*?<\/div>\s*)+/i,
+      ''
+    );
     cleaned = cleaned.replace(
       /<(h[23])([^>]*)>[\s\S]*?<\/\1>/gi,
       (block, tag: string, attrs: string) => {

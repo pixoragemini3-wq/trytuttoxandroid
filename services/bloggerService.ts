@@ -253,9 +253,20 @@ const stripNonTxaInlineStyles = (html: string): string => {
   });
 };
 
+const stripJsonArtifactsFromHtml = (html: string): string => {
+  let clean = html;
+  clean = clean.replace(
+    /(?:\s*"[\s\n]*")+\s*\}\s*(?=<(?:p|div)[^>]*\bclass=["'][^"']*txa-source)/gi,
+    ''
+  );
+  clean = clean.replace(/<\/div>\s*"\s*(?:\n\s*")?\s*\}\s*/gi, '</div>');
+  clean = clean.replace(/(?:^|>)\s*"\s*"\s*\}\s*(?=<|$)/g, '>');
+  return clean;
+};
+
 const cleanBloggerHtml = (html: string): string => {
   if (!html) return "";
-  let clean = html;
+  let clean = stripJsonArtifactsFromHtml(html);
 
   // 1. Rimuovi style solo dagli elementi generici — preserva box txa (riga rossa, highlight, TOC)
   clean = stripNonTxaInlineStyles(clean);
