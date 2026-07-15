@@ -455,6 +455,120 @@ export const fetchArticleById = async (id: string): Promise<string | null> => {
   }
 };
 
+/** Blogger usa etichette in minuscolo (es. recensioni, non Recensione). */
+const BLOGGER_FEED_LABELS: Record<string, string[]> = {
+  Recensioni: ['recensioni', 'recensione'],
+  'App & Giochi': ['app', 'giochi'],
+  Smartphone: ['smartphone'],
+  Guide: ['guide', 'guida'],
+  Offerte: ['offerte', 'offerteimperdibili'],
+  News: ['news'],
+  Modding: ['modding'],
+  Wearable: ['wearable'],
+  Tutorial: ['tutorial'],
+};
+
+const NAV_LABEL_ALIASES: Record<string, Category> = {
+  recensioni: 'Recensioni',
+  recensione: 'Recensioni',
+  offerte: 'Offerte',
+  offerteimperdibili: 'Offerte',
+  guide: 'Guide',
+  guida: 'Guide',
+  tutorial: 'Tutorial',
+  smartphone: 'Smartphone',
+  app: 'App & Giochi',
+  giochi: 'App & Giochi',
+  news: 'News',
+  modding: 'Modding',
+  wearable: 'Wearable',
+};
+
+const getFeedLabelsForCategory = (category: string): string[] => {
+  const direct = BLOGGER_FEED_LABELS[category];
+  if (direct) return direct;
+  const lower = category.toLowerCase().trim();
+  for (const labels of Object.values(BLOGGER_FEED_LABELS)) {
+    if (labels.includes(lower)) return labels;
+  }
+  return [lower];
+};
+
+const normalizeMainCategory = (categories: string[]): Category => {
+  const lower = categories.map((c) => c.toLowerCase().trim());
+  const priority = [
+    'recensioni', 'recensione', 'offerte', 'offerteimperdibili',
+    'guide', 'guida', 'tutorial', 'smartphone', 'app', 'giochi',
+    'news', 'modding', 'wearable',
+  ];
+  for (const key of priority) {
+    const idx = lower.indexOf(key);
+    if (idx !== -1) return NAV_LABEL_ALIASES[key] || (categories[idx] as Category);
+  }
+  const first = categories.find(
+    (c) => !c.toLowerCase().endsWith('inevidenza') && c !== 'Evidenza' && c !== 'Featured'
+  );
+  const term = (first || 'news').toLowerCase();
+  return NAV_LABEL_ALIASES[term] || ((first || 'News') as Category);
+};
+
+const articleMatchesNavCategory = (article: Article, category: Category): boolean => {
+  if (!category || category === 'Tutti') return true;
+  const target = category.toLowerCase().trim();
+  const articleCategory = (article.category || '').toLowerCase().trim();
+  const articleTags = (article.tags || []).map((t) => t.toLowerCase().trim());
+  if (articleCategory === target) return true;
+  if (articleTags.includes(target)) return true;
+  const feedLabels = getFeedLabelsForCategory(category).map((l) => l.toLowerCase());
+  if (feedLabels.some((l) => articleTags.includes(l) || articleCategory === l)) return true;
+  return false;
+};
+
+const mapFeedEntryToArticle = (entry: any): Article => {
+  const id = entry.id.$t.split('post-')[1];
+  const rawTitle = entry.title.$t;
+  const rawContent = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
+  const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
+
+  const categories = entry.category ? entry.category.map((c: any) => c.term.trim()) : [];
+  const isFeatured = categories.some((c: string) => c === 'Evidenza' || c === 'Featured');
+  const mainCategory = normalizeMainCategory(categories);
+
+  let imageUrl = '';
+  if (entry.media$thumbnail && entry.media$thumbnail.url) {
+    imageUrl = entry.media$thumbnail.url;
+  } else {
+    const extracted = getFirstImageFromContent(rawContent);
+    if (extracted) imageUrl = extracted;
+  }
+  if (!imageUrl) {
+    imageUrl = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
+  }
+
+  imageUrl = forceHighResImage(imageUrl);
+  const authorImage = entry.author?.[0]?.gd$image?.src;
+  const { cleanContent, dealData } = parseArticleContent(rawContent);
+  const cleanExcerpt = getSmartExcerpt(cleanContent);
+  const cleanTitle = stripHtml(rawTitle);
+
+  return {
+    id,
+    title: cleanTitle,
+    excerpt: cleanExcerpt,
+    content: cleanContent,
+    category: mainCategory,
+    tags: categories,
+    imageUrl,
+    author: entry.author[0].name.$t,
+    authorImageUrl: authorImage,
+    date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
+    url: postUrl,
+    type: 'standard',
+    featured: isFeatured,
+    dealData: dealData,
+  };
+};
+
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string, startIndex: number = 1): Promise<Article[]> => {
   try {
     const nativePosts = (window as any).bloggerNativePosts;
@@ -468,9 +582,9 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           const cleanExcerpt = getSmartExcerpt(cleanContent);
           const tags = Array.isArray(p.tags) ? p.tags.map((t: string) => t.trim()) : (p.category ? [p.category] : []);
           
-          let mainCategory = p.category;
-          if (mainCategory.toLowerCase() === 'recensione' || mainCategory.toLowerCase() === 'recensioni') mainCategory = 'Recensioni';
-          if (mainCategory === 'offerteimperdibili') mainCategory = 'Offerte';
+          const mainCategory = normalizeMainCategory(
+            tags.length ? tags : (p.category ? [p.category] : ['news'])
+          );
 
           return {
             ...p,
@@ -486,9 +600,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       });
 
       if (category && category !== 'Tutti') {
-        filtered = filtered.filter((p: Article) => {
-            return p.category === category || (p.tags && p.tags.includes(category));
-        });
+        filtered = filtered.filter((p: Article) => articleMatchesNavCategory(p, category));
       }
       if (searchQuery) {
         filtered = filtered.filter((p: Article) => 
@@ -498,78 +610,48 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
       return filtered;
     }
 
-    let feedPath = `/feeds/posts/default?alt=json&max-results=150&start-index=${startIndex}`;
-    
     if (searchQuery) {
-       feedPath = `/feeds/posts/default?alt=json&q=${encodeURIComponent(searchQuery)}&max-results=50&start-index=${startIndex}`;
-    } else if (category && category !== 'Tutti') {
-       feedPath = `/feeds/posts/default/-/${encodeURIComponent(category)}?alt=json&max-results=100&start-index=${startIndex}`;
+      const feedPath = `/feeds/posts/default?alt=json&q=${encodeURIComponent(searchQuery)}&max-results=50&start-index=${startIndex}`;
+      const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 10000);
+      if (!response.ok) {
+        (window as any).__usingMockData = true;
+        return [];
+      }
+      const data = await response.json();
+      return (data.feed.entry || []).map(mapFeedEntryToArticle);
     }
-    
-    const targetUrl = `${TARGET_DOMAIN}${feedPath}`;
-    const response = await fetchWithProxyFallback(targetUrl, 10000);
-    
+
+    if (category && category !== 'Tutti') {
+      const labels = getFeedLabelsForCategory(category);
+      const merged: any[] = [];
+      const seenIds = new Set<string>();
+
+      for (const label of labels) {
+        const feedPath = `/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=100&start-index=${startIndex}`;
+        const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 10000);
+        if (!response.ok) continue;
+        const data = await response.json();
+        for (const entry of data.feed.entry || []) {
+          const entryId = entry.id.$t;
+          if (seenIds.has(entryId)) continue;
+          seenIds.add(entryId);
+          merged.push(entry);
+        }
+      }
+
+      return merged.map(mapFeedEntryToArticle);
+    }
+
+    const feedPath = `/feeds/posts/default?alt=json&max-results=150&start-index=${startIndex}`;
+    const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 10000);
+
     if (!response.ok) {
       (window as any).__usingMockData = true;
       return [];
     }
-    
+
     const data = await response.json();
-    const entries = data.feed.entry || [];
-
-    return entries.map((entry: any) => {
-      const id = entry.id.$t.split('post-')[1];
-      const rawTitle = entry.title.$t;
-      let rawContent = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
-      const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
-      
-      const categories = entry.category ? entry.category.map((c: any) => c.term.trim()) : [];
-      const isFeatured = categories.some((c: string) => c === 'Evidenza' || c === 'Featured');
-      
-      let mainCategory = categories.length > 0 ? categories[0] : 'News';
-      const displayCategory = categories.find((c: string) => !c.toLowerCase().endsWith('inevidenza') && c !== 'Evidenza');
-      if (displayCategory) mainCategory = displayCategory;
-      if (mainCategory === 'offerteimperdibili') mainCategory = 'Offerte';
-      if (mainCategory.toLowerCase() === 'recensione' || mainCategory.toLowerCase() === 'recensioni') mainCategory = 'Recensioni';
-
-      // 1. Try media$thumbnail
-      let imageUrl = '';
-      if (entry.media$thumbnail && entry.media$thumbnail.url) {
-        imageUrl = entry.media$thumbnail.url;
-      } 
-      // 2. Try parsing HTML content for first <img> (Much more reliable than Regex)
-      else {
-        const extracted = getFirstImageFromContent(rawContent);
-        if (extracted) imageUrl = extracted;
-      }
-      
-      // 3. Fallback
-      if (!imageUrl) imageUrl = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
-      
-      imageUrl = forceHighResImage(imageUrl);
-      const authorImage = entry.author?.[0]?.gd$image?.src;
-
-      const { cleanContent, dealData } = parseArticleContent(rawContent);
-      const cleanExcerpt = getSmartExcerpt(cleanContent);
-      const cleanTitle = stripHtml(rawTitle);
-
-      return {
-        id,
-        title: cleanTitle,
-        excerpt: cleanExcerpt,
-        content: cleanContent,
-        category: mainCategory,
-        tags: categories,
-        imageUrl,
-        author: entry.author[0].name.$t,
-        authorImageUrl: authorImage,
-        date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
-        url: postUrl,
-        type: 'standard',
-        featured: isFeatured,
-        dealData: dealData
-      };
-    });
+    return (data.feed.entry || []).map(mapFeedEntryToArticle);
   } catch (error) {
     return [];
   }

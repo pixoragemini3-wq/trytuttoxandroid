@@ -426,25 +426,8 @@ const App: React.FC = () => {
     if (nav !== 'Tutti') {
        setIsArticlesLoading(true);
        try {
-          // Mapping for common label variations on Blogger
-          const labelMap: Record<string, string> = {
-            'Recensioni': 'Recensione',
-            'App & Giochi': 'App',
-            'Smartphone': 'Smartphone',
-            'Guide': 'Guide',
-            'Offerte': 'Offerte',
-            'News': 'News'
-          };
-          
-          const labelToFetch = labelMap[nav] || nav;
-          const catPosts = await fetchBloggerPosts(labelToFetch as any, undefined, 1);
-          
-          // If we got very few results, try the original nav name as fallback
-          let finalCatPosts = catPosts;
-          if (catPosts.length < 5 && labelToFetch !== nav) {
-             const fallbackPosts = await fetchBloggerPosts(nav as any, undefined, 1);
-             finalCatPosts = [...catPosts, ...fallbackPosts.filter(p => !catPosts.some(cp => cp.id === p.id))];
-          }
+          const catPosts = await fetchBloggerPosts(nav as any, undefined, 1);
+          const finalCatPosts = catPosts;
 
           setArticles(prev => {
              // Merge and remove duplicates
@@ -502,16 +485,9 @@ const App: React.FC = () => {
     if (hasMoreToFetch) {
       setIsArticlesLoading(true);
       try {
-        const labelMap: Record<string, string> = {
-          'Recensioni': 'Recensione',
-          'App & Giochi': 'App',
-          'Smartphone': 'Smartphone',
-          'Guide': 'Guide',
-          'Offerte': 'Offerte',
-          'News': 'News'
-        };
-        
-        const categoryToFetch = isSearch ? undefined : (activeCategory === 'Tutti' ? undefined : (labelMap[activeCategory] || activeCategory));
+        const categoryToFetch = isSearch
+          ? undefined
+          : (activeCategory === 'Tutti' ? undefined : activeCategory);
 
         const morePosts = await fetchBloggerPosts(
           categoryToFetch as any,
@@ -586,6 +562,15 @@ const App: React.FC = () => {
         
         if (articleCategory === target) return true;
         if (articleTags.includes(target)) return true;
+
+        const labelAliases: Record<string, string[]> = {
+          'recensioni': ['recensioni', 'recensione'],
+          'guide': ['guide', 'guida'],
+          'offerte': ['offerte', 'offerteimperdibili'],
+          'app & giochi': ['app', 'giochi'],
+        };
+        const aliases = labelAliases[target];
+        if (aliases?.some((a) => articleTags.includes(a) || articleCategory === a)) return true;
         
         if (target === 'app & giochi') {
              if (articleTags.some(t => t.includes('app') || t.includes('giochi') || t.includes('game'))) return true;
