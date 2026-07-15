@@ -607,39 +607,42 @@ const App: React.FC = () => {
   const dealsToShow = activeCategory === 'Offerte' ? 8 : 4;
 
   const DealsSection = () => (
-    <section className="py-6 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] text-white rounded-[1.5rem] mx-0 lg:mx-0 overflow-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-4 animate-in slide-in-from-right duration-500">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
-      
+    <section className="py-6 lg:py-8 rounded-[1.5rem] mx-0 lg:mx-0 overflow-visible shadow-2xl relative border border-[#e31b23]/30 bg-[#1a1a1a] mb-4 animate-in slide-in-from-right duration-500">
+      <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-br from-[#e31b23]/30 via-transparent to-[#e31b23]/15 pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <div className="flex items-center gap-4 flex-wrap">
-             <h2 className="font-condensed text-3xl lg:text-5xl font-black uppercase tracking-tight italic leading-none text-white drop-shadow-lg">Offerte del Giorno</h2>
-             <span className="bg-white text-[#e31b23] px-3 py-1 rounded text-xs font-black uppercase tracking-widest shadow-md animate-pulse">HOT</span>
-             
-             <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-[#24A1DE] hover:bg-white pl-2 pr-6 py-2 rounded-full transition-all group shadow-xl border-2 border-white/20 ml-0 md:ml-6 hover:scale-105 hover:shadow-2xl cursor-pointer">
-                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md">
-                    <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="Icon" />
-                 </div>
-                 <div className="flex flex-col leading-none">
-                   <span className="text-[10px] font-black uppercase text-white/90 group-hover:text-[#24A1DE] mb-0.5">Canale Ufficiale</span>
-                   <span className="text-sm font-black uppercase tracking-wide text-white group-hover:text-[#24A1DE]">Offerte Italy</span>
-                 </div>
-                 <svg className="w-5 h-5 ml-2 text-white group-hover:text-[#24A1DE] opacity-80 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-             </a>
+          <div>
+             <div className="flex items-center gap-3 flex-wrap mb-2">
+               <h2 className="font-condensed text-3xl lg:text-5xl font-black uppercase tracking-tight italic leading-none text-white drop-shadow-md">Offerte del Giorno</h2>
+               <span className="bg-[#e31b23] text-white px-3 py-1 rounded text-xs font-black uppercase tracking-widest shadow-md">HOT</span>
+             </div>
+             <p className="text-sm text-gray-200 font-medium">Selezionate in tempo reale dal nostro canale Telegram.</p>
           </div>
+
+          <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-[#24A1DE] hover:bg-white pl-2 pr-6 py-2 rounded-full transition-all group shadow-xl shrink-0 hover:scale-105 cursor-pointer">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md">
+                 <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="Icon" />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-[10px] font-black uppercase text-white group-hover:text-[#24A1DE] mb-0.5">Canale Ufficiale</span>
+                <span className="text-sm font-black uppercase tracking-wide text-white group-hover:text-[#24A1DE]">Offerte Italy</span>
+              </div>
+              <svg className="w-5 h-5 ml-2 text-white group-hover:text-[#24A1DE] group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+          </a>
         </div>
-        
-        <div className={`grid gap-3 ${dealsToShow > 4 ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'} items-stretch`}>
+
+        <div className={`grid gap-4 ${dealsToShow > 4 ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'} items-stretch`}>
           {deals.slice(0, dealsToShow).map(deal => (
-            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-4 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[170px]">
-              <div className="w-full h-20 shrink-0 bg-white rounded-lg p-2 flex items-center justify-center">
-                <img src={deal.imageUrl} alt={deal.product} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
+            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all group flex flex-col gap-3 p-4 hover:-translate-y-0.5 duration-300 min-h-[180px] border border-gray-100">
+              <div className="w-full h-20 shrink-0 bg-gray-50 rounded-lg p-2 flex items-center justify-center">
+                <img src={deal.imageUrl} alt={deal.product} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-between">
-                <h4 className="font-bold text-xs text-white mb-2 leading-snug line-clamp-3 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
+                <h4 className="font-bold text-sm text-gray-900 mb-2 leading-snug line-clamp-3 group-hover:text-[#e31b23] transition-colors">{deal.product}</h4>
                 <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-sm sm:text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
-                    {deal.oldPrice && <span className="text-xs font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
+                    <span className="text-lg font-black text-[#e31b23] tracking-tight">{deal.newPrice}</span>
+                    {deal.oldPrice && <span className="text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
                 </div>
               </div>
             </a>

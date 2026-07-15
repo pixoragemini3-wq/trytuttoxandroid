@@ -828,13 +828,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // --- SUB-COMPONENTS FOR DEALS ---
   const MobileDealsCarousel = () => (
-    <div className="lg:hidden not-prose my-8 py-6 bg-gradient-to-r from-gray-50 to-white border-y border-gray-100 -mx-4 px-4 shadow-inner">
+    <div className="lg:hidden not-prose my-8 py-6 bg-[#1a1a1a] border-y-4 border-[#e31b23] -mx-4 px-4 [&_h3]:!text-white">
       <div className="flex items-center justify-between mb-4">
-          <h3 className="font-condensed text-xl font-black uppercase text-[#e31b23] flex items-center gap-2">
+          <h3 className="font-condensed text-xl font-black uppercase !text-white flex items-center gap-2">
              <span className="w-2 h-2 rounded-full bg-[#e31b23] animate-pulse"></span>
              Offerte Live
           </h3>
-          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Scorri per altre →</span>
+          <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Scorri →</span>
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
            {[...deals, ...deals].slice(0, 10).map((deal, idx) => (
@@ -844,14 +844,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
               target="_blank" 
               rel="noopener noreferrer" 
               onClick={() => handleDealClick(deal, 'mobile_carousel')}
-              className="min-w-[40%] max-w-[40%] bg-white border border-gray-200 rounded-xl p-3 snap-start shadow-sm flex flex-col justify-between hover:border-[#e31b23] transition-colors"
+              className="min-w-[42%] max-w-[42%] bg-white border border-gray-200 rounded-xl p-3 snap-start shadow-md flex flex-col justify-between hover:border-[#e31b23] transition-colors"
             >
               <div className="w-full aspect-square bg-gray-50 rounded-lg mb-2 p-2 flex items-center justify-center">
-                 <img src={deal.imageUrl} className="w-full h-full object-contain mix-blend-multiply" loading="lazy" alt="Product" />
+                 <img src={deal.imageUrl} className="w-full h-full object-contain" loading="lazy" alt={deal.product} />
               </div>
-              <div className="flex-1 flex flex-col justify-between min-h-[72px]">
-                 <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-3 mb-2">{deal.product}</p>
-                 <span className="block text-sm font-black text-[#e31b23]">{deal.newPrice}</span>
+              <div className="flex-1 flex flex-col justify-between min-h-[80px]">
+                 <p className="text-sm font-bold text-gray-900 leading-snug line-clamp-3 mb-2">{deal.product}</p>
+                 <span className="block text-base font-black text-[#e31b23]">{deal.newPrice}</span>
               </div>
            </a>
          ))}
@@ -860,28 +860,28 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   );
 
   const DesktopDealsBanner = () => (
-    <div className="hidden lg:block not-prose my-10 bg-gradient-to-r from-gray-900 to-[#e31b23] rounded-2xl p-6 text-white shadow-xl relative overflow-visible">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
+    <div className="hidden lg:block not-prose my-10 rounded-2xl p-6 shadow-xl relative overflow-visible border border-[#e31b23]/30 bg-[#1a1a1a] [&_h3]:!text-white [&_p]:!text-gray-200">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#e31b23]/25 via-transparent to-[#e31b23]/10 pointer-events-none" />
         <div className="flex items-center justify-between mb-6 relative z-10 gap-4">
            <div>
-              <h3 className="font-condensed text-3xl font-black uppercase italic leading-none">Offerte del Giorno</h3>
-              <p className="text-xs text-white/80 mt-1">Selezionate in tempo reale dal nostro canale Telegram.</p>
+              <h3 className="font-condensed text-3xl font-black uppercase italic leading-none !text-white drop-shadow-md">Offerte del Giorno</h3>
+              <p className="text-sm !text-gray-200 mt-2 font-medium">Selezionate in tempo reale dal nostro canale Telegram.</p>
            </div>
-           <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="shrink-0 bg-white text-black px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#24A1DE] hover:text-white transition-colors">
+           <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="shrink-0 bg-[#e31b23] text-white px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#e31b23] transition-colors shadow-lg">
               Vedi tutte su Telegram
            </a>
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
            {deals.slice(0, 4).map(deal => (
-              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group min-h-[180px]">
-                 <div className="w-full h-20 bg-white rounded-lg p-2 flex items-center justify-center">
+              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-white rounded-xl p-4 flex flex-col gap-3 hover:shadow-lg hover:-translate-y-0.5 transition-all group min-h-[190px] border border-gray-100">
+                 <div className="w-full h-20 bg-gray-50 rounded-lg p-2 flex items-center justify-center">
                     <img src={deal.imageUrl} className="max-w-full max-h-full object-contain" alt={deal.product} />
                  </div>
                  <div className="min-w-0 flex-1 flex flex-col justify-between">
-                    <p className="text-xs font-bold text-white leading-snug line-clamp-3 mb-2 group-hover:text-yellow-400">{deal.product}</p>
+                    <p className="text-sm font-bold text-gray-900 leading-snug line-clamp-3 mb-2 group-hover:text-[#e31b23]">{deal.product}</p>
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-lg font-black text-yellow-400">{deal.newPrice}</span>
-                      {deal.oldPrice && <span className="text-xs font-bold text-white/50 line-through">{deal.oldPrice}</span>}
+                      <span className="text-xl font-black text-[#e31b23]">{deal.newPrice}</span>
+                      {deal.oldPrice && <span className="text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
                     </div>
                  </div>
               </a>
