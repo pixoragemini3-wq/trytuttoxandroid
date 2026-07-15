@@ -546,7 +546,7 @@ const App: React.FC = () => {
       if (target === 'guida') target = 'guide';
 
       const categoryKeywords: Record<string, string[]> = {
-        'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android'],
+        'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android', 'aukey', 'blackview', 'cubot', 'ezviz', 'leagoo', 'lefant', 'spigen', 'teclast', 'ugoos', 'ulefone'],
         'news': ['news', 'notizie', 'novità', 'aggiornamento', 'leaks', 'rumors', 'anteprima', 'tech', 'tecnologia', 'android', 'google'],
         'recensioni': ['recensioni', 'recensione', 'review', 'prova', 'test', 'analisi', 'opinioni'],
         'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips', 'impostare', 'nascondere'],

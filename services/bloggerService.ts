@@ -468,11 +468,18 @@ const BLOGGER_FEED_LABELS: Record<string, string[]> = {
   Tutorial: ['tutorial'],
 };
 
+const SMARTPHONE_BRAND_TAGS = new Set([
+  'samsung', 'xiaomi', 'pixel', 'oneplus', 'motorola', 'honor', 'realme', 'sony', 'nothing',
+  'oppo', 'huawei', 'apple', 'aukey', 'blackview', 'cubot', 'ezviz', 'leagoo', 'lefant',
+  'spigen', 'teclast', 'ugoos', 'ulefone',
+]);
+
 const NAV_LABEL_ALIASES: Record<string, Category> = {
   recensioni: 'Recensioni',
   recensione: 'Recensioni',
   offerte: 'Offerte',
   offerteimperdibili: 'Offerte',
+  amazon: 'Offerte',
   guide: 'Guide',
   guida: 'Guide',
   tutorial: 'Tutorial',
@@ -482,6 +489,7 @@ const NAV_LABEL_ALIASES: Record<string, Category> = {
   news: 'News',
   modding: 'Modding',
   wearable: 'Wearable',
+  ...Object.fromEntries([...SMARTPHONE_BRAND_TAGS].map((b) => [b, 'Smartphone'])),
 };
 
 const getFeedLabelsForCategory = (category: string): string[] => {
@@ -496,10 +504,11 @@ const getFeedLabelsForCategory = (category: string): string[] => {
 
 const normalizeMainCategory = (categories: string[]): Category => {
   const lower = categories.map((c) => c.toLowerCase().trim());
+  const brandPriority = [...SMARTPHONE_BRAND_TAGS];
   const priority = [
-    'recensioni', 'recensione', 'offerte', 'offerteimperdibili',
-    'guide', 'guida', 'tutorial', 'smartphone', 'app', 'giochi',
-    'news', 'modding', 'wearable',
+    'recensioni', 'recensione', 'offerte', 'offerteimperdibili', 'amazon',
+    'guide', 'guida', 'tutorial', 'smartphone', ...brandPriority,
+    'app', 'giochi', 'news', 'modding', 'wearable',
   ];
   for (const key of priority) {
     const idx = lower.indexOf(key);
