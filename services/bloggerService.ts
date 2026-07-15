@@ -264,6 +264,23 @@ const stripJsonArtifactsFromHtml = (html: string): string => {
   return clean;
 };
 
+export const AMAZON_AFFILIATE_TAG = 'instagramofferteitaly-21';
+
+export const rewriteAmazonAffiliateLinks = (html: string): string => {
+  if (!html) return html;
+  return html.replace(/href=(["'])([^"']+)\1/gi, (match, quote, href) => {
+    if (!/amazon\.(it|com|de|fr|es|co\.uk)|amzn\.(to|eu|as)/i.test(href)) return match;
+    try {
+      const url = new URL(href, 'https://www.amazon.it');
+      url.searchParams.delete('tag');
+      url.searchParams.set('tag', AMAZON_AFFILIATE_TAG);
+      return `href=${quote}${url.toString()}${quote}`;
+    } catch {
+      return match;
+    }
+  });
+};
+
 const cleanBloggerHtml = (html: string): string => {
   if (!html) return "";
   let clean = stripJsonArtifactsFromHtml(html);
@@ -315,7 +332,8 @@ const parseArticleContent = (rawContent: string): { cleanContent: string; dealDa
   
   // Clean HTML from Blogger junk
   cleanContent = cleanBloggerHtml(cleanContent);
-  
+  cleanContent = rewriteAmazonAffiliateLinks(cleanContent);
+
   return { cleanContent, dealData };
 };
 

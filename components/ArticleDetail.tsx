@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { fetchArticleById, getQuoteLeadText, truncateLeadForQuote } from '../services/bloggerService';
+import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 
 interface ArticleDetailProps {
@@ -301,14 +301,19 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       ''
     );
 
-  const normalizeImgSrc = (src: string): string =>
-    (src || '')
+  const normalizeImgSrc = (src: string): string => {
+    const s = (src || '').toLowerCase().trim();
+    const bloggerToken = s.match(/googleusercontent\.com\/img\/a\/([a-z0-9_-]+)/i);
+    if (bloggerToken) return bloggerToken[1];
+    const wpUpload = s.match(/\/wp-content\/uploads\/[^"']+/i);
+    if (wpUpload) return wpUpload[0].split('?')[0];
+    return s
       .replace(/\/s\d+(-c)?\//g, '/')
-      .replace(/=[sNw]\d+(-c)?.*$/i, '')
+      .replace(/=[swn]\d+(-c)?.*$/i, '')
       .replace(/=w\d+-h\d+(-c)?.*$/i, '')
       .split('?')[0]
-      .toLowerCase()
       .replace(/\/+$/, '');
+  };
 
   const collectImgSrcs = (html: string): string[] => {
     const srcs: string[] = [];
@@ -501,16 +506,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       picked.push(src);
     };
 
-    if (hero) pushUnique(hero);
     for (const src of bodySrcs) {
       if (picked.length >= 2) break;
       pushUnique(src);
     }
+    if (hero && picked.length < 2) pushUnique(hero);
     if (!picked.length && bodySrcs[0]) pushUnique(bodySrcs[0]);
-    for (const src of bodySrcs) {
-      if (picked.length >= 2) break;
-      pushUnique(src);
-    }
 
     let cleaned = removeImageBlocksBySrc(displayBody, picked);
     cleaned = cleaned.replace(
@@ -668,6 +669,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
         return;
       }
       if (!href.startsWith('#') && href && !href.startsWith('javascript:')) {
+        if (/amazon\.(it|com|de|fr|es|co\.uk)|amzn\.(to|eu|as)/i.test(href)) {
+          try {
+            const url = new URL(href, 'https://www.amazon.it');
+            url.searchParams.delete('tag');
+            url.searchParams.set('tag', AMAZON_AFFILIATE_TAG);
+            link.setAttribute('href', url.toString());
+          } catch { /* keep original */ }
+          link.setAttribute('target', '_blank');
+          link.setAttribute('rel', 'nofollow sponsored noopener');
+          return;
+        }
         link.setAttribute('target', '_blank');
         link.setAttribute('rel', 'noopener noreferrer');
       }
