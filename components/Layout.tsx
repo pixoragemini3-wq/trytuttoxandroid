@@ -75,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* ───── HEADER + TOP NEWS (mobile: blocco sticky unico) ───── */}
       <div className="sticky top-0 z-50">
-      <header className="bg-[#111111] text-white">
+      <header className="bg-[#111111] text-white overflow-visible">
         {/* Top utility bar */}
         <div className="hidden md:block border-b border-white/[0.06]">
           <div className="max-w-[1200px] mx-auto px-6 flex justify-between items-center h-8">
@@ -92,17 +92,17 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Main header row */}
         <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-28 md:h-[215px]">
+          <div className="flex items-center justify-between h-28 md:h-[215px] overflow-visible">
 
             {/* Logo */}
             <div
-              className={`cursor-pointer shrink-0 ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center`}
+              className={`cursor-pointer shrink-0 overflow-visible ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
               onClick={goToHome}
             >
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-[108px] max-h-full w-auto object-contain md:h-[205px]"
+                className="h-[124px] max-h-none w-auto object-contain md:h-[205px] md:max-h-full"
               />
             </div>
 

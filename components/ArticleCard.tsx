@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { Article } from '../types';
 import ArticleSkeleton from './ArticleSkeleton';
+import { resolveArticleBadge } from '../services/bloggerService';
 
 interface ArticleCardProps {
   article?: Article;
@@ -52,7 +53,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
 
   if (isLoading || !article) return <ArticleSkeleton type={cardType} className={className} />;
 
-  const color = getCatColor(article.category);
+  const badge = resolveArticleBadge(article);
+  const color = badge.color;
 
   /* ── HERO ─────────────────────────────────────────────────────── */
   if (cardType === 'hero') {
@@ -77,7 +79,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             className="absolute top-5 left-5 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-flex items-center min-h-[24px]"
             style={{ backgroundColor: color }}
           >
-            {article.category}
+            {badge.label}
           </span>
         </div>
         <div className="flex flex-col justify-center p-6 md:p-8 md:w-[42%]">
@@ -115,7 +117,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             className="inline-flex items-center text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-2 min-h-[24px]"
             style={{ backgroundColor: color }}
           >
-            {article.category}
+            {badge.label}
           </span>
           <h3 className="text-[#f4f1e9] font-condensed text-[22px] md:text-[23px] font-black leading-[1.05] tracking-[-0.2px] group-hover:text-[#e8e4d9] transition-colors line-clamp-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
             {article.title}
@@ -152,7 +154,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           className="text-[10px] font-bold uppercase tracking-[0.12em] mb-2 block"
           style={{ color }}
         >
-          {article.category}
+          {badge.label}
         </span>
         <h3 className="font-condensed text-[24px] md:text-[26px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
           {article.title}

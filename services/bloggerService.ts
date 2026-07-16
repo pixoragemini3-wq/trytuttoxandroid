@@ -2,6 +2,32 @@
 import { Article, Category, Deal, DealData } from '../types';
 import { AUTHOR_AVATARS, DEFAULT_AUTHOR_AVATAR, MOCK_ARTICLES } from '../constants';
 
+const BADGE_COLORS: Record<string, string> = {
+  News: '#e31b23',
+  Smartphone: '#2563eb',
+  Guide: '#14b8a6',
+  Recensioni: '#7c3aed',
+  Offerte: '#f59e0b',
+  'App & Giochi': '#22c55e',
+  Amazon: '#ff9900',
+};
+
+export const resolveArticleBadge = (article: Pick<Article, 'title' | 'category' | 'tags' | 'content' | 'excerpt'>): { label: string; color: string } => {
+  const hay = `${article.title} ${article.excerpt || ''} ${(article.tags || []).join(' ')} ${article.category} ${article.content || ''}`.toLowerCase();
+  const hasAmazon = /amazon\.|amzn\.|amz-safe|affiliate/i.test(hay);
+  const isOffer = article.category === 'Offerte'
+    || (article.tags || []).some((t) => /offert|amazon|sconto|deal|prime/i.test(t))
+    || /offerta|offerte|sconto|in saldo|prime day|black friday/i.test(hay);
+
+  if (isOffer && hasAmazon) return { label: 'Amazon', color: BADGE_COLORS.Amazon };
+  if (isOffer) return { label: 'Offerte', color: BADGE_COLORS.Offerte };
+  if (article.category === 'Recensioni' || /recensione|review|test\b/i.test(hay)) return { label: 'Recensioni', color: BADGE_COLORS.Recensioni };
+  if (article.category === 'Guide' || /guida|tutorial|come fare/i.test(hay)) return { label: 'Guide', color: BADGE_COLORS.Guide };
+  if (article.category === 'Smartphone' || /smartphone|galaxy|pixel|iphone|xiaomi|oneplus/i.test(hay)) return { label: 'Smartphone', color: BADGE_COLORS.Smartphone };
+  if (article.category === 'App & Giochi' || /app\b|gioco|game|play store/i.test(hay)) return { label: 'App & Giochi', color: BADGE_COLORS['App & Giochi'] };
+  return { label: article.category || 'News', color: BADGE_COLORS[article.category] || BADGE_COLORS.News };
+};
+
 export const resolveAuthorImageUrl = (author?: string, authorImageUrl?: string): string | undefined => {
   if (authorImageUrl) return authorImageUrl;
   if (!author) return DEFAULT_AUTHOR_AVATAR;
@@ -247,6 +273,53 @@ const extractDealWidgetData = (content: string, defaultLink: string, defaultTitl
     };
   }
   return null;
+};
+
+const extractAmazonLinkFromContent = (content: string): string | null => {
+  const patterns = [
+    /class=["'][^"']*amz-safe[^"']*["'][^>]*>[\s\S]*?href=["']([^"']+)["']/i,
+    /href=["'](https?:\/\/[^"']*(?:amazon\.|amzn\.|amzn\.to|amzn\.eu)[^"']*)["']/i,
+    /href=["'](https?:\/\/[^"']*\/gp\/product\/[^"']+)["']/i,
+    /data-href=["'](https?:\/\/[^"']*(?:amazon\.|amzn\.)[^"']*)["']/i,
+  ];
+  for (const re of patterns) {
+    const m = content.match(re);
+    if (m?.[1] && /amazon\.|amzn\.|\/gp\/product\//i.test(m[1])) return m[1];
+  }
+  return null;
+};
+
+const extractAmazonOfferFromPost = (
+  content: string,
+  defaultLink: string,
+  defaultTitle: string,
+  defaultImage: string,
+  id: string
+): Deal | null => {
+  const rawLink = extractAmazonLinkFromContent(content);
+  if (!rawLink) return null;
+
+  let link = rawLink;
+  try {
+    const url = new URL(link, 'https://www.amazon.it');
+    url.searchParams.delete('tag');
+    url.searchParams.set('tag', AMAZON_AFFILIATE_TAG);
+    link = url.toString();
+  } catch { /* keep original */ }
+
+  const priceMatch = content.match(/(\d+[.,]\d{2})\s*€|€\s*(\d+[.,]\d{2})/i);
+  const price = priceMatch ? `${(priceMatch[1] || priceMatch[2]).replace('.', ',')}€` : 'Offerta';
+
+  return {
+    id: `amazon-offer-${id}`,
+    product: formatDealProductTitle(defaultTitle),
+    oldPrice: '',
+    newPrice: price,
+    saveAmount: 'AMAZON',
+    link,
+    imageUrl: defaultImage,
+    brandColor: 'bg-[#ff9900]',
+  };
 };
 
 const _TXA_STYLE_KEEP_RE = /txa-lead|txa-highlight|txa-toc|txa-details|txa-source|amz-safe|txa-lead-single|data-txa/i;
@@ -745,6 +818,18 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
                 }
               }
             }
+            if (!entries.length) {
+              const fallbackUrl = `${TARGET_DOMAIN}/feeds/posts/default?alt=json&max-results=40`;
+              const fallbackRes = await fetchWithProxyFallback(fallbackUrl, 5000);
+              if (fallbackRes.ok) {
+                const fallbackData = await fallbackRes.json();
+                entries = (fallbackData.feed.entry || []).filter((entry: any) => {
+                  const content = entry.content?.$t || entry.summary?.$t || '';
+                  const title = stripHtml(entry.title?.$t || '');
+                  return /amazon\.|amzn\.|amz-safe|offerta|offerte|sconto/i.test(`${content} ${title}`);
+                });
+              }
+            }
             if (!entries.length) return [];
             const generatedDeals: Deal[] = [];
             
@@ -762,7 +847,8 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
                 }
                 if(!imageUrl) imageUrl = 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400';
 
-                const deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
+                let deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
+                if (!deal) deal = extractAmazonOfferFromPost(content, postUrl, title, imageUrl, id);
                 if (deal) generatedDeals.push(deal);
             });
             return generatedDeals;

@@ -745,8 +745,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       (paragraphs[1] as HTMLElement).after(readAlso1Node);
     }
 
-    const adInsertIdx = Math.min(3, Math.max(1, paragraphs.length - 1));
-    if (paragraphs.length >= 3) {
+    const adInsertIdx = Math.max(1, Math.floor(paragraphs.length / 2));
+    if (paragraphs.length >= 4) {
       inArticleAdNode = document.createElement('div');
       inArticleAdNode.className = 'injected-in-article-ad not-prose';
       (paragraphs[adInsertIdx] as HTMLElement).after(inArticleAdNode);
@@ -1137,8 +1137,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     {portalNodes.inArticleAd && createPortal(
                         <AdUnit
                           slotId="5244362740"
-                          format="fluid"
-                          variant="inline"
+                          format="rectangle"
+                          variant="compact"
                           label="Annuncio"
                           className="w-full"
                         />,
@@ -1198,7 +1198,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
             {/* SIDEBAR (Right) */}
             <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
-                <AdUnit slotId="5244362740" format="auto" label="SPONSOR" />
                 <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-3xl p-6 text-center text-white shadow-xl relative overflow-hidden group hover:-translate-y-1 hover:shadow-2xl transition-all duration-200">
                    {/* Soft glow orb */}
                    <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-[1.2] transition-transform duration-500"></div>

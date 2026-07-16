@@ -732,60 +732,90 @@ button:hover:not(.pill) {
 /* Homepage spotlight — sezione categorie */
 .spotlight-section {
   isolation: isolate;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .spotlight-section .spotlight-eyebrow {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Outfit', system-ui, sans-serif;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .spotlight-section .spotlight-heading {
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   text-transform: none;
 }
 
 .spotlight-section .spotlight-link span {
+  font-family: 'Outfit', system-ui, sans-serif;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .spotlight-section .spotlight-cta {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Outfit', system-ui, sans-serif;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-size: 10px;
 }
 
 .spotlight-section .spotlight-promo .spotlight-heading {
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.spotlight-grid {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
 }
 
 .spotlight-glass {
   background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(255, 255, 255, 0.42) 100%
+    148deg,
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 255, 255, 0.48) 100%
   );
   backdrop-filter: blur(18px) saturate(1.35);
   -webkit-backdrop-filter: blur(18px) saturate(1.35);
   border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow:
-    0 10px 40px rgba(15, 23, 42, 0.06),
+    0 14px 44px rgba(15, 23, 42, 0.08),
+    0 4px 14px rgba(15, 23, 42, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.92);
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.25s ease;
+  will-change: transform;
 }
 
-.spotlight-glass:hover {
-  transform: translateY(-2px);
+.spotlight-tilt-left {
+  transform: rotateY(-7deg) rotateX(2deg) translateZ(0);
+}
+
+.spotlight-tilt-right {
+  transform: rotateY(7deg) rotateX(2deg) translateZ(0);
+}
+
+.spotlight-tilt-center {
+  transform: rotateY(-2deg) rotateX(-1deg) translateZ(0);
+}
+
+.spotlight-tilt-promo {
+  transform: rotateY(5deg) rotateX(-2deg) translateZ(0);
+}
+
+.spotlight-glass:hover,
+.spotlight-tilt-left:hover,
+.spotlight-tilt-right:hover,
+.spotlight-tilt-center:hover,
+.spotlight-tilt-promo:hover {
+  transform: rotateY(0deg) rotateX(0deg) translateY(-4px) translateZ(12px);
   box-shadow:
-    0 16px 48px rgba(15, 23, 42, 0.09),
+    0 22px 56px rgba(15, 23, 42, 0.12),
+    0 8px 20px rgba(15, 23, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
@@ -864,6 +894,24 @@ body > .google-auto-placed,
 .ad-inline .ad-label {
   font-family: inherit;
   letter-spacing: 0.12em;
+}
+
+/* Banner compatto a metà articolo */
+.ad-compact {
+  margin: 1.5em auto;
+  padding: 0;
+  max-width: 336px;
+}
+
+.ad-compact > div {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.ad-compact .adsbygoogle {
+  border-radius: 8px !important;
+  min-height: 0 !important;
 }
 
 /* Make sure AdSense doesn't break layout */

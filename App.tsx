@@ -11,7 +11,7 @@ import SocialSection from './components/SocialSection';
 // TopStoriesMobile removed here, moved to Layout
 import SocialBannerMobile from './components/SocialBannerMobile';
 import ArticleDetail from './components/ArticleDetail';
-import AdUnit from './components/AdUnit'; 
+
 import DesktopSidebar from './components/DesktopSidebar'; 
 import { AboutPage, CollabPage } from './components/StaticPages'; 
 import GPSCalculator from './components/gps/GPSCalculator';
@@ -565,6 +565,12 @@ const App: React.FC = () => {
   };
 
   const heroArticle = getHeroArticle();
+
+  const featuredCarouselArticles = (() => {
+    const pool = articles.length > 0 ? articles : MOCK_ARTICLES;
+    const withoutHero = heroArticle ? pool.filter((a) => a.id !== heroArticle.id) : pool;
+    return withoutHero.slice(0, 10);
+  })();
   
   const getDisplayArticles = () => {
     let list = articles;
@@ -669,7 +675,10 @@ const App: React.FC = () => {
 
         <div className={`grid gap-4 ${dealsToShow > 4 ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'} items-stretch`}>
           {deals.slice(0, dealsToShow).map(deal => (
-            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all group flex flex-col gap-3 p-4 hover:-translate-y-0.5 duration-300 min-h-[180px] border border-gray-100">
+            <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all group flex flex-col gap-3 p-4 hover:-translate-y-0.5 duration-300 min-h-[180px] border border-gray-100 relative">
+              {(deal.saveAmount === 'AMAZON' || /amazon\.|amzn\./i.test(deal.link)) && (
+                <span className="absolute top-2 right-2 bg-[#ff9900] text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-sm">Amazon</span>
+              )}
               <div className="w-full h-20 shrink-0 bg-gray-50 rounded-lg p-2 flex items-center justify-center">
                 <img src={deal.imageUrl} alt={deal.product} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" />
               </div>
@@ -852,15 +861,17 @@ const App: React.FC = () => {
       items,
       onViewAll,
       tint,
+      tiltClass = 'spotlight-tilt-left',
     }: {
       title: string;
       icon: string;
       items: Article[];
       onViewAll: () => void;
       tint: string;
+      tiltClass?: string;
     }) => (
       <div
-        className="spotlight-glass rounded-2xl p-5 h-full flex flex-col relative overflow-hidden"
+        className={`spotlight-glass ${tiltClass} rounded-2xl p-5 h-full flex flex-col relative overflow-hidden`}
         style={glassCardStyle(tint)}
       >
         <div
@@ -937,12 +948,12 @@ const App: React.FC = () => {
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300/60 to-transparent" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} tint={accent} />
-            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} tint={accent2} />
+          <div className="spotlight-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} tint={accent} tiltClass="spotlight-tilt-left" />
+            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} tint={accent2} tiltClass="spotlight-tilt-right" />
 
             <div
-              className="spotlight-glass rounded-2xl p-5 h-full relative overflow-hidden"
+              className="spotlight-glass spotlight-tilt-center rounded-2xl p-5 h-full relative overflow-hidden"
               style={glassCardStyle(categoriesTint)}
             >
               <div
@@ -993,7 +1004,7 @@ const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={promo.action}
-                  className={`spotlight-promo spotlight-glass-promo relative overflow-hidden rounded-2xl p-5 text-left text-white bg-gradient-to-br ${promo.bg} hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col justify-between group`}
+                  className={`spotlight-promo spotlight-glass-promo spotlight-tilt-promo relative overflow-hidden rounded-2xl p-5 text-left text-white bg-gradient-to-br ${promo.bg} transition-all duration-300 h-full flex flex-col justify-between group`}
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.28),transparent_50%)] pointer-events-none" />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(0,0,0,0.15),transparent_45%)] pointer-events-none" />
@@ -1144,7 +1155,7 @@ const App: React.FC = () => {
                                <ArticleCard isLoading type="horizontal" />
                              </div>
                            ))
-                        ) : (articles.length > 0 ? articles : MOCK_ARTICLES).slice(0, 10).map(item => (
+                        ) : featuredCarouselArticles.map(item => (
                           <div key={item.id} onClick={() => handleArticleClick(item)} className="w-[40%] md:w-[22%] lg:w-[18%] shrink-0 snap-start select-none">
                             <ArticleCard article={{...item, type: 'horizontal'}} onClick={() => handleArticleClick(item)} />
                           </div>
