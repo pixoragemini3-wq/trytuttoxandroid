@@ -830,23 +830,41 @@ const App: React.FC = () => {
     };
 
     const accent = CATEGORY_COLORS[spotlightCat] || '#16a34a';
+    const accent2 = spotlightCat === 'Smartphone' ? '#f59e0b' : spotlightCat === 'Offerte' ? '#e31b23' : spotlightCat === 'Guide' ? '#14b8a6' : spotlightCat === 'Recensioni' ? '#a855f7' : '#22c55e';
+    const categoriesTint = '#6366f1';
+
+    const glassCardStyle = (tint: string): React.CSSProperties => ({
+      borderColor: `${tint}30`,
+      boxShadow: `0 10px 40px ${tint}12, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 1px ${tint}10`,
+      background: `linear-gradient(145deg, rgba(255,255,255,0.82) 0%, ${tint}10 55%, rgba(255,255,255,0.45) 100%)`,
+    });
 
     const SpotlightList = ({
       title,
       icon,
       items,
       onViewAll,
+      tint,
     }: {
       title: string;
       icon: string;
       items: Article[];
       onViewAll: () => void;
+      tint: string;
     }) => (
-      <div className="spotlight-card bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/80 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-shadow duration-300 h-full flex flex-col">
-        <div className="flex items-center gap-2.5 mb-4">
+      <div
+        className="spotlight-glass rounded-2xl p-5 h-full flex flex-col relative overflow-hidden"
+        style={glassCardStyle(tint)}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl opacity-80"
+          style={{ background: `linear-gradient(90deg, ${tint}, ${tint}55)` }}
+          aria-hidden="true"
+        />
+        <div className="flex items-center gap-2.5 mb-4 mt-1">
           <span
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
-            style={{ backgroundColor: `${accent}14`, color: accent }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 shadow-sm border border-white/60"
+            style={{ backgroundColor: `${tint}20`, color: tint }}
             aria-hidden="true"
           >
             {icon}
@@ -862,15 +880,15 @@ const App: React.FC = () => {
                 key={item.id}
                 type="button"
                 onClick={() => handleArticleClick(item)}
-                className="spotlight-link group w-full text-left py-2.5 border-b border-gray-50 last:border-0"
+                className="spotlight-link group w-full text-left py-2.5 border-b border-white/50 last:border-0 rounded-lg hover:bg-white/35 transition-colors px-1"
               >
-                <span className="text-[13px] leading-snug text-gray-600 group-hover:text-gray-900 line-clamp-2 transition-colors">
+                <span className="text-[13px] leading-snug text-gray-700 group-hover:text-gray-900 line-clamp-2 transition-colors">
                   {item.title}
                 </span>
               </button>
             ))
           ) : (
-            <p className="text-gray-400 text-xs leading-relaxed py-2">
+            <p className="text-gray-500 text-xs leading-relaxed py-2">
               Contenuti in aggiornamento.
             </p>
           )}
@@ -879,7 +897,7 @@ const App: React.FC = () => {
           type="button"
           onClick={onViewAll}
           className="mt-4 group inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors"
-          style={{ color: accent }}
+          style={{ color: tint }}
         >
           Vedi tutti
           <span className="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
@@ -888,24 +906,44 @@ const App: React.FC = () => {
     );
 
     return (
-      <section className="spotlight-section border-t border-gray-100 bg-gradient-to-b from-[#f6faf7] via-[#f9fbf9] to-white py-8 md:py-10">
-        <div className="max-w-7xl mx-auto px-4">
+      <section className="spotlight-section relative overflow-hidden border-t border-white/60 py-8 md:py-10">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(135deg, ${accent}12 0%, #ecfdf5 35%, #eff6ff 70%, ${accent2}14 100%)`,
+          }}
+          aria-hidden="true"
+        />
+        <div className="absolute -top-20 left-[8%] w-64 h-64 rounded-full blur-3xl opacity-60" style={{ backgroundColor: `${accent}25` }} aria-hidden="true" />
+        <div className="absolute -bottom-16 right-[10%] w-72 h-72 rounded-full blur-3xl opacity-50" style={{ backgroundColor: `${accent2}22` }} aria-hidden="true" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-3xl opacity-30 bg-violet-300/40" aria-hidden="true" />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300/60 to-transparent" />
             <span
-              className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 px-3 py-1 rounded-full border border-gray-100 bg-white/80"
+              className="spotlight-glass text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full"
+              style={{ color: accent, ...glassCardStyle(accent) }}
             >
               Selezione {spotlightCat}
             </span>
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300/60 to-transparent" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} />
-            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} />
+            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} tint={accent} />
+            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} tint={accent2} />
 
-            <div className="spotlight-card bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/80 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-full">
-              <h4 className="font-condensed font-black uppercase text-[13px] tracking-wide text-gray-900 mb-4">
+            <div
+              className="spotlight-glass rounded-2xl p-5 h-full relative overflow-hidden"
+              style={glassCardStyle(categoriesTint)}
+            >
+              <div
+                className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl opacity-80"
+                style={{ background: `linear-gradient(90deg, ${categoriesTint}, ${categoriesTint}55)` }}
+                aria-hidden="true"
+              />
+              <h4 className="font-condensed font-black uppercase text-[13px] tracking-wide text-gray-900 mb-4 mt-1">
                 Categorie
               </h4>
               <ul className="space-y-1">
@@ -914,12 +952,12 @@ const App: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleCatClick(c)}
-                      className="spotlight-cat group w-full flex items-center justify-between gap-2 text-left py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="spotlight-cat group w-full flex items-center justify-between gap-2 text-left py-2 px-2 -mx-2 rounded-lg hover:bg-white/40 transition-colors"
                     >
-                      <span className="text-[13px] text-gray-600 group-hover:text-gray-900 font-medium transition-colors">
+                      <span className="text-[13px] text-gray-700 group-hover:text-gray-900 font-medium transition-colors">
                         {c}
                       </span>
-                      <span className="text-gray-300 group-hover:text-gray-500 text-xs transition-colors" aria-hidden="true">›</span>
+                      <span className="text-xs transition-colors group-hover:translate-x-0.5" style={{ color: `${categoriesTint}99` }} aria-hidden="true">›</span>
                     </button>
                   </li>
                 ))}
@@ -948,23 +986,25 @@ const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={promo.action}
-                  className={`spotlight-promo relative overflow-hidden rounded-2xl p-5 text-left text-white bg-gradient-to-br ${promo.bg} shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col justify-between group`}
+                  className={`spotlight-promo spotlight-glass-promo relative overflow-hidden rounded-2xl p-5 text-left text-white bg-gradient-to-br ${promo.bg} hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col justify-between group`}
                 >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(255,255,255,0.18),transparent_55%)] pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.28),transparent_50%)] pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(0,0,0,0.15),transparent_45%)] pointer-events-none" />
+                  <div className="absolute inset-0 backdrop-blur-[2px] pointer-events-none" aria-hidden="true" />
                   {promo.badge && (
-                    <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest bg-white/15 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">
+                    <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/30 shadow-sm">
                       {promo.badge}
                     </span>
                   )}
                   <div className="relative z-10">
-                    <h4 className="font-condensed text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                    <h4 className="font-condensed text-xl font-black uppercase tracking-tight leading-tight mb-2 drop-shadow-sm">
                       {promo.title}
                     </h4>
-                    <p className="text-[12px] text-white/85 leading-relaxed max-w-[28ch]">
+                    <p className="text-[12px] text-white/90 leading-relaxed max-w-[28ch]">
                       {promo.desc}
                     </p>
                   </div>
-                  <span className="relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/95 text-gray-900 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest group-hover:bg-white transition-colors">
+                  <span className="relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/25 backdrop-blur-md border border-white/35 text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest group-hover:bg-white/35 transition-colors shadow-sm">
                     {promo.btn}
                     <span aria-hidden="true">→</span>
                   </span>
