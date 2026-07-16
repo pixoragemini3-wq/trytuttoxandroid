@@ -81,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Main header row */}
         <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-28 md:h-[215px]">
+          <div className="flex items-center justify-between h-32 md:h-[269px]">
 
             {/* Logo */}
             <div
@@ -91,7 +91,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-24 md:h-[205px] w-auto object-contain"
+                className="h-[120px] md:h-[256px] w-auto object-contain"
               />
             </div>
 
@@ -208,7 +208,7 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="max-w-[1200px] mx-auto px-6 py-12 flex flex-col items-center text-center">
           <img
             src={LOGO_URL}
-            className="h-8 w-auto object-contain mb-8 opacity-60 hover:opacity-90 cursor-pointer transition-opacity"
+            className="h-20 w-auto object-contain mb-8 opacity-60 hover:opacity-90 cursor-pointer transition-opacity"
             alt="TuttoXAndroid"
             onClick={goToHome}
           />
