@@ -732,6 +732,39 @@ button:hover:not(.pill) {
 /* Homepage spotlight — sezione categorie */
 .spotlight-section {
   isolation: isolate;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.spotlight-section .spotlight-eyebrow {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.spotlight-section .spotlight-heading {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.spotlight-section .spotlight-link span {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.spotlight-section .spotlight-cta {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.spotlight-section .spotlight-promo .spotlight-heading {
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .spotlight-glass {

@@ -839,6 +839,13 @@ const App: React.FC = () => {
       background: `linear-gradient(145deg, rgba(255,255,255,0.82) 0%, ${tint}10 55%, rgba(255,255,255,0.45) 100%)`,
     });
 
+    const formatSpotlightTitle = (value: string) =>
+      value
+        .toLowerCase()
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
     const SpotlightList = ({
       title,
       icon,
@@ -869,8 +876,8 @@ const App: React.FC = () => {
           >
             {icon}
           </span>
-          <h4 className="font-condensed font-black uppercase text-[13px] tracking-wide text-gray-900 leading-tight">
-            {title}
+          <h4 className="spotlight-heading text-[15px] text-gray-800 leading-snug">
+            {formatSpotlightTitle(title)}
           </h4>
         </div>
         <div className="flex-1 space-y-0.5">
@@ -882,7 +889,7 @@ const App: React.FC = () => {
                 onClick={() => handleArticleClick(item)}
                 className="spotlight-link group w-full text-left py-2.5 border-b border-white/50 last:border-0 rounded-lg hover:bg-white/35 transition-colors px-1"
               >
-                <span className="text-[13px] leading-snug text-gray-700 group-hover:text-gray-900 line-clamp-2 transition-colors">
+                <span className="text-[14px] leading-[1.45] text-gray-600 group-hover:text-gray-900 line-clamp-2 transition-colors">
                   {item.title}
                 </span>
               </button>
@@ -896,7 +903,7 @@ const App: React.FC = () => {
         <button
           type="button"
           onClick={onViewAll}
-          className="mt-4 group inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors"
+          className="spotlight-cta mt-4 group inline-flex items-center gap-1.5 transition-colors"
           style={{ color: tint }}
         >
           Vedi tutti
@@ -922,7 +929,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3 mb-6">
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300/60 to-transparent" />
             <span
-              className="spotlight-glass text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full"
+              className="spotlight-glass spotlight-eyebrow text-[10px] px-4 py-1.5 rounded-full"
               style={{ color: accent, ...glassCardStyle(accent) }}
             >
               Selezione {spotlightCat}
@@ -943,7 +950,7 @@ const App: React.FC = () => {
                 style={{ background: `linear-gradient(90deg, ${categoriesTint}, ${categoriesTint}55)` }}
                 aria-hidden="true"
               />
-              <h4 className="font-condensed font-black uppercase text-[13px] tracking-wide text-gray-900 mb-4 mt-1">
+              <h4 className="spotlight-heading text-[15px] text-gray-800 mb-4 mt-1">
                 Categorie
               </h4>
               <ul className="space-y-1">
@@ -954,7 +961,7 @@ const App: React.FC = () => {
                       onClick={() => handleCatClick(c)}
                       className="spotlight-cat group w-full flex items-center justify-between gap-2 text-left py-2 px-2 -mx-2 rounded-lg hover:bg-white/40 transition-colors"
                     >
-                      <span className="text-[13px] text-gray-700 group-hover:text-gray-900 font-medium transition-colors">
+                      <span className="text-[14px] text-gray-600 group-hover:text-gray-900 font-medium transition-colors tracking-tight">
                         {c}
                       </span>
                       <span className="text-xs transition-colors group-hover:translate-x-0.5" style={{ color: `${categoriesTint}99` }} aria-hidden="true">›</span>
@@ -997,14 +1004,14 @@ const App: React.FC = () => {
                     </span>
                   )}
                   <div className="relative z-10">
-                    <h4 className="font-condensed text-xl font-black uppercase tracking-tight leading-tight mb-2 drop-shadow-sm">
+                    <h4 className="spotlight-heading text-xl text-white leading-tight mb-2 drop-shadow-sm">
                       {promo.title}
                     </h4>
-                    <p className="text-[12px] text-white/90 leading-relaxed max-w-[28ch]">
+                    <p className="text-[13px] text-white/90 leading-relaxed max-w-[28ch] font-normal">
                       {promo.desc}
                     </p>
                   </div>
-                  <span className="relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/25 backdrop-blur-md border border-white/35 text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest group-hover:bg-white/35 transition-colors shadow-sm">
+                  <span className="spotlight-cta relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/25 backdrop-blur-md border border-white/35 text-white px-4 py-2 rounded-xl group-hover:bg-white/35 transition-colors shadow-sm">
                     {promo.btn}
                     <span aria-hidden="true">→</span>
                   </span>
