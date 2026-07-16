@@ -92,7 +92,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Main header row */}
         <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-36 md:h-[310px]">
+          <div className="flex items-center justify-between h-28 md:h-[215px]">
 
             {/* Logo */}
             <div
@@ -102,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-[138px] md:h-[294px] w-auto object-contain"
+                className="h-[108px] max-h-full w-auto object-contain md:h-[205px]"
               />
             </div>
 

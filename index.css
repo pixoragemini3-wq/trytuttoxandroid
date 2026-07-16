@@ -654,7 +654,7 @@ button:hover:not(.pill) {
 @media (max-width: 1023px) {
   .prose nav.txa-toc {
     position: sticky;
-    top: 11.5rem;
+    top: 10rem;
     z-index: 30;
     max-height: 38vh;
     overflow-y: auto;
