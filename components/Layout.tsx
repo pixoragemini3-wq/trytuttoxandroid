@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Article } from '../types';
 import MegaMenu from './MegaMenu';
@@ -59,6 +59,17 @@ const Layout: React.FC<LayoutProps> = ({
 
   const topStories = articles.slice(0, 10);
 
+  const todayLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    []
+  );
+
   return (
     <div className={`min-h-screen flex flex-col bg-[#f4f4f4] ${boxedLayout ? 'max-w-[1440px] mx-auto shadow-xl' : ''}`}>
 
@@ -74,7 +85,7 @@ const Layout: React.FC<LayoutProps> = ({
               <span className="cursor-pointer hover:text-white/70 transition-colors">Pubblicità</span>
             </div>
             <div className="text-[10px] text-white/20 font-medium tracking-widest uppercase">
-              Giovedì 12 Giugno 2026
+              {todayLabel}
             </div>
           </div>
         </div>
