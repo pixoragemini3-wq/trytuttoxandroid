@@ -729,6 +729,23 @@ button:hover:not(.pill) {
   box-shadow: 0 20px 25px -5px rgb(61 220 132 / 0.15);
 }
 
+/* Homepage spotlight — sezione categorie */
+.spotlight-section .spotlight-link:focus-visible {
+  outline: 2px solid var(--android-green, #22c55e);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.spotlight-section .spotlight-cat:focus-visible {
+  outline: 2px solid var(--android-green, #22c55e);
+  outline-offset: 1px;
+}
+
+.spotlight-promo:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
 /* ============================================
    AD BANNERS / PUBBLICITÀ - Modern integration
    Clean, minimal, matches site cards (white, rounded, subtle borders)

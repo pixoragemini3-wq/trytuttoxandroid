@@ -829,128 +829,151 @@ const App: React.FC = () => {
       }, 10);
     };
 
-    return (
-      <div className="bg-[#f0f7f1] border-t-[3px] border-[#86efac] py-7">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-7 gap-y-8">
-          {/* Colonna 1: prima lista della categoria random */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[18px]">{col1Icon}</span>
-              <h4 className="font-condensed font-black uppercase text-[13px] tracking-[0.5px] text-green-700">{col1Title}</h4>
-            </div>
-            <div className="h-px bg-green-600/70 w-7 mb-3" />
-            {col1Items.length > 0 ? (
-              col1Items.map((item: Article) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleArticleClick(item)}
-                  className="text-[13px] leading-tight text-gray-600 hover:text-green-700 cursor-pointer mb-1.5 line-clamp-2 transition-colors"
-                >
-                  {item.title}
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-xs italic">Le offerte si aggiornano in tempo reale dal nostro canale Telegram.</p>
-            )}
-            <button
-              onClick={handleViewAll}
-              className="mt-2 text-[10px] font-black uppercase tracking-widest bg-[#f8efe6] hover:bg-white px-3.5 py-1 rounded text-gray-600 hover:text-gray-800 transition"
-            >
-              VEDI TUTTI →
-            </button>
-          </div>
+    const accent = CATEGORY_COLORS[spotlightCat] || '#16a34a';
 
-          {/* Colonna 2: seconda lista della categoria random */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[18px]">{col2Icon}</span>
-              <h4 className="font-condensed font-black uppercase text-[13px] tracking-[0.5px] text-green-700">{col2Title}</h4>
-            </div>
-            <div className="h-px bg-green-600/70 w-7 mb-3" />
-            {col2Items.length > 0 ? (
-              col2Items.map((item: Article) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleArticleClick(item)}
-                  className="text-[13px] leading-tight text-gray-600 hover:text-green-700 cursor-pointer mb-1.5 line-clamp-2 transition-colors"
-                >
-                  {item.title}
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-xs italic">Le offerte si aggiornano in tempo reale dal nostro canale Telegram.</p>
-            )}
-            <button
-              onClick={handleViewAll}
-              className="mt-2 text-[10px] font-black uppercase tracking-widest bg-[#f8efe6] hover:bg-white px-3.5 py-1 rounded text-gray-600 hover:text-gray-800 transition"
-            >
-              VEDI TUTTI →
-            </button>
-          </div>
-
-          {/* CATEGORIE (come da immagine - resta fisso) */}
-          <div>
-            <h4 className="font-black uppercase text-sm tracking-widest text-gray-900 mb-2 border-b border-gray-200 pb-1">CATEGORIE</h4>
-            <ul className="space-y-[2px] text-sm">
-              {categorieList.map((c, idx) => (
-                <li
-                  key={idx}
-                  onClick={() => handleCatClick(c)}
-                  className="text-gray-600 hover:text-green-700 cursor-pointer font-medium transition-colors"
-                >
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Promo card - alterna con la categoria in evidenza (la "scheda verde" circola) */}
-          {(() => {
-            const promo = spotlightCat === 'Offerte' 
-              ? { 
-                  bg: 'bg-gradient-to-br from-[#e31b23] via-[#c41e22] to-[#9f1239]', 
-                  title: 'OFFERTE DEL GIORNO', 
-                  desc: 'Le migliori occasioni tech e smartphone con prezzi aggiornati ogni giorno. Solo le vere occasioni, senza fuffa.', 
-                  btn: 'SCOPRI LE OFFERTE', 
-                  action: () => handleNavClick('Offerte'),
-                  badge: 'HOT'
-                }
-              : spotlightCat === 'Smartphone'
-              ? { bg: 'bg-[#1e40af]', title: 'TOP SMARTPHONE', desc: 'Le ultime uscite, test e confronti sui migliori device Android del momento.', btn: 'LEGGI LE RECENSIONI', action: () => handleNavClick('Smartphone') }
-              : spotlightCat === 'Guide'
-              ? { bg: 'bg-[#0f766e]', title: 'GUIDE ESSENZIALI', desc: 'Tutorial chiari e pratici per risolvere problemi comuni e ottimizzare il tuo Android.', btn: 'LEGGI LA GUIDA', action: () => handleNavClick('Guide') }
-              : spotlightCat === 'Recensioni'
-              ? { bg: 'bg-[#7c3aed]', title: 'RECENSIONI PRO', desc: 'Analisi dettagliate e oneste dei nuovi smartphone, wearable e gadget.', btn: 'LEGGI LA RECENSIONE', action: () => handleNavClick('Recensioni') }
-              : { bg: 'bg-[#16a34a]', title: 'GOOGLE PLAY PASS', desc: 'Centinaia di giochi e app senza pubblicità. Scopri se ne vale la pena nella nostra analisi completa.', btn: 'LEGGI ARTICOLO', action: handlePlayPass };
-
-            return (
-              <div
-                onClick={promo.action}
-                className={`${promo.bg} text-white rounded-2xl p-5 flex flex-col justify-between shadow-xl relative overflow-hidden group cursor-pointer`}
+    const SpotlightList = ({
+      title,
+      icon,
+      items,
+      onViewAll,
+    }: {
+      title: string;
+      icon: string;
+      items: Article[];
+      onViewAll: () => void;
+    }) => (
+      <div className="spotlight-card bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/80 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-shadow duration-300 h-full flex flex-col">
+        <div className="flex items-center gap-2.5 mb-4">
+          <span
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
+            style={{ backgroundColor: `${accent}14`, color: accent }}
+            aria-hidden="true"
+          >
+            {icon}
+          </span>
+          <h4 className="font-condensed font-black uppercase text-[13px] tracking-wide text-gray-900 leading-tight">
+            {title}
+          </h4>
+        </div>
+        <div className="flex-1 space-y-0.5">
+          {items.length > 0 ? (
+            items.map((item: Article) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleArticleClick(item)}
+                className="spotlight-link group w-full text-left py-2.5 border-b border-gray-50 last:border-0"
               >
-                <div className="relative z-10">
-                  <div className="absolute -top-2 -right-2 w-24 h-24 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-125 transition-transform"></div>
+                <span className="text-[13px] leading-snug text-gray-600 group-hover:text-gray-900 line-clamp-2 transition-colors">
+                  {item.title}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="text-gray-400 text-xs leading-relaxed py-2">
+              Contenuti in aggiornamento.
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="mt-4 group inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors"
+          style={{ color: accent }}
+        >
+          Vedi tutti
+          <span className="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+        </button>
+      </div>
+    );
+
+    return (
+      <section className="spotlight-section border-t border-gray-100 bg-gradient-to-b from-[#f6faf7] via-[#f9fbf9] to-white py-8 md:py-10">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+            <span
+              className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 px-3 py-1 rounded-full border border-gray-100 bg-white/80"
+            >
+              Selezione {spotlightCat}
+            </span>
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} />
+            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} />
+
+            <div className="spotlight-card bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100/80 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-full">
+              <h4 className="font-condensed font-black uppercase text-[13px] tracking-wide text-gray-900 mb-4">
+                Categorie
+              </h4>
+              <ul className="space-y-1">
+                {categorieList.map((c, idx) => (
+                  <li key={idx}>
+                    <button
+                      type="button"
+                      onClick={() => handleCatClick(c)}
+                      className="spotlight-cat group w-full flex items-center justify-between gap-2 text-left py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-[13px] text-gray-600 group-hover:text-gray-900 font-medium transition-colors">
+                        {c}
+                      </span>
+                      <span className="text-gray-300 group-hover:text-gray-500 text-xs transition-colors" aria-hidden="true">›</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {(() => {
+              const promo = spotlightCat === 'Offerte'
+                ? {
+                    bg: 'from-[#e31b23] to-[#9f1239]',
+                    title: 'Offerte del giorno',
+                    desc: 'Le migliori occasioni tech aggiornate ogni giorno.',
+                    btn: 'Scopri le offerte',
+                    action: () => handleNavClick('Offerte'),
+                    badge: 'Hot',
+                  }
+                : spotlightCat === 'Smartphone'
+                ? { bg: 'from-[#1e40af] to-[#1e3a8a]', title: 'Top smartphone', desc: 'Ultime uscite, test e confronti sui migliori device Android.', btn: 'Leggi le recensioni', action: () => handleNavClick('Smartphone') }
+                : spotlightCat === 'Guide'
+                ? { bg: 'from-[#0f766e] to-[#115e59]', title: 'Guide essenziali', desc: 'Tutorial pratici per ottimizzare il tuo Android.', btn: 'Leggi la guida', action: () => handleNavClick('Guide') }
+                : spotlightCat === 'Recensioni'
+                ? { bg: 'from-[#7c3aed] to-[#5b21b6]', title: 'Recensioni pro', desc: 'Analisi dettagliate di smartphone, wearable e gadget.', btn: 'Leggi la recensione', action: () => handleNavClick('Recensioni') }
+                : { bg: 'from-[#16a34a] to-[#15803d]', title: 'Google Play Pass', desc: 'Giochi e app senza pubblicità: vale la pena?', btn: 'Leggi articolo', action: handlePlayPass };
+
+              return (
+                <button
+                  type="button"
+                  onClick={promo.action}
+                  className={`spotlight-promo relative overflow-hidden rounded-2xl p-5 text-left text-white bg-gradient-to-br ${promo.bg} shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col justify-between group`}
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(255,255,255,0.18),transparent_55%)] pointer-events-none" />
                   {promo.badge && (
-                    <span className="absolute top-0 right-0 bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded-bl tracking-widest">
+                    <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest bg-white/15 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">
                       {promo.badge}
                     </span>
                   )}
-                  <h4 className="font-condensed text-[22px] font-black uppercase tracking-tight leading-none mb-2 drop-shadow-sm">{promo.title}</h4>
-                  <p className="text-[11px] text-white/90 leading-snug pr-1">
-                    {promo.desc}
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); promo.action(); }}
-                  className="mt-4 self-start bg-white text-[#e31b23] px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#e31b23] hover:text-white active:scale-[0.985] transition-all shadow-md group-hover:shadow-lg"
-                >
-                  {promo.btn}
+                  <div className="relative z-10">
+                    <h4 className="font-condensed text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                      {promo.title}
+                    </h4>
+                    <p className="text-[12px] text-white/85 leading-relaxed max-w-[28ch]">
+                      {promo.desc}
+                    </p>
+                  </div>
+                  <span className="relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/95 text-gray-900 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest group-hover:bg-white transition-colors">
+                    {promo.btn}
+                    <span aria-hidden="true">→</span>
+                  </span>
                 </button>
-              </div>
-            );
-          })()}
+              );
+            })()}
+          </div>
         </div>
-      </div>
+      </section>
     );
   };
 
@@ -1116,8 +1139,8 @@ const App: React.FC = () => {
             >
               <div className="max-w-7xl mx-auto px-4">
                 
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 border-b border-gray-200 pb-4">
-                  <h3 className="font-condensed text-4xl font-black uppercase text-gray-900 italic tracking-tight leading-none">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-5 border-b border-gray-100">
+                  <h3 className="font-condensed text-3xl md:text-4xl font-black uppercase text-gray-900 tracking-tight leading-none">
                      {isSearch ? `Risultati per: "${searchQuery}"` : (activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory)}
                   </h3>
                   {!isSearch && (
