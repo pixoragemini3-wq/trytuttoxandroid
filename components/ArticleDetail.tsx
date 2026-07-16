@@ -1011,7 +1011,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 {/* Author & Share */}
                 <div className="flex items-center justify-between border-t border-b border-gray-100 py-3 mb-5 relative">
                     <div className="flex items-center gap-3">
-                        <img src={article.authorImageUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100"} alt={article.author} className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-100 p-0.5" />
+                        <img src={article.authorImageUrl || "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhoQ_xCQeSBukOaKXy8G6kaytFpqMXWUVqnrFbhqQLojm7_libmv5T8vkgPu9Uv2Bp_VUpohLb9ijFnr_zxqBoyagD_SsbjK01mFlM9hE_34M6cw2yt1GNpxrIIj5qMeqZaKkiEpxTjs7f2sz4cjKR4M-IQ6XCgWdhBu2IVieESRj16JP4/s1600/image.jpg"} alt={article.author} className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-100 p-0.5" />
                         <div className="flex flex-col">
                             <span className="font-condensed text-sm font-black uppercase tracking-wide text-gray-900 leading-none">{article.author}</span>
                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{article.date}</span>

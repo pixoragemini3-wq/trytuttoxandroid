@@ -62,8 +62,9 @@ const Layout: React.FC<LayoutProps> = ({
   return (
     <div className={`min-h-screen flex flex-col bg-[#f4f4f4] ${boxedLayout ? 'max-w-[1440px] mx-auto shadow-xl' : ''}`}>
 
-      {/* ───── HEADER ───── */}
-      <header className="bg-[#111111] text-white sticky top-0 z-50">
+      {/* ───── HEADER + TOP NEWS (mobile: blocco sticky unico) ───── */}
+      <div className="sticky top-0 z-50">
+      <header className="bg-[#111111] text-white">
         {/* Top utility bar */}
         <div className="hidden md:block border-b border-white/[0.06]">
           <div className="max-w-[1200px] mx-auto px-6 flex justify-between items-center h-8">
@@ -80,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Main header row */}
         <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-44 md:h-[215px]">
+          <div className="flex items-center justify-between h-28 md:h-[215px]">
 
             {/* Logo */}
             <div
@@ -90,7 +91,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-40 md:h-[205px] w-auto object-contain"
+                className="h-24 md:h-[205px] w-auto object-contain"
               />
             </div>
 
@@ -188,12 +189,13 @@ const Layout: React.FC<LayoutProps> = ({
         )}
       </header>
 
-      {/* Mobile ticker */}
+      {/* Mobile ticker — scorre insieme al logo, non sopra */}
       <TopStoriesMobile
         articles={topStories}
         onArticleClick={handleArticleClick}
         onMenuToggle={() => setIsMobileMenuOpen(true)}
       />
+      </div>
 
       {/* Main */}
       <main className="flex-1">

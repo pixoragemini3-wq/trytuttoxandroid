@@ -4,6 +4,14 @@ import { Article, Deal } from './types';
 export const LOGO_URL = "https://i.imgur.com/l7YwbQe.png";
 export const NAV_CATEGORIES = ['News', 'Smartphone', 'Guide', 'Recensioni', 'Offerte', 'App & Giochi'];
 
+/** Avatar ufficiali Blogger — fallback quando il bridge SSR non li passa. */
+export const AUTHOR_AVATARS: Record<string, string> = {
+  'Vincenzo C.': 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhoQ_xCQeSBukOaKXy8G6kaytFpqMXWUVqnrFbhqQLojm7_libmv5T8vkgPu9Uv2Bp_VUpohLb9ijFnr_zxqBoyagD_SsbjK01mFlM9hE_34M6cw2yt1GNpxrIIj5qMeqZaKkiEpxTjs7f2sz4cjKR4M-IQ6XCgWdhBu2IVieESRj16JP4/s1600/image.jpg',
+  'TuttoXAndroid': 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhoQ_xCQeSBukOaKXy8G6kaytFpqMXWUVqnrFbhqQLojm7_libmv5T8vkgPu9Uv2Bp_VUpohLb9ijFnr_zxqBoyagD_SsbjK01mFlM9hE_34M6cw2yt1GNpxrIIj5qMeqZaKkiEpxTjs7f2sz4cjKR4M-IQ6XCgWdhBu2IVieESRj16JP4/s1600/image.jpg',
+};
+
+export const DEFAULT_AUTHOR_AVATAR = AUTHOR_AVATARS['Vincenzo C.'];
+
 export const CATEGORY_COLORS: Record<string, string> = {
   'News': '#e31b23',
   'Smartphone': '#2563eb',

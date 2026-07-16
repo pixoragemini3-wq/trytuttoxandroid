@@ -1,6 +1,12 @@
 
 import { Article, Category, Deal, DealData } from '../types';
-import { MOCK_ARTICLES } from '../constants';
+import { AUTHOR_AVATARS, DEFAULT_AUTHOR_AVATAR, MOCK_ARTICLES } from '../constants';
+
+export const resolveAuthorImageUrl = (author?: string, authorImageUrl?: string): string | undefined => {
+  if (authorImageUrl) return authorImageUrl;
+  if (!author) return DEFAULT_AUTHOR_AVATAR;
+  return AUTHOR_AVATARS[author] || DEFAULT_AUTHOR_AVATAR;
+};
 
 // Helper per pulire HTML e decodificare entità
 const stripHtml = (html: string): string => {
@@ -587,7 +593,7 @@ const mapFeedEntryToArticle = (entry: any): Article => {
     tags: categories,
     imageUrl,
     author: entry.author[0].name.$t,
-    authorImageUrl: authorImage,
+    authorImageUrl: resolveAuthorImageUrl(entry.author[0].name.$t, authorImage),
     date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
     url: postUrl,
     type: 'standard',
@@ -617,6 +623,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
             ...p,
             title: stripHtml(p.title),
             imageUrl: forceHighResImage(p.imageUrl),
+            authorImageUrl: resolveAuthorImageUrl(p.author, p.authorImageUrl),
             featured: isFeatured,
             excerpt: cleanExcerpt,
             content: cleanContent,
@@ -686,25 +693,25 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
 
 export const fetchArticleByUrl = async (url: string): Promise<Article | null> => {
   try {
-    // 1. Extract slug/keywords from URL
-    // Example: /2015/09/ipmart-forum-italia.html -> ipmart forum italia
     const slugMatch = url.match(/\/([^/]+)\.html$/);
     if (!slugMatch) return null;
-    
+
     const slug = slugMatch[1];
-    const keywords = slug.replace(/-/g, ' ');
-    
-    // 2. Search for the article
-    const results = await fetchBloggerPosts(undefined, keywords);
-    
-    // 3. Find exact match or best candidate
-    // We check if the result's URL contains the slug
-    const match = results.find(p => p.url.includes(slug));
-    
-    if (match) return match;
-    
-    // Fallback: Return first result if highly relevant (optional, maybe risky)
-    return results.length > 0 ? results[0] : null;
+    const normalizedPath = decodeURIComponent(url.replace(/\/$/, ''));
+
+    const results = await fetchBloggerPosts(undefined, slug.replace(/-/g, ' '));
+    const exact = results.find((p) => {
+      if (!p.url) return false;
+      try {
+        return new URL(p.url).pathname.replace(/\/$/, '') === normalizedPath;
+      } catch {
+        return p.url.includes(slug);
+      }
+    });
+    if (exact) return exact;
+
+    const slugMatchLoose = results.find((p) => p.url?.includes(slug));
+    return slugMatchLoose || null;
   } catch (e) {
     console.error("Error fetching by URL", e);
     return null;

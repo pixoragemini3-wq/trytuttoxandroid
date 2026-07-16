@@ -4,7 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL, CATEGORY_COLORS } from './constants';
 import ArticleCard from './components/ArticleCard';
 import { Article, Deal } from './types';
-import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl } from './services/bloggerService';
+import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl, resolveAuthorImageUrl } from './services/bloggerService';
+import { isInAppBrowser } from './utils/browser';
 import SocialSidebar from './components/SocialSidebar';
 import SocialSection from './components/SocialSection';
 // TopStoriesMobile removed here, moved to Layout
@@ -104,40 +105,45 @@ const App: React.FC = () => {
   const isSearch = location.pathname === '/search';
   const isHome = !isAbout && !isCollab && !isArticle && !isSearch && !isGPS;
 
+  const enrichArticle = (article: Article): Article => ({
+    ...article,
+    authorImageUrl: resolveAuthorImageUrl(article.author, article.authorImageUrl),
+  });
+
   // Function to extract the current article based on URL
   const getCurrentArticle = () => {
-    const injectedPost = (window as any).currentSinglePost;
-    if (injectedPost && location.pathname.endsWith('.html')) {
-       try {
-         const injectedPath = new URL(injectedPost.url).pathname;
-         if (injectedPath === location.pathname) {
-            return injectedPost as Article;
-         }
-       } catch(e) {}
-       return injectedPost as Article;
+    if (!isArticle) return undefined;
+
+    const currentPath = decodeURIComponent(location.pathname).replace(/\/$/, '');
+
+    const injectedPost = (window as any).currentSinglePost as Article | null;
+    if (injectedPost && currentPath.endsWith('.html')) {
+      try {
+        const injectedPath = new URL(injectedPost.url).pathname.replace(/\/$/, '');
+        if (injectedPath === currentPath) {
+          return enrichArticle(injectedPost);
+        }
+      } catch (e) { /* fall through */ }
     }
 
-    if (!isArticle) return undefined;
-    
     // Legacy ID support
     if (location.pathname.startsWith('/article/')) {
-       const parts = location.pathname.split('/');
-       const id = parts[parts.length - 1];
-       const sourceArticles = articles.length > 0 ? articles : MOCK_ARTICLES;
-       const foundById = sourceArticles.find(a => a.id === id);
-       if (foundById) return foundById;
+      const parts = location.pathname.split('/');
+      const id = parts[parts.length - 1];
+      const sourceArticles = articles.length > 0 ? articles : MOCK_ARTICLES;
+      const foundById = sourceArticles.find(a => a.id === id);
+      if (foundById) return enrichArticle(foundById);
     }
 
     // Permalink support
-    const currentPath = decodeURIComponent(location.pathname);
-    let found = articles.find(a => {
+    const found = articles.find(a => {
       if (!a.url) return false;
       try {
-        const aPath = new URL(a.url).pathname;
+        const aPath = new URL(a.url).pathname.replace(/\/$/, '');
         return aPath === currentPath;
-      } catch(e) { return false; }
+      } catch (e) { return false; }
     });
-    return found;
+    return found ? enrichArticle(found) : undefined;
   };
 
   const currentArticle = getCurrentArticle();
@@ -225,6 +231,21 @@ const App: React.FC = () => {
 
     init();
   }, []);
+
+  // Pulisce l'injection SSR quando l'URL cambia (fix browser Facebook / navigazione SPA)
+  useEffect(() => {
+    const injected = (window as any).currentSinglePost as Article | null;
+    if (!injected || !location.pathname.endsWith('.html')) return;
+    try {
+      const injectedPath = new URL(injected.url).pathname.replace(/\/$/, '');
+      const currentPath = decodeURIComponent(location.pathname).replace(/\/$/, '');
+      if (injectedPath !== currentPath) {
+        (window as any).currentSinglePost = null;
+      }
+    } catch {
+      (window as any).currentSinglePost = null;
+    }
+  }, [location.pathname]);
 
   // EFFECT: Handle Direct URL Access (Deep Linking) for Old Articles
   useEffect(() => {
@@ -356,15 +377,29 @@ const App: React.FC = () => {
     const count = parseInt(localStorage.getItem('articleViewCount') || '0', 10);
     localStorage.setItem('articleViewCount', String(count + 1));
 
+    (window as any).currentSinglePost = null;
+
     if (article.url) {
-        try {
-            const path = new URL(article.url).pathname;
-            navigate(path);
-        } catch(e) {
-            navigate(`/article/${article.id}`);
+      try {
+        const path = new URL(article.url).pathname;
+        if (isInAppBrowser()) {
+          window.location.assign(path);
+          return;
         }
-    } else {
+        navigate(path);
+      } catch (e) {
+        if (isInAppBrowser()) {
+          window.location.assign(`/article/${article.id}`);
+          return;
+        }
         navigate(`/article/${article.id}`);
+      }
+    } else {
+      if (isInAppBrowser()) {
+        window.location.assign(`/article/${article.id}`);
+        return;
+      }
+      navigate(`/article/${article.id}`);
     }
 
     window.scrollTo(0, 0);
@@ -953,6 +988,7 @@ const App: React.FC = () => {
            <div className="bg-white">
               {currentArticle ? (
                 <ArticleDetail 
+                  key={currentArticle.id}
                   article={currentArticle} 
                   relatedArticle={articles.find(a => a.category === currentArticle.category && a.id !== currentArticle.id) || articles[0]}
                   moreArticles={shuffledMoreArticles} 
