@@ -828,6 +828,52 @@ button:hover:not(.pill) {
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
+/* Icone filigrana minimal nelle schede spotlight */
+.spotlight-watermark {
+  position: absolute;
+  right: 6px;
+  bottom: 10px;
+  width: 92px;
+  height: 92px;
+  opacity: 0.075;
+  pointer-events: none;
+  z-index: 0;
+  color: inherit;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-8deg);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.spotlight-watermark-alt {
+  right: auto;
+  left: 10px;
+  top: 36px;
+  bottom: auto;
+  width: 56px;
+  height: 56px;
+  opacity: 0.045;
+  transform: rotate(12deg);
+}
+
+.spotlight-watermark-light {
+  opacity: 0.12;
+  stroke: rgba(255, 255, 255, 0.95);
+}
+
+.spotlight-glass:hover .spotlight-watermark,
+.spotlight-promo:hover .spotlight-watermark {
+  opacity: 0.11;
+  transform: rotate(-4deg) scale(1.03);
+}
+
+.spotlight-promo:hover .spotlight-watermark-light {
+  opacity: 0.16;
+}
+
 .spotlight-section .spotlight-link:focus-visible {
   outline: 2px solid var(--android-green, #22c55e);
   outline-offset: 2px;

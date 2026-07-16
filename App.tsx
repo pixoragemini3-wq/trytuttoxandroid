@@ -17,6 +17,83 @@ import { AboutPage, CollabPage } from './components/StaticPages';
 import GPSCalculator from './components/gps/GPSCalculator';
 import Layout from './components/Layout';
 
+type SpotlightWatermarkKind = 'phone' | 'flame' | 'star' | 'tag' | 'grid' | 'book' | 'gamepad' | 'spark' | 'layers' | 'note';
+
+const SPOTLIGHT_WATERMARKS: Record<SpotlightWatermarkKind, React.ReactNode> = {
+  phone: (
+    <>
+      <rect x="20" y="10" width="24" height="44" rx="4" />
+      <line x1="28" y1="14" x2="36" y2="14" />
+      <circle cx="32" cy="48" r="2" />
+    </>
+  ),
+  flame: <path d="M32 12c-4 10-10 12-10 20 0 8 6 14 10 18 4-4 10-10 10-18 0-8-6-10-10-20z" />,
+  star: <path d="M32 14l3 12 13 1-10 8 3 13-9-6-9 6 3-13-10-8 13-1z" />,
+  tag: (
+    <>
+      <path d="M16 22l16-6 16 6v20l-16 6-16-6z" />
+      <circle cx="40" cy="28" r="2.5" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="16" y="16" width="14" height="14" rx="2" />
+      <rect x="34" y="16" width="14" height="14" rx="2" />
+      <rect x="16" y="34" width="14" height="14" rx="2" />
+      <rect x="34" y="34" width="14" height="14" rx="2" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M18 16h14v32H18z" />
+      <path d="M32 16h14v32H32z" />
+      <line x1="22" y1="22" x2="28" y2="22" />
+      <line x1="36" y1="22" x2="42" y2="22" />
+    </>
+  ),
+  gamepad: (
+    <>
+      <rect x="14" y="24" width="36" height="20" rx="8" />
+      <line x1="22" y1="34" x2="28" y2="34" />
+      <line x1="25" y1="31" x2="25" y2="37" />
+      <circle cx="42" cy="32" r="2" />
+      <circle cx="46" cy="36" r="2" />
+    </>
+  ),
+  spark: <path d="M32 12v10M32 42v10M20 32h10M42 32h10M23 23l7 7M41 41l-7-7M41 23l-7 7M23 41l7-7" />,
+  layers: (
+    <>
+      <path d="M32 14l16 10-16 10L16 24z" />
+      <path d="M20 30l12 8 12-8" />
+      <path d="M24 36l8 6 8-6" />
+    </>
+  ),
+  note: (
+    <>
+      <rect x="18" y="14" width="28" height="36" rx="3" />
+      <line x1="24" y1="24" x2="40" y2="24" />
+      <line x1="24" y1="32" x2="36" y2="32" />
+      <line x1="24" y1="40" x2="32" y2="40" />
+    </>
+  ),
+};
+
+const SpotlightWatermark: React.FC<{
+  kind: SpotlightWatermarkKind;
+  tint: string;
+  light?: boolean;
+  alt?: boolean;
+}> = ({ kind, tint, light, alt }) => (
+  <svg
+    className={`spotlight-watermark ${alt ? 'spotlight-watermark-alt' : ''} ${light ? 'spotlight-watermark-light' : ''}`}
+    viewBox="0 0 64 64"
+    aria-hidden="true"
+    style={{ color: tint }}
+  >
+    {SPOTLIGHT_WATERMARKS[kind]}
+  </svg>
+);
+
 // Utility per mescolare l'array (Fisher-Yates shuffle)
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -769,6 +846,8 @@ const App: React.FC = () => {
     let col2Title = `IN EVIDENZA ${spotlightCat.toUpperCase()}`;
     let col1Icon = '📰';
     let col2Icon = '⭐';
+    let col1Watermark: SpotlightWatermarkKind = 'layers';
+    let col2Watermark: SpotlightWatermarkKind = 'star';
     let col1Items: Article[] = pool.slice(0, 3);
     let col2Items: Article[] = pool.slice(3, 6);
     let viewAllCat = spotlightCat;
@@ -779,6 +858,8 @@ const App: React.FC = () => {
       col2Title = 'ULTIMI GIOCHI';
       col1Icon = '📱';
       col2Icon = '🎮';
+      col1Watermark = 'layers';
+      col2Watermark = 'gamepad';
 
       const isGameLike = (a: Article) => {
         const hay = `${a.title} ${(a.tags || []).join(' ')}`.toLowerCase();
@@ -795,21 +876,29 @@ const App: React.FC = () => {
       col2Title = 'LE MIGLIORI OFFERTE';
       col1Icon = '🏷️';
       col2Icon = '💰';
+      col1Watermark = 'tag';
+      col2Watermark = 'spark';
     } else if (spotlightCat === 'Smartphone') {
       col1Title = 'ULTIMI SMARTPHONE';
       col2Title = 'TOP DEVICE';
       col1Icon = '📱';
       col2Icon = '🔥';
+      col1Watermark = 'phone';
+      col2Watermark = 'flame';
     } else if (spotlightCat === 'Guide') {
       col1Title = 'ULTIME GUIDE';
       col2Title = 'TUTORIAL UTILI';
       col1Icon = '📖';
       col2Icon = '💡';
+      col1Watermark = 'book';
+      col2Watermark = 'spark';
     } else if (spotlightCat === 'Recensioni') {
       col1Title = 'ULTIME RECENSIONI';
       col2Title = 'TEST & PROVE';
       col1Icon = '⭐';
       col2Icon = '📝';
+      col1Watermark = 'star';
+      col2Watermark = 'note';
     }
 
     const categorieList = [
@@ -855,6 +944,13 @@ const App: React.FC = () => {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
+    const promoWatermark: SpotlightWatermarkKind =
+      spotlightCat === 'Smartphone' ? 'phone'
+      : spotlightCat === 'Offerte' ? 'tag'
+      : spotlightCat === 'Guide' ? 'book'
+      : spotlightCat === 'Recensioni' ? 'star'
+      : 'gamepad';
+
     const SpotlightList = ({
       title,
       icon,
@@ -862,6 +958,7 @@ const App: React.FC = () => {
       onViewAll,
       tint,
       tiltClass = 'spotlight-tilt-left',
+      watermarkKind,
     }: {
       title: string;
       icon: string;
@@ -869,16 +966,20 @@ const App: React.FC = () => {
       onViewAll: () => void;
       tint: string;
       tiltClass?: string;
+      watermarkKind: SpotlightWatermarkKind;
     }) => (
       <div
         className={`spotlight-glass ${tiltClass} rounded-2xl p-5 h-full flex flex-col relative overflow-hidden`}
         style={glassCardStyle(tint)}
       >
+        <SpotlightWatermark kind={watermarkKind} tint={tint} />
+        <SpotlightWatermark kind={watermarkKind} tint={tint} alt />
         <div
-          className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl opacity-80"
+          className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl opacity-80 z-10"
           style={{ background: `linear-gradient(90deg, ${tint}, ${tint}55)` }}
           aria-hidden="true"
         />
+        <div className="relative z-10 flex flex-col h-full">
         <div className="flex items-center gap-2.5 mb-4 mt-1">
           <span
             className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 shadow-sm border border-white/60"
@@ -920,6 +1021,7 @@ const App: React.FC = () => {
           Vedi tutti
           <span className="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
         </button>
+        </div>
       </div>
     );
 
@@ -949,18 +1051,21 @@ const App: React.FC = () => {
           </div>
 
           <div className="spotlight-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} tint={accent} tiltClass="spotlight-tilt-left" />
-            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} tint={accent2} tiltClass="spotlight-tilt-right" />
+            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} tint={accent} tiltClass="spotlight-tilt-left" watermarkKind={col1Watermark} />
+            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} tint={accent2} tiltClass="spotlight-tilt-right" watermarkKind={col2Watermark} />
 
             <div
               className="spotlight-glass spotlight-tilt-center rounded-2xl p-5 h-full relative overflow-hidden"
               style={glassCardStyle(categoriesTint)}
             >
+              <SpotlightWatermark kind="grid" tint={categoriesTint} />
+              <SpotlightWatermark kind="layers" tint={categoriesTint} alt />
               <div
-                className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl opacity-80"
+                className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl opacity-80 z-10"
                 style={{ background: `linear-gradient(90deg, ${categoriesTint}, ${categoriesTint}55)` }}
                 aria-hidden="true"
               />
+              <div className="relative z-10">
               <h4 className="spotlight-heading text-[15px] text-gray-800 mb-4 mt-1">
                 Categorie
               </h4>
@@ -980,6 +1085,7 @@ const App: React.FC = () => {
                   </li>
                 ))}
               </ul>
+              </div>
             </div>
 
             {(() => {
@@ -1006,6 +1112,8 @@ const App: React.FC = () => {
                   onClick={promo.action}
                   className={`spotlight-promo spotlight-glass-promo spotlight-tilt-promo relative overflow-hidden rounded-2xl p-5 text-left text-white bg-gradient-to-br ${promo.bg} transition-all duration-300 h-full flex flex-col justify-between group`}
                 >
+                  <SpotlightWatermark kind={promoWatermark} tint="#ffffff" light />
+                  <SpotlightWatermark kind={promoWatermark} tint="#ffffff" light alt />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.28),transparent_50%)] pointer-events-none" />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(0,0,0,0.15),transparent_45%)] pointer-events-none" />
                   <div className="absolute inset-0 backdrop-blur-[2px] pointer-events-none" aria-hidden="true" />
