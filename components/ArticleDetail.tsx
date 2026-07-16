@@ -66,18 +66,21 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [isUpdating, setIsUpdating] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [portalNodes, setPortalNodes] = useState<{
-    deals: Element | null, 
-    readAlso1: Element | null, 
+    deals: Element | null,
+    inArticleAd: Element | null,
+    readAlso1: Element | null,
     readAlso2: Element | null,
     summaries: Element[],
     gpsPromos: Element[]
   }>({
-    deals: null, 
-    readAlso1: null, 
+    deals: null,
+    inArticleAd: null,
+    readAlso1: null,
     readAlso2: null,
     summaries: [],
     gpsPromos: []
   });
+  const [hasToc, setHasToc] = useState(false);
   
   // Newsletter Logic
   const [sidebarEmail, setSidebarEmail] = useState('');
@@ -725,8 +728,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       (p) => !p.closest('nav.txa-toc')
     );
     let dealsNode = null;
+    let inArticleAdNode = null;
     let readAlso1Node = null;
     let readAlso2Node = null;
+
+    const tocEl = container.querySelector('nav.txa-toc');
+    setHasToc(!!tocEl);
 
     if (paragraphs.length >= 2) {
       dealsNode = document.createElement('div');
@@ -736,6 +743,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       readAlso1Node = document.createElement('div');
       readAlso1Node.className = 'injected-read-also my-8 not-prose';
       (paragraphs[1] as HTMLElement).after(readAlso1Node);
+    }
+
+    const adInsertIdx = Math.min(3, Math.max(1, paragraphs.length - 1));
+    if (paragraphs.length >= 3) {
+      inArticleAdNode = document.createElement('div');
+      inArticleAdNode.className = 'injected-in-article-ad not-prose';
+      (paragraphs[adInsertIdx] as HTMLElement).after(inArticleAdNode);
     }
 
     if (paragraphs.length >= 6) {
@@ -748,12 +762,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     const summaryNodes = Array.from(container.querySelectorAll('.interactive-summary-placeholder'));
     const gpsPromoNodes = Array.from(container.querySelectorAll('.gps-promo-placeholder'));
 
-    setPortalNodes({ 
-      deals: dealsNode, 
-      readAlso1: readAlso1Node, 
+    setPortalNodes({
+      deals: dealsNode,
+      inArticleAd: inArticleAdNode,
+      readAlso1: readAlso1Node,
       readAlso2: readAlso2Node,
       summaries: summaryNodes,
-      gpsPromos: gpsPromoNodes
+      gpsPromos: gpsPromoNodes,
     });
 
     // 4. Disqus Injection
@@ -796,6 +811,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       container.removeEventListener('click', handleTocNavClick, true);
       expandableRows.forEach(row => row.removeEventListener('click', handleRowClick as EventListener));
       if (dealsNode) dealsNode.remove();
+      if (inArticleAdNode) inArticleAdNode.remove();
       if (readAlso1Node) readAlso1Node.remove();
       if (readAlso2Node) readAlso2Node.remove();
     };
@@ -994,14 +1010,29 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
             {/* MAIN CONTENT COLUMN (8/12) */}
             <div className="lg:col-span-8">
                 
-                {/* Breadcrumbs */}
-                <div className="flex items-center gap-2 mb-4 justify-center md:justify-start">
-                     <span onClick={() => handleSuggestedClick({...article, id: 'home', category: 'Tutti'} as Article)} className="text-[10px] font-black uppercase text-gray-400 cursor-pointer hover:text-black">Home</span>
+                {/* Breadcrumbs + navigazione rapida */}
+                <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 mb-4 justify-center md:justify-start">
+                     <button
+                       type="button"
+                       onClick={() => handleSuggestedClick({ ...article, id: 'home', category: 'Tutti' } as Article)}
+                       className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-gray-500 hover:text-black px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+                     >
+                       <span aria-hidden="true">←</span> Home
+                     </button>
                      <span className="text-[10px] text-gray-300">/</span>
-                     <span className={`inline-block ${catBgClass} text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest`}>
+                     <span className={`inline-block ${catBgClass} text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest`}>
                         {article.category}
                      </span>
-                </div>
+                     {hasToc && (
+                       <button
+                         type="button"
+                         onClick={() => contentRef.current?.querySelector('nav.txa-toc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                         className="lg:hidden ml-auto text-[10px] font-black uppercase tracking-widest text-[#1a73e8] bg-blue-50 px-3 py-1 rounded-full"
+                       >
+                         Indice
+                       </button>
+                     )}
+                </nav>
 
                 {/* Title — compatto, stile tuttoandroid.net */}
                 <h1 className="font-condensed text-2xl md:text-[1.75rem] lg:text-3xl font-black text-gray-900 mb-4 leading-snug tracking-tight text-left break-words">
@@ -1048,16 +1079,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     )}
                   </div>
                 )}
-
-                {/* SPONSOR — sopra le immagini prodotto */}
-                <div className="not-prose mb-5">
-                  <AdUnit
-                    slotId="5244362740"
-                    format="rectangle"
-                    className="w-full"
-                    label="SPONSOR"
-                  />
-                </div>
 
                 {/* Due immagini affiancate (hero + prima img corpo) */}
                 {featuredImages.length > 0 && (
@@ -1111,6 +1132,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                            <DesktopDealsBanner />
                         </>,
                         portalNodes.deals
+                    )}
+
+                    {portalNodes.inArticleAd && createPortal(
+                        <AdUnit
+                          slotId="5244362740"
+                          format="fluid"
+                          variant="inline"
+                          label="Annuncio"
+                          className="w-full"
+                        />,
+                        portalNodes.inArticleAd
                     )}
 
                     {portalNodes.readAlso1 && !isTruncated && moreArticles.length > 0 && createPortal(
@@ -1243,6 +1275,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 </div>
             </div>
         </div>
+      </div>
+
+      {/* Navigazione mobile rapida */}
+      <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm">
+        <button
+          type="button"
+          onClick={() => handleSuggestedClick({ ...article, id: 'home', category: 'Tutti' } as Article)}
+          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10"
+        >
+          Home
+        </button>
+        {hasToc && (
+          <button
+            type="button"
+            onClick={() => contentRef.current?.querySelector('nav.txa-toc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-[#e31b23] hover:bg-[#c41820]"
+          >
+            Indice
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10"
+        >
+          Su
+        </button>
       </div>
     </div>
   );

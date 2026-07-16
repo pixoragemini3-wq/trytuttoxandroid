@@ -651,6 +651,18 @@ button:hover:not(.pill) {
   clear: both;
 }
 
+@media (max-width: 1023px) {
+  .prose nav.txa-toc {
+    position: sticky;
+    top: 11.5rem;
+    z-index: 30;
+    max-height: 38vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.06);
+  }
+}
+
 .prose nav.txa-toc img,
 .prose nav.txa-toc .separator,
 .prose nav.txa-toc .txa-img {
@@ -722,6 +734,20 @@ button:hover:not(.pill) {
    Clean, minimal, matches site cards (white, rounded, subtle borders)
    ============================================ */
 
+/* Nasconde anchor / auto-placed AdSense in alto (fastidiosi) */
+ins.adsbygoogle[data-anchor-status],
+body > ins.adsbygoogle[data-ad-format="anchor"],
+body > .ap_container,
+body > .google-auto-placed,
+#root ~ ins.adsbygoogle[data-anchor-status] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
 .ad-container {
   max-width: 100%;
 }
@@ -729,6 +755,30 @@ button:hover:not(.pill) {
 .ad-container .adsbygoogle {
   border-radius: 12px;
   overflow: hidden;
+}
+
+/* Annuncio in-articolo: si mimetizza col testo */
+.ad-inline {
+  margin: 1.35em 0;
+  padding: 0;
+  max-width: 100%;
+}
+
+.ad-inline > div {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.ad-inline .adsbygoogle {
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.ad-inline .ad-label {
+  font-family: inherit;
+  letter-spacing: 0.12em;
 }
 
 /* Make sure AdSense doesn't break layout */
