@@ -71,6 +71,14 @@ const App: React.FC = () => {
   // Spotlight cascade — state in App so nested remounts / scroll re-renders don't close it
   const [spotlightExpandedCol, setSpotlightExpandedCol] = useState<'col1' | 'col2' | null>(null);
   const spotlightCascadeRef = useRef<HTMLDivElement>(null);
+  const cascadeHScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCascadeHorizontal = (direction: 'left' | 'right') => {
+    const el = cascadeHScrollRef.current;
+    if (!el) return;
+    const step = Math.min(360, Math.max(240, el.clientWidth * 0.75));
+    el.scrollBy({ left: direction === 'left' ? -step : step, behavior: 'smooth' });
+  };
   
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -771,17 +779,37 @@ const App: React.FC = () => {
     const spotlightCats = ['App & Giochi', 'Smartphone', 'Offerte', 'Guide', 'Recensioni'];
     const spotlightCat = spotlightCats[(new Date().getDate()) % spotlightCats.length];
 
-    let pool = (articles.length > 0 ? articles : MOCK_ARTICLES).filter((a: Article) => a.category === spotlightCat);
+    const allSource = articles.length > 0 ? articles : MOCK_ARTICLES;
+    let pool = allSource.filter((a: Article) => a.category === spotlightCat);
 
     // Per la categoria Offerte, allarga il filtro per includere articoli a tema (offerte, sconti, amazon, prezzi...)
     // così non resta mai vuoto con il messaggio "non disponibili"
     if (spotlightCat === 'Offerte') {
-      pool = (articles.length > 0 ? articles : MOCK_ARTICLES).filter((a: Article) => {
+      pool = allSource.filter((a: Article) => {
         const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
-        return a.category === 'Offerte' || 
-               /offerta|offerte|sconto|prezzo|amazon|deal|black friday|prime|risparmio/i.test(hay);
+        return a.category === 'Offerte' ||
+               /offerta|offerte|sconto|prezzo|amazon|deal|black friday|prime|risparmio|cashback|coupon/i.test(hay);
       });
     }
+
+    /** Riempie la cascata con altri articoli se la categoria ha pochi pezzi (evita il tetto “solo 8”). */
+    const fillCascadePool = (primary: Article[], limit = 48): Article[] => {
+      const out: Article[] = [];
+      const seen = new Set<string>();
+      for (const a of primary) {
+        if (seen.has(a.id)) continue;
+        seen.add(a.id);
+        out.push(a);
+        if (out.length >= limit) return out;
+      }
+      for (const a of allSource) {
+        if (seen.has(a.id)) continue;
+        seen.add(a.id);
+        out.push(a);
+        if (out.length >= limit) break;
+      }
+      return out;
+    };
 
     type SpotlightIconKind = 'tag' | 'star' | 'phone' | 'flame' | 'book' | 'bulb' | 'layers' | 'gamepad' | 'news' | 'note' | 'grid';
 
@@ -791,8 +819,8 @@ const App: React.FC = () => {
     let col2Icon: SpotlightIconKind = 'star';
     let col1Items: Article[] = pool.slice(0, 3);
     let col2Items: Article[] = pool.slice(3, 6);
-    let col1All: Article[] = pool.slice(0, 24);
-    let col2All: Article[] = pool.slice(3, 27);
+    let col1All: Article[] = fillCascadePool(pool, 48);
+    let col2All: Article[] = fillCascadePool(pool.slice(3).concat(pool.slice(0, 3)), 48);
     let viewAllCat = spotlightCat;
 
     // Caso speciale che ti è piaciuto: split App vs Giochi con keyword
@@ -811,8 +839,8 @@ const App: React.FC = () => {
 
       col1Items = appItems.length > 0 ? appItems.slice(0, 3) : pool.slice(0, 3);
       col2Items = gameItems.length > 0 ? gameItems.slice(0, 3) : pool.slice(3, 6);
-      col1All = appItems.length > 0 ? appItems.slice(0, 24) : pool.slice(0, 24);
-      col2All = gameItems.length > 0 ? gameItems.slice(0, 24) : pool.slice(3, 27);
+      col1All = fillCascadePool(appItems.length > 0 ? appItems : pool, 48);
+      col2All = fillCascadePool(gameItems.length > 0 ? gameItems : pool.slice(3), 48);
     } else if (spotlightCat === 'Offerte') {
       col1Title = 'ULTIME OFFERTE';
       col2Title = 'LE MIGLIORI OFFERTE';
@@ -1196,7 +1224,7 @@ const App: React.FC = () => {
             })()}
           </div>
 
-          {/* Cascata dinamica: news/offerte a scorrimento (stato stabile a livello App) */}
+          {/* Cascata orizzontale: molti contenuti, freccia sx/dx + swipe */}
           {expandedCol && cascadeItems.length > 0 && (
             <div
               ref={spotlightCascadeRef}
@@ -1208,7 +1236,7 @@ const App: React.FC = () => {
               }}
             >
               <div
-                className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/70 backdrop-blur-md"
+                className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/70"
                 style={{ background: `linear-gradient(90deg, ${cascadeTint}18, rgba(255,255,255,0.92))` }}
               >
                 <div className="min-w-0">
@@ -1219,63 +1247,94 @@ const App: React.FC = () => {
                     {cascadeTitle}
                   </p>
                   <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                    {cascadeItems.length} contenuti · scorri la pagina per vederli tutti
+                    {cascadeItems.length} contenuti · scorri a destra e sinistra
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSpotlightExpandedCol(null)}
-                  className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-white/80 transition-colors"
-                >
-                  Chiudi
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => scrollCascadeHorizontal('left')}
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all active:scale-95"
+                    style={{ color: cascadeTint }}
+                    aria-label="Scorri a sinistra"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollCascadeHorizontal('right')}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg transition-all active:scale-95"
+                    style={{ backgroundColor: cascadeTint }}
+                    aria-label="Scorri a destra"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSpotlightExpandedCol(null)}
+                    className="ml-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-white/80 transition-colors"
+                  >
+                    Chiudi
+                  </button>
+                </div>
               </div>
-              {/* Altezza libera: scorre con la pagina, senza box interno bloccato */}
-              <div className="p-3 sm:p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+
+              <div className="relative py-3 sm:py-4">
+                <div
+                  className="pointer-events-none absolute inset-y-0 left-0 w-8 z-10"
+                  style={{ background: `linear-gradient(90deg, ${cascadeTint}12, transparent)` }}
+                  aria-hidden="true"
+                />
+                <div
+                  className="pointer-events-none absolute inset-y-0 right-0 w-8 z-10"
+                  style={{ background: `linear-gradient(270deg, ${cascadeTint}12, transparent)` }}
+                  aria-hidden="true"
+                />
+                <div
+                  ref={cascadeHScrollRef}
+                  className="spotlight-cascade-track flex gap-3 overflow-x-auto px-4 sm:px-5 pb-2 scroll-smooth snap-x snap-mandatory"
+                  style={{ scrollbarWidth: 'thin' }}
+                >
                   {cascadeItems.map((article, idx) => (
                     <button
                       key={article.id}
                       type="button"
                       onClick={() => handleArticleClick(article)}
-                      className="spotlight-cascade-item group flex items-center gap-3 p-2.5 rounded-xl text-left bg-white/70 border border-white/80 hover:bg-white hover:shadow-md transition-all duration-200"
+                      className="spotlight-cascade-item group snap-start shrink-0 w-[min(78vw,280px)] sm:w-[260px] flex flex-col text-left rounded-xl overflow-hidden bg-white border border-white/90 hover:shadow-lg transition-all duration-200"
                       style={{
-                        animationDelay: `${Math.min(idx, 24) * 38}ms`,
-                        borderColor: `${cascadeTint}14`,
+                        animationDelay: `${Math.min(idx, 16) * 30}ms`,
+                        borderColor: `${cascadeTint}18`,
                       }}
                     >
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-1 ring-black/5">
+                      <div className="aspect-[16/10] w-full overflow-hidden bg-gray-100">
                         <img
                           src={article.imageUrl || IMG_FALLBACK}
                           alt=""
                           loading="lazy"
                           onError={(e) => { e.currentTarget.src = IMG_FALLBACK; }}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="p-3 flex flex-col gap-1 min-h-[5.5rem]">
                         <span
                           className="text-[10px] font-bold uppercase tracking-wide"
                           style={{ color: cascadeTint }}
                         >
                           {article.category || article.tags?.[0] || 'Articolo'}
                         </span>
-                        <h4 className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950 mt-0.5">
+                        <h4 className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950">
                           {article.title}
                         </h4>
                         {article.date && (
-                          <p className="text-[11px] text-gray-400 font-medium mt-1">
+                          <p className="text-[11px] text-gray-400 font-medium mt-auto pt-1">
                             {article.date}
                           </p>
                         )}
                       </div>
-                      <span
-                        className="text-sm shrink-0 opacity-40 group-hover:opacity-100 transition-opacity"
-                        style={{ color: cascadeTint }}
-                        aria-hidden="true"
-                      >
-                        →
-                      </span>
                     </button>
                   ))}
                 </div>

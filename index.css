@@ -885,10 +885,31 @@ button:hover:not(.pill) {
   transform: rotateY(0deg) rotateX(0deg) translateY(-2px) translateZ(8px) !important;
 }
 
-/* Cascata a pagina intera: nessun max-height / overflow che blocca lo scroll */
+/* Cascata orizzontale */
 .spotlight-cascade {
   animation: spotlightCascadeIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-  overflow: visible;
+  overflow: hidden;
+}
+
+.spotlight-cascade-track {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+}
+
+.spotlight-cascade-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.spotlight-cascade-track::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 999px;
+}
+
+.spotlight-cascade-track::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @keyframes spotlightCascadeIn {
