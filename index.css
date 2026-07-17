@@ -748,21 +748,21 @@ button:hover:not(.pill) {
 .spotlight-bg-filigree-android {
   position: absolute;
   left: 50%;
-  top: 52%;
-  width: min(42vw, 340px);
+  top: 54%;
+  width: 72px;
   height: auto;
   transform: translate(-50%, -50%) rotate(-8deg);
-  opacity: 0.055;
+  opacity: 0.07;
 }
 
 .spotlight-bg-filigree-phone {
   position: absolute;
-  right: 6%;
-  bottom: 4%;
-  width: min(12vw, 88px);
+  right: 12%;
+  bottom: 18%;
+  width: 40px;
   height: auto;
-  transform: rotate(14deg);
-  opacity: 0.04;
+  transform: rotate(12deg);
+  opacity: 0.055;
   color: #1e40af;
 }
 
