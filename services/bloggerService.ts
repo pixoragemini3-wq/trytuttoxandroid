@@ -857,181 +857,232 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
 
     const telegramPromise = fetchTelegramDeals();
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
-    // Prioritizziamo Telegram se disponibile
-    const allDeals = [...telegramDeals, ...bloggerDeals];
-    
+
+    // Telegram first (live channel). Blogger only fills remaining slots / fallback.
+    const seen = new Set<string>();
+    const allDeals: Deal[] = [];
+    for (const deal of [...telegramDeals, ...bloggerDeals]) {
+      const key = (deal.link || deal.product || '').toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      allDeals.push(deal);
+      if (allDeals.length >= 12) break;
+    }
+
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
-    
-    // INCREASED LIMIT TO 12 to support mobile carousel scrolling (at least 10 items)
     return allDeals.map((deal, idx) => ({
         ...deal,
         brandColor: dealColors[idx % dealColors.length]
-    })).slice(0, 12); 
+    }));
     
   } catch (error) {
     return [];
   }
 };
 
-export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-    const CACHE_KEY = 'txa_telegram_deals';
-    const CACHE_TIME_KEY = 'txa_telegram_deals_time';
-    const CACHE_EXPIRY = 1000 * 60 * 15; // 15 minutes cache
+const rewriteDealAffiliateLink = (rawLink: string): string => {
+  try {
+    const url = new URL(rawLink, 'https://www.amazon.it');
+    if (!/amazon\.|amzn\./i.test(url.hostname + url.pathname)) return rawLink;
+    url.searchParams.delete('tag');
+    url.searchParams.set('tag', AMAZON_AFFILIATE_TAG);
+    return url.toString();
+  } catch {
+    return rawLink;
+  }
+};
 
-    // 1. Define Parser
-    const parseDealsFromHtml = (htmlText: string): Deal[] => {
-        try {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
-            const messages = doc.querySelectorAll('.tgme_widget_message');
-            const deals: Deal[] = [];
-            
-            // Iterate backwards to get latest messages
-            for (let i = messages.length - 1; i >= 0; i--) {
-                const msg = messages[i];
-                const textContent = msg.querySelector('.tgme_widget_message_text')?.textContent || '';
-                const textLower = textContent.toLowerCase();
+const amazonImageFromLink = (link: string): string => {
+  const asin = link.match(/\/(?:dp|gp\/product|d)\/([A-Z0-9]{10})/i)?.[1];
+  if (asin) return `https://images.amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX300_.jpg`;
+  return 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=200';
+};
 
-                // CHECK 2: Link logic (Prioritized)
-                let link = '';
-                const allLinks = Array.from(msg.querySelectorAll('a'));
-                const storeLink = allLinks.find(a => {
-                    const href = a.getAttribute('href') || '';
-                    return /amzn|amazon|ebay|unieuro|mediaworld|bit\.ly/i.test(href);
-                });
-                
-                if (storeLink) link = storeLink.getAttribute('href') || '';
-                else if (allLinks.length > 0) link = allLinks[0].getAttribute('href') || ''; // Fallback
-                
-                if (!link) continue;
+const extractPricesFromText = (text: string): { newPrice: string; oldPrice: string } => {
+  const pricesFound: number[] = [];
+  const priceRegex = /(\d+[.,]\d{0,2})\s*€/g;
+  let match: RegExpExecArray | null;
+  while ((match = priceRegex.exec(text)) !== null) {
+    const val = parseFloat(match[1].replace(',', '.'));
+    if (!isNaN(val) && val > 0) pricesFound.push(val);
+  }
+  if (pricesFound.length === 0) {
+    if (/gratis|free/i.test(text)) return { newPrice: 'GRATIS', oldPrice: '' };
+    return { newPrice: 'OFFERTA', oldPrice: '' };
+  }
+  const minP = Math.min(...pricesFound);
+  const maxP = Math.max(...pricesFound);
+  const newPrice = `${minP.toFixed(2).replace('.', ',')}€`;
+  const oldPrice = pricesFound.length > 1 && maxP > minP ? `${maxP.toFixed(2).replace('.', ',')}€` : '';
+  return { newPrice, oldPrice };
+};
 
-                // CHECK 1: Filter Logic - RELAXED
-                // User request: "selezionare solo le offerte che hanno hashtag"
-                // However, if it's failing to find any, we might be too strict.
-                // We'll look for hashtags OR clear price/link indicators.
-                const hasHashtag = /#\w+/i.test(textContent);
-                const hasPrice = /(\d+[.,]\d{0,2})\s?€/i.test(textContent);
-                const hasStoreLink = /amzn|amazon|ebay|unieuro|mediaworld|bit\.ly/i.test(textContent);
-                
-                if (!hasHashtag && !(hasPrice && hasStoreLink)) {
-                    continue; 
-                }
+/** Parse multi-product Telegram posts (tris, mega, single) from plain/markdown text. */
+const parseDealsFromTelegramText = (rawText: string): Deal[] => {
+  const text = (rawText || '')
+    .replace(/\\_/g, '_')
+    .replace(/\*\*/g, '')
+    .replace(/_+/g, '');
 
-                // Title Cleanup
-                let cleanText = textContent.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '').trim(); 
-                // Remove tags from title
-                cleanText = cleanText.replace(/#\w+/g, '').trim();
-                
-                const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-                let product = lines[0] || 'Offerta Tech';
-                
-                // Remove initial emojis
-                product = product.replace(/^[\p{Emoji}\s]+/gu, '').trim();
-                product = formatDealProductTitle(product);
+  const deals: Deal[] = [];
+  const seenLinks = new Set<string>();
 
-                // Price Extraction - Improved
-                const priceRegex = /(\d+[.,]\d{0,2})\s?€/g;
-                const pricesFound: number[] = [];
-                let match;
-                while ((match = priceRegex.exec(textContent)) !== null) {
-                    const val = parseFloat(match[1].replace(',', '.'));
-                    if (!isNaN(val)) pricesFound.push(val);
-                }
+  // Prefer numbered product blocks: "1. Product ... 21,15 € ... amazon.it/dp/..."
+  const numberedRe =
+    /(?:^|\n)\s*(?:\d+\.\s+)([^\n]{8,140})\n[\s\S]{0,280}?(https?:\/\/(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+))/gi;
+  let m: RegExpExecArray | null;
+  while ((m = numberedRe.exec(text)) !== null) {
+    const product = formatDealProductTitle(m[1].replace(/[*_#]/g, '').trim());
+    let link = rewriteDealAffiliateLink(m[2].replace(/[),.;]+$/, ''));
+    if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) continue;
+    seenLinks.add(link);
+    const block = m[0];
+    const { newPrice, oldPrice } = extractPricesFromText(block);
+    deals.push({
+      id: `tg-n-${deals.length}-${link.slice(-12)}`,
+      product,
+      oldPrice,
+      newPrice,
+      saveAmount: 'Telegram',
+      link,
+      imageUrl: amazonImageFromLink(link),
+      brandColor: 'bg-[#24A1DE]',
+    });
+    if (deals.length >= 12) return deals;
+  }
 
-                let newPrice = 'OFFERTA';
-                let oldPrice = '';
+  // Fallback: every amazon link with ~350 chars of preceding context
+  const linkRe = /https?:\/\/(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+)/gi;
+  while ((m = linkRe.exec(text)) !== null) {
+    let link = rewriteDealAffiliateLink(m[0].replace(/[),.;]+$/, ''));
+    if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) continue;
+    seenLinks.add(link);
+    const start = Math.max(0, m.index - 350);
+    const context = text.slice(start, m.index + m[0].length);
+    const lines = context
+      .split('\n')
+      .map((l) => l.replace(/[*_#]/g, '').trim())
+      .filter((l) => l.length > 6 && !/^https?:\/\//i.test(l) && !/acquista su amazon|applica coupon|di sconto/i.test(l));
+    let product = lines[lines.length - 1] || 'Offerta Tech';
+    product = product.replace(/^\d+\.\s*/, '').replace(/^a soli\s+/i, '');
+    product = formatDealProductTitle(product);
+    const { newPrice, oldPrice } = extractPricesFromText(context);
+    deals.push({
+      id: `tg-l-${deals.length}-${link.slice(-12)}`,
+      product,
+      oldPrice,
+      newPrice,
+      saveAmount: 'Telegram',
+      link,
+      imageUrl: amazonImageFromLink(link),
+      brandColor: 'bg-[#24A1DE]',
+    });
+    if (deals.length >= 12) break;
+  }
 
-                if (pricesFound.length > 0) {
-                    const minP = Math.min(...pricesFound);
-                    const maxP = Math.max(...pricesFound);
-                    newPrice = minP.toFixed(2).replace('.', ',') + '€';
-                    if (pricesFound.length > 1 && maxP > minP) {
-                         oldPrice = maxP.toFixed(2).replace('.', ',') + '€';
-                    }
-                } else {
-                    if (textLower.includes('gratis') || textLower.includes('free')) newPrice = 'GRATIS';
-                }
+  return deals;
+};
 
-                // Image Extraction
-                let imageUrl = 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=200';
-                const photoWrap = msg.querySelector('.tgme_widget_message_photo_wrap');
-                if (photoWrap) {
-                     const style = photoWrap.getAttribute('style');
-                     const bgMatch = style?.match(/background-image:url\('([^']+)'\)/);
-                     if (bgMatch) imageUrl = bgMatch[1];
-                }
-                 
-                deals.push({
-                     id: `tg-${i}-${Date.now()}`,
-                     product: product,
-                     oldPrice: oldPrice, 
-                     newPrice: newPrice,
-                     saveAmount: 'Telegram',
-                     link: link,
-                     imageUrl: imageUrl,
-                     brandColor: 'bg-[#24A1DE]' 
-                });
-                
-                if (deals.length >= 12) break;
-            }
-            return deals;
-        } catch(e) {
-            console.error("Parse error", e);
-            return [];
+const parseDealsFromHtml = (htmlText: string): Deal[] => {
+  try {
+    // If proxy returned markdown/text (jina etc.), parse as text
+    if (!htmlText.includes('tgme_widget_message') && /amazon\.|amzn\./i.test(htmlText)) {
+      return parseDealsFromTelegramText(htmlText);
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+    const messages = doc.querySelectorAll('.tgme_widget_message');
+    const deals: Deal[] = [];
+    const seenLinks = new Set<string>();
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      const textEl = msg.querySelector('.tgme_widget_message_text');
+      const textContent = textEl?.textContent || '';
+      const htmlInner = textEl?.innerHTML || '';
+
+      // Expand multi-product posts into multiple deals
+      const fromText = parseDealsFromTelegramText(`${textContent}\n${htmlInner}`);
+      for (const deal of fromText) {
+        if (seenLinks.has(deal.link)) continue;
+        seenLinks.add(deal.link);
+
+        const photoWrap = msg.querySelector('.tgme_widget_message_photo_wrap');
+        if (photoWrap) {
+          const style = photoWrap.getAttribute('style') || '';
+          const bgMatch = style.match(/background-image:url\(['"]?([^'")\s]+)/);
+          if (bgMatch?.[1] && !/telesco\.pe\/file\/Q2dx/i.test(bgMatch[1])) {
+            deal.imageUrl = bgMatch[1];
+          }
         }
-    };
 
-    // 2. CACHE CHECK
-    let cachedData = null;
-    let cachedTime = null;
-    try {
-        cachedData = sessionStorage.getItem(CACHE_KEY);
-        cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
-    } catch (e) {
-        // sessionStorage blocked
+        deals.push({ ...deal, id: `tg-h-${i}-${deals.length}` });
+        if (deals.length >= 12) return deals;
+      }
     }
-    
-    if (cachedData && cachedTime) {
-        if (Date.now() - parseInt(cachedTime) < CACHE_EXPIRY) {
-            return JSON.parse(cachedData);
-        }
-    }
-
-    // 3. FETCH STRATEGY - UPDATED PROXIES
-    const telegramUrl = 'https://t.me/s/tuttoxandroid';
-    
-    // Optimized proxy order with fallbacks
-    const proxyList = [
-        (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        (url: string) => `https://thingproxy.freeboard.io/fetch/${url}`
-    ];
-
-    for (const proxyFn of proxyList) {
-        try {
-            const proxyUrl = typeof proxyFn === 'function' ? proxyFn(telegramUrl) : proxyFn;
-            const response = await fetchWithTimeout(proxyUrl, 8000); 
-            if (response.ok) {
-                const htmlText = await response.text();
-                const deals = parseDealsFromHtml(htmlText);
-                if (deals.length > 0) {
-                    // Save to Cache on Success
-                    try {
-                        sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
-                        sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-                    } catch (e) {}
-                    return deals;
-                }
-            }
-        } catch (e) {
-            console.warn(`Telegram fetch failed with proxy`, e);
-        }
-    }
-
-    // Fallback: Use stale cache if available
-    if (cachedData) {
-        return JSON.parse(cachedData);
-    }
-
+    return deals;
+  } catch (e) {
+    console.error('Telegram HTML parse error', e);
     return [];
+  }
+};
+
+export const fetchTelegramDeals = async (): Promise<Deal[]> => {
+  const CACHE_KEY = 'txa_telegram_deals';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_time';
+  const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
+
+  let cachedData: string | null = null;
+  let cachedTime: string | null = null;
+  try {
+    cachedData = sessionStorage.getItem(CACHE_KEY);
+    cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+  } catch { /* blocked */ }
+
+  if (cachedData && cachedTime && Date.now() - parseInt(cachedTime, 10) < CACHE_EXPIRY) {
+    try {
+      const cached = JSON.parse(cachedData) as Deal[];
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    } catch { /* ignore */ }
+  }
+
+  const telegramUrl = 'https://t.me/s/tuttoxandroid';
+
+  // jina.ai first (works from browser, returns markdown with amazon links)
+  // then classic CORS proxies for raw HTML
+  const fetchTargets = [
+    `https://r.jina.ai/${telegramUrl}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(telegramUrl)}`,
+  ];
+
+  for (const proxyUrl of fetchTargets) {
+    try {
+      const response = await fetchWithTimeout(proxyUrl, 12000);
+      if (!response.ok) continue;
+      const body = await response.text();
+      if (!body || body.length < 200) continue;
+      const deals = parseDealsFromHtml(body);
+      if (deals.length > 0) {
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
+          sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        } catch { /* ignore */ }
+        return deals;
+      }
+    } catch (e) {
+      console.warn('Telegram proxy failed', proxyUrl, e);
+    }
+  }
+
+  if (cachedData) {
+    try {
+      const stale = JSON.parse(cachedData) as Deal[];
+      if (Array.isArray(stale) && stale.length > 0) return stale;
+    } catch { /* ignore */ }
+  }
+
+  return [];
 };

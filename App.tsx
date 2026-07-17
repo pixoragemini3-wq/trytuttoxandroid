@@ -219,8 +219,7 @@ const App: React.FC = () => {
       }
 
       // 2. Fetch Deals SECOND (Background - doesn't block UI)
-      // Only use real deals from Telegram/Blogger. Never fall back to standard mock products.
-      // If no real offers (or slow load), the section simply won't render.
+      // Prefer real Telegram channel offers, then Blogger. No mock products.
       try {
          const dealsData = await fetchBloggerDeals();
          setDeals(dealsData.length > 0 ? dealsData : []);
@@ -230,6 +229,20 @@ const App: React.FC = () => {
     };
 
     init();
+
+    // Ricarica offerte Telegram ogni 10 minuti (canale aggiornato in tempo reale)
+    const dealsInterval = window.setInterval(async () => {
+      try {
+        try {
+          sessionStorage.removeItem('txa_telegram_deals');
+          sessionStorage.removeItem('txa_telegram_deals_time');
+        } catch { /* private mode */ }
+        const dealsData = await fetchBloggerDeals();
+        if (dealsData.length > 0) setDeals(dealsData);
+      } catch { /* ignore */ }
+    }, 10 * 60 * 1000);
+
+    return () => window.clearInterval(dealsInterval);
   }, []);
 
   // Pulisce l'injection SSR quando l'URL cambia (fix browser Facebook / navigazione SPA)
