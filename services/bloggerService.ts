@@ -1028,10 +1028,13 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const telegramPromise = fetchTelegramDeals();
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
 
-    // Telegram first (live channel). Blogger only fills remaining slots / fallback.
+    // Modello classico: se Telegram risponde, usiamo SOLO quelle offerte (canale live).
+    // Blogger Amazon solo come fallback se il canale non è raggiungibile.
+    const sourceDeals = telegramDeals.length > 0 ? telegramDeals : bloggerDeals;
+
     const seen = new Set<string>();
     const allDeals: Deal[] = [];
-    for (const deal of [...telegramDeals, ...bloggerDeals]) {
+    for (const deal of sourceDeals) {
       const key = (deal.link || deal.product || '').toLowerCase();
       if (!key || seen.has(key)) continue;
       seen.add(key);
