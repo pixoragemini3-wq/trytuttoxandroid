@@ -76,8 +76,8 @@ const App: React.FC = () => {
   const scrollCascadeHorizontal = (direction: 'left' | 'right') => {
     const el = cascadeHScrollRef.current;
     if (!el) return;
-    // Due colonne: scorre di ~2 card per click
-    const step = Math.min(520, Math.max(280, el.clientWidth * 0.65));
+    // Una riga di card ~160px: scorri di ~3 card
+    const step = Math.min(480, Math.max(320, el.clientWidth * 0.7));
     el.scrollBy({ left: direction === 'left' ? -step : step, behavior: 'smooth' });
   };
   
@@ -1225,20 +1225,25 @@ const App: React.FC = () => {
             })()}
           </div>
 
-          {/* Cascata orizzontale: molti contenuti, freccia sx/dx + swipe */}
+          {/* Cascata: UNA SOLA RIGA orizzontale — stili inline (non espandibili da CSS globali img) */}
           {expandedCol && cascadeItems.length > 0 && (
             <div
               ref={spotlightCascadeRef}
-              className="spotlight-cascade mt-5 rounded-2xl relative"
+              className="mt-5 rounded-2xl relative"
               style={{
                 border: `1px solid ${cascadeTint}28`,
-                boxShadow: `0 16px 48px ${cascadeTint}14, 0 4px 16px rgba(15,23,42,0.06)`,
-                background: `linear-gradient(160deg, rgba(255,255,255,0.95) 0%, ${cascadeTint}0c 100%)`,
+                boxShadow: `0 12px 36px ${cascadeTint}12, 0 2px 10px rgba(15,23,42,0.05)`,
+                background: `linear-gradient(160deg, rgba(255,255,255,0.98) 0%, ${cascadeTint}0a 100%)`,
+                overflow: 'hidden',
+                maxHeight: 248,
               }}
             >
               <div
-                className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/70"
-                style={{ background: `linear-gradient(90deg, ${cascadeTint}18, rgba(255,255,255,0.92))` }}
+                className="flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5"
+                style={{
+                  borderBottom: '1px solid rgba(0,0,0,0.06)',
+                  background: `linear-gradient(90deg, ${cascadeTint}14, rgba(255,255,255,0.95))`,
+                }}
               >
                 <div className="min-w-0">
                   <p
@@ -1247,15 +1252,15 @@ const App: React.FC = () => {
                   >
                     {cascadeTitle}
                   </p>
-                  <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                    {cascadeItems.length} contenuti · scorri a destra e sinistra
+                  <p className="text-[11px] font-semibold text-gray-500 mt-0.5">
+                    {cascadeItems.length} articoli · scorri in orizzontale
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => scrollCascadeHorizontal('left')}
-                    className="w-9 h-9 rounded-full flex items-center justify-center bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-white border border-gray-200 shadow-sm"
                     style={{ color: cascadeTint }}
                     aria-label="Scorri a sinistra"
                   >
@@ -1266,7 +1271,7 @@ const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => scrollCascadeHorizontal('right')}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg transition-all active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-md"
                     style={{ backgroundColor: cascadeTint }}
                     aria-label="Scorri a destra"
                   >
@@ -1277,59 +1282,160 @@ const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSpotlightExpandedCol(null)}
-                    className="ml-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-white/80 transition-colors"
+                    className="ml-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg"
                   >
                     Chiudi
                   </button>
                 </div>
               </div>
 
-              <div className="relative py-2">
-                <div className="spotlight-cascade-fade spotlight-cascade-fade-left" aria-hidden="true" />
-                <div className="spotlight-cascade-fade spotlight-cascade-fade-right" aria-hidden="true" />
+              <div className="relative" style={{ height: 196 }}>
+                {/* Sfumature laterali */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 28,
+                    zIndex: 2,
+                    pointerEvents: 'none',
+                    background: 'linear-gradient(90deg, rgba(255,255,255,0.98), transparent)',
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 28,
+                    zIndex: 2,
+                    pointerEvents: 'none',
+                    background: 'linear-gradient(270deg, rgba(255,255,255,0.98), transparent)',
+                  }}
+                />
                 <div
                   ref={cascadeHScrollRef}
-                  className="spotlight-cascade-track scroll-smooth snap-x snap-mandatory"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    flexWrap: 'nowrap',
+                    alignItems: 'stretch',
+                    gap: 10,
+                    height: '100%',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    padding: '10px 16px',
+                    scrollBehavior: 'smooth',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                  }}
                 >
-                  {cascadeItems.map((article, idx) => (
-                    <button
-                      key={article.id}
-                      type="button"
-                      onClick={() => handleArticleClick(article)}
-                      className="spotlight-cascade-item group snap-start flex flex-col text-left rounded-xl bg-white border hover:shadow-md transition-shadow duration-200"
-                      style={{
-                        animationDelay: `${Math.min(idx, 12) * 24}ms`,
-                        borderColor: `${cascadeTint}18`,
-                      }}
-                    >
-                      <div className="spotlight-cascade-thumb">
-                        <img
-                          src={article.imageUrl || IMG_FALLBACK}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => { e.currentTarget.src = IMG_FALLBACK; }}
-                          className="group-hover:scale-105 transition-transform duration-300"
+                  {cascadeItems.map((article) => {
+                    const thumb = article.imageUrl || IMG_FALLBACK;
+                    return (
+                      <button
+                        key={article.id}
+                        type="button"
+                        onClick={() => handleArticleClick(article)}
+                        style={{
+                          flex: '0 0 152px',
+                          width: 152,
+                          minWidth: 152,
+                          maxWidth: 152,
+                          height: 172,
+                          maxHeight: 172,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          textAlign: 'left',
+                          borderRadius: 12,
+                          border: `1px solid ${cascadeTint}20`,
+                          background: '#ffffff',
+                          padding: 0,
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 3px rgba(15,23,42,0.06)',
+                        }}
+                      >
+                        {/* Miniatura via background — immune a regole globali su img */}
+                        <div
+                          style={{
+                            width: '100%',
+                            height: 88,
+                            minHeight: 88,
+                            maxHeight: 88,
+                            flexShrink: 0,
+                            backgroundColor: '#f3f4f6',
+                            backgroundImage: `url("${thumb.replace(/"/g, '')}")`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat',
+                          }}
+                          role="img"
+                          aria-label=""
                         />
-                      </div>
-                      <div className="spotlight-cascade-meta flex flex-col gap-0.5">
-                        <span
-                          className="text-[9px] font-bold uppercase tracking-wide truncate"
-                          style={{ color: cascadeTint }}
+                        <div
+                          style={{
+                            padding: '8px 9px',
+                            overflow: 'hidden',
+                            flex: 1,
+                            minHeight: 0,
+                          }}
                         >
-                          {article.category || article.tags?.[0] || 'Articolo'}
-                        </span>
-                        <h4 className="text-[11px] sm:text-[12px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950">
-                          {article.title}
-                        </h4>
-                        {article.date && (
-                          <p className="text-[9px] text-gray-400 font-medium truncate">
-                            {article.date}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                          <span
+                            style={{
+                              display: 'block',
+                              fontSize: 9,
+                              fontWeight: 800,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              color: cascadeTint,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {article.category || article.tags?.[0] || 'Articolo'}
+                          </span>
+                          <span
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: '#1f2937',
+                              lineHeight: 1.3,
+                              marginTop: 3,
+                            }}
+                          >
+                            {article.title}
+                          </span>
+                          {article.date && (
+                            <span
+                              style={{
+                                display: 'block',
+                                fontSize: 9,
+                                color: '#9ca3af',
+                                fontWeight: 600,
+                                marginTop: 4,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {article.date}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
