@@ -1297,13 +1297,13 @@ const App: React.FC = () => {
                       key={article.id}
                       type="button"
                       onClick={() => handleArticleClick(article)}
-                      className="spotlight-cascade-item group snap-start flex flex-col text-left rounded-xl overflow-hidden bg-white border hover:shadow-lg transition-all duration-200"
+                      className="spotlight-cascade-item group snap-start flex flex-col text-left rounded-xl overflow-hidden bg-white border hover:shadow-lg transition-all duration-200 shrink-0"
                       style={{
                         animationDelay: `${Math.min(idx, 16) * 28}ms`,
                         borderColor: `${cascadeTint}18`,
                       }}
                     >
-                      <div className="h-[88px] sm:h-[96px] w-full overflow-hidden bg-gray-100">
+                      <div className="aspect-[16/10] w-full overflow-hidden bg-gray-100 shrink-0">
                         <img
                           src={article.imageUrl || IMG_FALLBACK}
                           alt=""
@@ -1312,7 +1312,7 @@ const App: React.FC = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
-                      <div className="p-2.5 flex flex-col gap-0.5 min-h-[4.75rem]">
+                      <div className="p-2.5 sm:p-3 flex flex-col gap-0.5 min-h-[4.5rem]">
                         <span
                           className="text-[9px] font-bold uppercase tracking-wide"
                           style={{ color: cascadeTint }}
