@@ -1284,8 +1284,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="relative py-3 sm:py-4">
-                {/* Sfumature laterali (sopra lo scroll, senza intercettare i click) */}
+              <div className="relative py-2">
                 <div className="spotlight-cascade-fade spotlight-cascade-fade-left" aria-hidden="true" />
                 <div className="spotlight-cascade-fade spotlight-cascade-fade-right" aria-hidden="true" />
                 <div
@@ -1297,33 +1296,34 @@ const App: React.FC = () => {
                       key={article.id}
                       type="button"
                       onClick={() => handleArticleClick(article)}
-                      className="spotlight-cascade-item group snap-start flex flex-col text-left rounded-xl overflow-hidden bg-white border hover:shadow-lg transition-all duration-200 shrink-0"
+                      className="spotlight-cascade-item group snap-start flex flex-col text-left rounded-xl bg-white border hover:shadow-md transition-shadow duration-200"
                       style={{
-                        animationDelay: `${Math.min(idx, 16) * 28}ms`,
+                        animationDelay: `${Math.min(idx, 12) * 24}ms`,
                         borderColor: `${cascadeTint}18`,
                       }}
                     >
-                      <div className="aspect-[16/10] w-full overflow-hidden bg-gray-100 shrink-0">
+                      <div className="spotlight-cascade-thumb">
                         <img
                           src={article.imageUrl || IMG_FALLBACK}
                           alt=""
                           loading="lazy"
+                          decoding="async"
                           onError={(e) => { e.currentTarget.src = IMG_FALLBACK; }}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
-                      <div className="p-2.5 sm:p-3 flex flex-col gap-0.5 min-h-[4.5rem]">
+                      <div className="spotlight-cascade-meta flex flex-col gap-0.5">
                         <span
-                          className="text-[9px] font-bold uppercase tracking-wide"
+                          className="text-[9px] font-bold uppercase tracking-wide truncate"
                           style={{ color: cascadeTint }}
                         >
                           {article.category || article.tags?.[0] || 'Articolo'}
                         </span>
-                        <h4 className="text-[12px] sm:text-[13px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950">
+                        <h4 className="text-[11px] sm:text-[12px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950">
                           {article.title}
                         </h4>
                         {article.date && (
-                          <p className="text-[10px] text-gray-400 font-medium mt-auto pt-0.5">
+                          <p className="text-[9px] text-gray-400 font-medium truncate">
                             {article.date}
                           </p>
                         )}
