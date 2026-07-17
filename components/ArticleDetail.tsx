@@ -880,13 +880,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
 
   // --- SUB-COMPONENTS FOR DEALS ---
   const MobileDealsCarousel = () => (
-    <div className="lg:hidden not-prose my-8 py-6 bg-[#1a1a1a] border-y-4 border-[#e31b23] -mx-4 px-4 [&_h3]:!text-white">
+    <div className="txa-deals-banner lg:hidden not-prose my-8 py-6 border-y-4 border-[#e31b23] -mx-4 px-4">
       <div className="flex items-center justify-between mb-4">
-          <h3 className="font-condensed text-xl font-black uppercase !text-white flex items-center gap-2">
+          <h3 className="txa-deals-banner-title font-condensed text-xl font-black uppercase flex items-center gap-2">
              <span className="w-2 h-2 rounded-full bg-[#e31b23] animate-pulse"></span>
              Offerte Live
           </h3>
-          <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Scorri →</span>
+          <span className="txa-deals-banner-sub text-[10px] font-bold uppercase tracking-widest">Scorri →</span>
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
            {[...deals, ...deals].slice(0, 10).map((deal, idx) => (
@@ -912,28 +912,37 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   );
 
   const DesktopDealsBanner = () => (
-    <div className="hidden lg:block not-prose my-10 rounded-2xl p-6 shadow-xl relative overflow-visible border border-[#e31b23]/30 bg-[#1a1a1a] [&_h3]:!text-white [&_p]:!text-gray-200">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#e31b23]/25 via-transparent to-[#e31b23]/10 pointer-events-none" />
+    <div className="txa-deals-banner hidden lg:block not-prose my-10 rounded-2xl p-6 shadow-xl relative overflow-visible border border-[#e31b23]/40">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#e31b23]/30 via-transparent to-[#e31b23]/15 pointer-events-none" />
         <div className="flex items-center justify-between mb-6 relative z-10 gap-4">
            <div>
-              <h3 className="font-condensed text-3xl font-black uppercase italic leading-none !text-white drop-shadow-md">Offerte del Giorno</h3>
-              <p className="text-sm !text-gray-200 mt-2 font-medium">Selezionate in tempo reale dal nostro canale Telegram.</p>
+              <h3 className="txa-deals-banner-title font-condensed text-3xl font-black uppercase italic leading-none drop-shadow-md">
+                Offerte del Giorno
+              </h3>
+              <p className="txa-deals-banner-sub text-sm mt-2 font-medium">
+                Selezionate in tempo reale dal nostro canale Telegram.
+              </p>
            </div>
-           <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="shrink-0 bg-[#e31b23] text-white px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-white hover:text-[#e31b23] transition-colors shadow-lg">
+           <a
+             href="https://t.me/tuttoxandroid"
+             target="_blank"
+             rel="noopener noreferrer"
+             className="txa-deals-banner-cta shrink-0 bg-[#e31b23] px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-colors shadow-lg"
+           >
               Vedi tutte su Telegram
            </a>
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
            {deals.slice(0, 4).map(deal => (
-              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-white rounded-xl p-4 flex flex-col gap-3 hover:shadow-lg hover:-translate-y-0.5 transition-all group min-h-[190px] border border-gray-100">
+              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="txa-deals-card bg-white rounded-xl p-4 flex flex-col gap-3 hover:shadow-lg hover:-translate-y-0.5 transition-all group min-h-[190px] border border-gray-100">
                  <div className="w-full h-20 bg-gray-50 rounded-lg p-2 flex items-center justify-center">
                     <img src={deal.imageUrl} className="max-w-full max-h-full object-contain" alt={deal.product} />
                  </div>
                  <div className="min-w-0 flex-1 flex flex-col justify-between">
-                    <p className="text-sm font-bold text-gray-900 leading-snug line-clamp-3 mb-2 group-hover:text-[#e31b23]">{deal.product}</p>
+                    <p className="txa-deals-card-title text-sm font-bold leading-snug line-clamp-3 mb-2 group-hover:text-[#e31b23]">{deal.product}</p>
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-xl font-black text-[#e31b23]">{deal.newPrice}</span>
-                      {deal.oldPrice && <span className="text-sm font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
+                      <span className="txa-deals-card-price text-xl font-black">{deal.newPrice}</span>
+                      {deal.oldPrice && <span className="txa-deals-card-old text-sm font-bold line-through">{deal.oldPrice}</span>}
                     </div>
                  </div>
               </a>

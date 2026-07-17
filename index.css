@@ -552,9 +552,81 @@ a:hover, .text-gray-400:hover {
   color: var(--android-green-dark) !important;
 }
 
-/* Sezione "In Evidenza" e offerte con accenti verdi */
-h3.font-condensed {
+/* Sezione "In Evidenza" — non forzare il nero sul banner offerte (sfondo scuro) */
+h3.font-condensed:not(.txa-deals-banner-title) {
   color: #111;
+}
+
+/* Banner Offerte Italy / Offerte del Giorno — contrasto leggibile su sfondo scuro */
+.txa-deals-banner {
+  background-color: #1a1a1a !important;
+}
+
+.txa-deals-banner .txa-deals-banner-title,
+.txa-deals-banner h2.txa-deals-banner-title,
+.txa-deals-banner h3.txa-deals-banner-title,
+.txa-deals-banner h3.font-condensed {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.txa-deals-banner .txa-deals-banner-title::after {
+  display: none !important; /* niente underline verde sotto il titolo scuro */
+}
+
+.txa-deals-banner .txa-deals-banner-sub {
+  color: #e5e7eb !important;
+  -webkit-text-fill-color: #e5e7eb !important;
+}
+
+.txa-deals-banner .txa-deals-banner-cta {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.txa-deals-banner .txa-deals-banner-cta:hover {
+  background: #ffffff !important;
+  color: #e31b23 !important;
+  -webkit-text-fill-color: #e31b23 !important;
+}
+
+.txa-deals-banner .txa-deals-telegram-pill,
+.txa-deals-banner .txa-deals-telegram-pill span,
+.txa-deals-banner .txa-deals-telegram-pill svg {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.txa-deals-banner .txa-deals-telegram-pill:hover {
+  background: #ffffff !important;
+}
+
+.txa-deals-banner .txa-deals-telegram-pill:hover span,
+.txa-deals-banner .txa-deals-telegram-pill:hover svg {
+  color: #24a1de !important;
+  -webkit-text-fill-color: #24a1de !important;
+}
+
+/* Card prodotto: testo scuro su bianco (non ereditare il bianco del banner) */
+.txa-deals-banner .txa-deals-card,
+.txa-deals-banner .txa-deals-card * {
+  -webkit-text-fill-color: initial;
+}
+
+.txa-deals-banner .txa-deals-card-title {
+  color: #111827 !important;
+}
+
+.txa-deals-banner .txa-deals-card:hover .txa-deals-card-title {
+  color: #e31b23 !important;
+}
+
+.txa-deals-banner .txa-deals-card-price {
+  color: #e31b23 !important;
+}
+
+.txa-deals-banner .txa-deals-card-old {
+  color: #9ca3af !important;
 }
 
 h3.font-condensed.text-4xl {
