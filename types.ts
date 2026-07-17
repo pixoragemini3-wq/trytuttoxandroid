@@ -18,6 +18,8 @@ export interface Article {
   author: string;
   authorImageUrl?: string;
   date: string;
+  /** ISO date from Blogger feed (for archive filters) */
+  publishedAt?: string;
   url?: string;
   featured?: boolean;
   type?: 'standard' | 'mini' | 'hero' | 'horizontal';

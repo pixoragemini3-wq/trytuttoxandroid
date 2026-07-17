@@ -668,11 +668,85 @@ const mapFeedEntryToArticle = (entry: any): Article => {
     author: entry.author[0].name.$t,
     authorImageUrl: resolveAuthorImageUrl(entry.author[0].name.$t, authorImage),
     date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
+    publishedAt: entry.published?.$t || undefined,
     url: postUrl,
     type: 'standard',
     featured: isFeatured,
     dealData: dealData,
   };
+};
+
+const IT_MONTH_INDEX: Record<string, number> = {
+  gen: 0, gennaio: 0, jan: 0, january: 0,
+  feb: 1, febbraio: 1, february: 1,
+  mar: 2, marzo: 2, march: 2,
+  apr: 3, aprile: 3, april: 3,
+  mag: 4, maggio: 4, may: 4,
+  giu: 5, giugno: 5, jun: 5, june: 5,
+  lug: 6, luglio: 6, jul: 6, july: 6,
+  ago: 7, agosto: 7, aug: 7, august: 7,
+  set: 8, sett: 8, settembre: 8, sep: 8, september: 8,
+  ott: 9, ottobre: 9, oct: 9, october: 9,
+  nov: 10, novembre: 10, november: 10,
+  dic: 11, dicembre: 11, dec: 11, december: 11,
+};
+
+/** Parse article date for archive grouping (publishedAt preferred). */
+export const parseArticleDate = (article: Article): Date | null => {
+  if (article.publishedAt) {
+    const iso = new Date(article.publishedAt);
+    if (!Number.isNaN(iso.getTime())) return iso;
+  }
+  const raw = (article.date || '').trim();
+  if (!raw) return null;
+  if (/^\d{10,13}$/.test(raw)) {
+    const n = Number(raw);
+    const d = new Date(n < 1e12 ? n * 1000 : n);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const parsed = Date.parse(raw);
+  if (!Number.isNaN(parsed)) return new Date(parsed);
+  const m = raw.match(/(\d{1,2})\s+([a-zA-Zàèéìòù.]+)\s+(\d{4})/i);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const monKey = m[2].replace(/\./g, '').toLowerCase();
+    const year = parseInt(m[3], 10);
+    const mon = IT_MONTH_INDEX[monKey];
+    if (mon != null) {
+      const d = new Date(year, mon, day);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  }
+  return null;
+};
+
+/** Fetch posts in a year or year+month (1–12) via Blogger published-min/max. */
+export const fetchPostsByDateRange = async (
+  year: number,
+  month?: number
+): Promise<Article[]> => {
+  try {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    let min: string;
+    let max: string;
+    if (month != null && month >= 1 && month <= 12) {
+      const lastDay = new Date(year, month, 0).getDate();
+      min = `${year}-${pad(month)}-01T00:00:00`;
+      max = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`;
+    } else {
+      min = `${year}-01-01T00:00:00`;
+      max = `${year}-12-31T23:59:59`;
+    }
+    const feedPath =
+      `/feeds/posts/default?alt=json&max-results=500&orderby=published` +
+      `&published-min=${encodeURIComponent(min)}&published-max=${encodeURIComponent(max)}`;
+    const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 12000);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.feed?.entry || []).map(mapFeedEntryToArticle);
+  } catch {
+    return [];
+  }
 };
 
 export const fetchBloggerPosts = async (category?: Category, searchQuery?: string, startIndex: number = 1): Promise<Article[]> => {
@@ -692,6 +766,12 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
             tags.length ? tags : (p.category ? [p.category] : ['news'])
           );
 
+          const publishedAt =
+            p.publishedAt ||
+            (p.date && (/^\d{10,13}$/.test(String(p.date)) || String(p.date).includes('T'))
+              ? String(p.date)
+              : undefined);
+
           return {
             ...p,
             title: stripHtml(p.title),
@@ -702,7 +782,8 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
             content: cleanContent,
             dealData: dealData,
             category: mainCategory,
-            tags: tags
+            tags: tags,
+            publishedAt,
           };
       });
 
