@@ -720,30 +720,119 @@ export const parseArticleDate = (article: Article): Date | null => {
   return null;
 };
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const publishedRangeBounds = (year: number, month?: number): { min: string; max: string } => {
+  if (month != null && month >= 1 && month <= 12) {
+    const lastDay = new Date(year, month, 0).getDate();
+    return {
+      min: `${year}-${pad2(month)}-01T00:00:00`,
+      max: `${year}-${pad2(month)}-${pad2(lastDay)}T23:59:59`,
+    };
+  }
+  return {
+    min: `${year}-01-01T00:00:00`,
+    max: `${year}-12-31T23:59:59`,
+  };
+};
+
+/** Totale post reali Blogger (openSearch$totalResults) — stesso dato del widget Archivio. */
+const extractFeedTotalResults = (data: any): number => {
+  const feed = data?.feed;
+  if (!feed) return 0;
+  const raw =
+    feed['openSearch$totalResults']?.$t ??
+    feed['openSearch$totalResults'] ??
+    feed.openSearch$totalResults?.$t ??
+    feed.openSearch$totalResults ??
+    0;
+  const n = parseInt(String(raw), 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+};
+
+/**
+ * Conteggio ufficiale Blogger per anno o mese (1–12).
+ * Usa il feed summary leggero e openSearch$totalResults (non il campione locale).
+ */
+export const fetchBloggerPostCount = async (
+  year: number,
+  month?: number
+): Promise<number> => {
+  try {
+    const { min, max } = publishedRangeBounds(year, month);
+    const feedPath =
+      `/feeds/posts/summary?alt=json&max-results=1` +
+      `&published-min=${encodeURIComponent(min)}&published-max=${encodeURIComponent(max)}`;
+    const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 10000);
+    if (!response.ok) return 0;
+    const data = await response.json();
+    return extractFeedTotalResults(data);
+  } catch {
+    return 0;
+  }
+};
+
+/** Conteggi anno da Blogger (batch parallelo limitato). */
+export const fetchArchiveYearCounts = async (
+  years: number[]
+): Promise<Record<number, number>> => {
+  const out: Record<number, number> = {};
+  const batchSize = 4;
+  for (let i = 0; i < years.length; i += batchSize) {
+    const batch = years.slice(i, i + batchSize);
+    const counts = await Promise.all(batch.map((y) => fetchBloggerPostCount(y)));
+    batch.forEach((y, idx) => {
+      out[y] = counts[idx];
+    });
+  }
+  return out;
+};
+
+/** Conteggi per i 12 mesi di un anno (solo mesi con post > 0). */
+export const fetchArchiveMonthCounts = async (
+  year: number
+): Promise<Record<number, number>> => {
+  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const counts = await Promise.all(months.map((m) => fetchBloggerPostCount(year, m)));
+  const out: Record<number, number> = {};
+  months.forEach((m, idx) => {
+    if (counts[idx] > 0) out[m] = counts[idx];
+  });
+  return out;
+};
+
 /** Fetch posts in a year or year+month (1–12) via Blogger published-min/max. */
 export const fetchPostsByDateRange = async (
   year: number,
   month?: number
 ): Promise<Article[]> => {
   try {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    let min: string;
-    let max: string;
-    if (month != null && month >= 1 && month <= 12) {
-      const lastDay = new Date(year, month, 0).getDate();
-      min = `${year}-${pad(month)}-01T00:00:00`;
-      max = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`;
-    } else {
-      min = `${year}-01-01T00:00:00`;
-      max = `${year}-12-31T23:59:59`;
+    const { min, max } = publishedRangeBounds(year, month);
+    // Paginazione: Blogger limita max-results; recuperiamo tutti i pezzi del range
+    const all: Article[] = [];
+    const seen = new Set<string>();
+    let startIndex = 1;
+    const pageSize = 150;
+    for (let page = 0; page < 20; page++) {
+      const feedPath =
+        `/feeds/posts/default?alt=json&max-results=${pageSize}&start-index=${startIndex}&orderby=published` +
+        `&published-min=${encodeURIComponent(min)}&published-max=${encodeURIComponent(max)}`;
+      const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 12000);
+      if (!response.ok) break;
+      const data = await response.json();
+      const entries = data.feed?.entry || [];
+      if (entries.length === 0) break;
+      for (const entry of entries) {
+        const art = mapFeedEntryToArticle(entry);
+        if (seen.has(art.id)) continue;
+        seen.add(art.id);
+        all.push(art);
+      }
+      const total = extractFeedTotalResults(data);
+      if (all.length >= total || entries.length < pageSize) break;
+      startIndex += pageSize;
     }
-    const feedPath =
-      `/feeds/posts/default?alt=json&max-results=500&orderby=published` +
-      `&published-min=${encodeURIComponent(min)}&published-max=${encodeURIComponent(max)}`;
-    const response = await fetchWithProxyFallback(`${TARGET_DOMAIN}${feedPath}`, 12000);
-    if (!response.ok) return [];
-    const data = await response.json();
-    return (data.feed?.entry || []).map(mapFeedEntryToArticle);
+    return all;
   } catch {
     return [];
   }

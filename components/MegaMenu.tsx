@@ -2,7 +2,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Article } from '../types';
 import ArticleCard from './ArticleCard';
-import { fetchPostsByDateRange, parseArticleDate } from '../services/bloggerService';
+import {
+  fetchArchiveMonthCounts,
+  fetchArchiveYearCounts,
+  fetchPostsByDateRange,
+} from '../services/bloggerService';
 
 interface MegaMenuProps {
   category: string;
@@ -16,32 +20,65 @@ const IT_MONTH_NAMES = [
   'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
 ];
 
+const ARCHIVE_START_YEAR = 2013;
+
 const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArticleClick }) => {
   const [showAllYears, setShowAllYears] = useState(false);
   const [priceRange, setPriceRange] = useState(1); // 0: <100, 1: <200, 2: <300, 3: <400, 4: <500
 
-  // Archivio storico a cascata: anni → mesi → articoli
+  // Archivio storico a cascata: anni → mesi → articoli (conteggi ufficiali Blogger)
   const [archiveYear, setArchiveYear] = useState<number | null>(null);
   const [archiveMonth, setArchiveMonth] = useState<number | null>(null); // 1–12
-  const [archiveYearPosts, setArchiveYearPosts] = useState<Article[]>([]);
+  const [archiveMonthPosts, setArchiveMonthPosts] = useState<Article[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
-  /** Conteggi anno aggiornati dopo il fetch Blogger */
   const [yearCountCache, setYearCountCache] = useState<Record<number, number>>({});
+  const [monthCountCache, setMonthCountCache] = useState<Record<number, number>>({});
+  const [yearCountsLoading, setYearCountsLoading] = useState(false);
+  const [yearCountsReady, setYearCountsReady] = useState(false);
   
   // Newsletter Logic
   const [email, setEmail] = useState('');
   const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'success'>('idle');
 
-  // Reset archive when leaving News mega menu
+  // Carica conteggi anno reali da Blogger (openSearch$totalResults)
   useEffect(() => {
     if (category !== 'News') {
       setArchiveYear(null);
       setArchiveMonth(null);
-      setArchiveYearPosts([]);
+      setArchiveMonthPosts([]);
       setArchiveError(null);
+      setMonthCountCache({});
+      return;
     }
-  }, [category]);
+    if (yearCountsReady) return;
+
+    let cancelled = false;
+    const currentYear = new Date().getFullYear();
+    const years = Array.from(
+      { length: currentYear - ARCHIVE_START_YEAR + 1 },
+      (_, i) => currentYear - i
+    );
+
+    (async () => {
+      setYearCountsLoading(true);
+      try {
+        const counts = await fetchArchiveYearCounts(years);
+        if (!cancelled) {
+          setYearCountCache(counts);
+          setYearCountsReady(true);
+        }
+      } catch {
+        if (!cancelled) setYearCountsReady(false);
+      } finally {
+        if (!cancelled) setYearCountsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category, yearCountsReady]);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -563,70 +600,50 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
           'Android 15', 'AI', 'Samsung', 'Sicurezza', 'WhatsApp', 'Google', 'Pixel 9', 'Offerte'
         ];
 
-        // Conteggi anno da articoli già in memoria (stima rapida)
-        const yearCountsLocal: Record<number, number> = {};
-        for (const art of articles) {
-          const d = parseArticleDate(art);
-          if (!d) continue;
-          const y = d.getFullYear();
-          yearCountsLocal[y] = (yearCountsLocal[y] || 0) + 1;
-        }
-
-        // Pool per mesi/lista: preferisci fetch anno, fallback articoli locali
-        const poolForYear =
-          archiveYearPosts.length > 0
-            ? archiveYearPosts
-            : articles.filter((a) => {
-                const d = parseArticleDate(a);
-                return d && d.getFullYear() === archiveYear;
-              });
-
-        const monthCounts: Record<number, number> = {};
-        const monthArticles: Record<number, Article[]> = {};
-        for (const art of poolForYear) {
-          const d = parseArticleDate(art);
-          if (!d) continue;
-          if (archiveYear != null && d.getFullYear() !== archiveYear) continue;
-          const m = d.getMonth() + 1;
-          monthCounts[m] = (monthCounts[m] || 0) + 1;
-          if (!monthArticles[m]) monthArticles[m] = [];
-          monthArticles[m].push(art);
-        }
-
         const yearTotal =
-          archiveYear != null
-            ? (archiveYearPosts.length > 0
-                ? archiveYearPosts.length
-                : yearCountsLocal[archiveYear] || 0)
-            : 0;
+          archiveYear != null ? (yearCountCache[archiveYear] ?? 0) : 0;
 
         const openArchiveYear = async (year: number) => {
           setArchiveYear(year);
           setArchiveMonth(null);
+          setArchiveMonthPosts([]);
+          setMonthCountCache({});
           setArchiveError(null);
           setArchiveLoading(true);
           try {
-            const posts = await fetchPostsByDateRange(year);
-            // Unisci con locali per non perdere nulla già in cache
-            const byId = new Map<string, Article>();
-            for (const a of articles) {
-              const d = parseArticleDate(a);
-              if (d && d.getFullYear() === year) byId.set(a.id, a);
-            }
-            for (const a of posts) byId.set(a.id, a);
-            const merged = Array.from(byId.values()).sort((a, b) => {
-              const da = parseArticleDate(a)?.getTime() || 0;
-              const db = parseArticleDate(b)?.getTime() || 0;
-              return db - da;
-            });
-            setArchiveYearPosts(merged);
-            setYearCountCache((prev) => ({ ...prev, [year]: merged.length }));
-            if (merged.length === 0) {
+            const months = await fetchArchiveMonthCounts(year);
+            setMonthCountCache(months);
+            // Allinea il totale anno al sum dei mesi se Blogger risponde
+            const sum = Object.values(months).reduce((a, b) => a + b, 0);
+            if (sum > 0) {
+              setYearCountCache((prev) => ({ ...prev, [year]: sum }));
+            } else if ((yearCountCache[year] ?? 0) === 0) {
               setArchiveError('Nessun articolo trovato per questo anno.');
             }
           } catch {
             setArchiveError('Impossibile caricare l\'archivio. Riprova.');
-            setArchiveYearPosts([]);
+            setMonthCountCache({});
+          } finally {
+            setArchiveLoading(false);
+          }
+        };
+
+        const openArchiveMonth = async (month: number) => {
+          if (archiveYear == null) return;
+          setArchiveMonth(month);
+          setArchiveMonthPosts([]);
+          setArchiveError(null);
+          setArchiveLoading(true);
+          try {
+            const posts = await fetchPostsByDateRange(archiveYear, month);
+            setArchiveMonthPosts(posts);
+            // Mantieni il totale ufficiale Blogger; non ridurlo al campione caricato
+            if (posts.length === 0) {
+              setArchiveError('Nessun articolo in questo mese.');
+            }
+          } catch {
+            setArchiveError('Impossibile caricare gli articoli. Riprova.');
+            setArchiveMonthPosts([]);
           } finally {
             setArchiveLoading(false);
           }
@@ -635,12 +652,15 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
         const backToYears = () => {
           setArchiveYear(null);
           setArchiveMonth(null);
-          setArchiveYearPosts([]);
+          setArchiveMonthPosts([]);
+          setMonthCountCache({});
           setArchiveError(null);
         };
 
         const backToMonths = () => {
           setArchiveMonth(null);
+          setArchiveMonthPosts([]);
+          setArchiveError(null);
         };
 
         return (
@@ -697,24 +717,30 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                 Archivio Storico
               </h3>
 
-              {/* Livello 0: anni */}
+              {/* Livello 0: anni — solo conteggi ufficiali Blogger */}
               {archiveYear == null && (
                 <div className="flex flex-wrap gap-2 content-start">
+                  {yearCountsLoading && !yearCountsReady && (
+                    <p className="w-full text-[11px] text-gray-500 font-medium py-2">
+                      Conteggio articoli da Blogger…
+                    </p>
+                  )}
                   {displayedYears.map((year) => {
-                    const count = yearCountCache[year] ?? yearCountsLocal[year] ?? 0;
-                    const known = yearCountCache[year] != null || (yearCountsLocal[year] || 0) > 0;
+                    const count = yearCountCache[year];
+                    const known = typeof count === 'number';
                     return (
                       <button
                         key={year}
                         type="button"
                         onClick={() => openArchiveYear(year)}
-                        className="px-3 py-2 bg-[#e31b23] text-white rounded-lg text-[10px] font-black hover:bg-black transition-colors shadow-sm"
-                        title={known ? `${count} articoli nel ${year}` : `Apri archivio ${year}`}
+                        className="px-3 py-2 bg-[#e31b23] text-white rounded-lg text-[10px] font-black hover:bg-black transition-colors shadow-sm disabled:opacity-60"
+                        title={known ? `${count} articoli pubblicati nel ${year}` : `Apri archivio ${year}`}
+                        disabled={yearCountsLoading && !yearCountsReady}
                       >
                         {year}
-                        <span className="opacity-90 font-bold">
-                          {known ? ` (${count})` : ''}
-                        </span>
+                        {known && (
+                          <span className="opacity-90 font-bold"> ({count})</span>
+                        )}
                       </button>
                     );
                   })}
@@ -728,7 +754,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     </button>
                   )}
                   <p className="w-full text-[9px] text-gray-400 mt-1 font-medium">
-                    Clicca un anno per i mesi · i numeri tra parentesi contano gli articoli
+                    Numeri ufficiali Blogger · clicca un anno per i mesi
                   </p>
                 </div>
               )}
@@ -750,20 +776,20 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     </span>
                   </div>
                   {archiveLoading ? (
-                    <p className="text-[11px] text-gray-500 font-medium py-4 text-center">Caricamento archivio…</p>
-                  ) : archiveError ? (
+                    <p className="text-[11px] text-gray-500 font-medium py-4 text-center">Caricamento mesi da Blogger…</p>
+                  ) : archiveError && Object.keys(monthCountCache).length === 0 ? (
                     <p className="text-[11px] text-gray-500 font-medium py-2">{archiveError}</p>
                   ) : (
                     <div className="flex flex-col gap-1 max-h-[260px] overflow-y-auto pr-1">
                       {IT_MONTH_NAMES.map((name, idx) => {
                         const m = idx + 1;
-                        const c = monthCounts[m] || 0;
+                        const c = monthCountCache[m] || 0;
                         if (c === 0) return null;
                         return (
                           <button
                             key={name}
                             type="button"
-                            onClick={() => setArchiveMonth(m)}
+                            onClick={() => openArchiveMonth(m)}
                             className="flex items-center justify-between w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#e31b23] hover:text-white transition-colors group"
                           >
                             <span className="text-[11px] font-bold text-gray-800 group-hover:text-white">{name}</span>
@@ -771,7 +797,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                           </button>
                         );
                       })}
-                      {Object.keys(monthCounts).length === 0 && (
+                      {Object.keys(monthCountCache).length === 0 && (
                         <p className="text-[11px] text-gray-500 font-medium py-2">
                           Nessun mese con articoli per {archiveYear}.
                         </p>
@@ -794,41 +820,47 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     </button>
                     <span className="text-[10px] font-black text-gray-900 text-right leading-tight">
                       {IT_MONTH_NAMES[archiveMonth - 1]} {archiveYear}
-                      <span className="text-[#e31b23]"> ({monthCounts[archiveMonth] || 0})</span>
+                      <span className="text-[#e31b23]"> ({monthCountCache[archiveMonth] ?? archiveMonthPosts.length})</span>
                     </span>
                   </div>
-                  <ul className="max-h-[280px] overflow-y-auto space-y-1 pr-1">
-                    {(monthArticles[archiveMonth] || []).map((art) => (
-                      <li key={art.id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onArticleClick(art);
-                            onClose();
-                          }}
-                          className="w-full text-left flex gap-2 p-2 rounded-lg hover:bg-gray-50 group transition-colors"
-                        >
-                          <div className="w-10 h-10 rounded-md overflow-hidden bg-gray-100 shrink-0">
-                            <img
-                              src={art.imageUrl}
-                              alt=""
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-[11px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-[#e31b23]">
-                              {art.title}
-                            </h4>
-                            <span className="text-[9px] text-gray-400 font-medium">{art.date}</span>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                    {(monthArticles[archiveMonth] || []).length === 0 && (
-                      <li className="text-[11px] text-gray-500 py-2">Nessun articolo in questo mese.</li>
-                    )}
-                  </ul>
+                  {archiveLoading ? (
+                    <p className="text-[11px] text-gray-500 font-medium py-4 text-center">Caricamento articoli…</p>
+                  ) : (
+                    <ul className="max-h-[280px] overflow-y-auto space-y-1 pr-1">
+                      {archiveMonthPosts.map((art) => (
+                        <li key={art.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onArticleClick(art);
+                              onClose();
+                            }}
+                            className="w-full text-left flex gap-2 p-2 rounded-lg hover:bg-gray-50 group transition-colors"
+                          >
+                            <div className="w-10 h-10 rounded-md overflow-hidden bg-gray-100 shrink-0">
+                              <img
+                                src={art.imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-[11px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-[#e31b23]">
+                                {art.title}
+                              </h4>
+                              <span className="text-[9px] text-gray-400 font-medium">{art.date}</span>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                      {!archiveLoading && archiveMonthPosts.length === 0 && (
+                        <li className="text-[11px] text-gray-500 py-2">
+                          {archiveError || 'Nessun articolo in questo mese.'}
+                        </li>
+                      )}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
