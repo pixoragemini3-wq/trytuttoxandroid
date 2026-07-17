@@ -26,6 +26,8 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
   const [archiveYearPosts, setArchiveYearPosts] = useState<Article[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  /** Conteggi anno aggiornati dopo il fetch Blogger */
+  const [yearCountCache, setYearCountCache] = useState<Record<number, number>>({});
   
   // Newsletter Logic
   const [email, setEmail] = useState('');
@@ -618,6 +620,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
               return db - da;
             });
             setArchiveYearPosts(merged);
+            setYearCountCache((prev) => ({ ...prev, [year]: merged.length }));
             if (merged.length === 0) {
               setArchiveError('Nessun articolo trovato per questo anno.');
             }
@@ -698,17 +701,20 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
               {archiveYear == null && (
                 <div className="flex flex-wrap gap-2 content-start">
                   {displayedYears.map((year) => {
-                    const count = yearCountsLocal[year] || 0;
+                    const count = yearCountCache[year] ?? yearCountsLocal[year] ?? 0;
+                    const known = yearCountCache[year] != null || (yearCountsLocal[year] || 0) > 0;
                     return (
                       <button
                         key={year}
                         type="button"
                         onClick={() => openArchiveYear(year)}
                         className="px-3 py-2 bg-[#e31b23] text-white rounded-lg text-[10px] font-black hover:bg-black transition-colors shadow-sm"
-                        title={`${count} articoli caricati per il ${year}`}
+                        title={known ? `${count} articoli nel ${year}` : `Apri archivio ${year}`}
                       >
                         {year}
-                        <span className="opacity-90 font-bold"> ({count})</span>
+                        <span className="opacity-90 font-bold">
+                          {known ? ` (${count})` : ''}
+                        </span>
                       </button>
                     );
                   })}
