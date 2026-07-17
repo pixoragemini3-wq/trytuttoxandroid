@@ -786,6 +786,8 @@ const App: React.FC = () => {
     let col2Icon: SpotlightIconKind = 'star';
     let col1Items: Article[] = pool.slice(0, 3);
     let col2Items: Article[] = pool.slice(3, 6);
+    let col1All: Article[] = pool.slice(0, 24);
+    let col2All: Article[] = pool.slice(3, 27);
     let viewAllCat = spotlightCat;
 
     // Caso speciale che ti è piaciuto: split App vs Giochi con keyword
@@ -804,6 +806,8 @@ const App: React.FC = () => {
 
       col1Items = appItems.length > 0 ? appItems.slice(0, 3) : pool.slice(0, 3);
       col2Items = gameItems.length > 0 ? gameItems.slice(0, 3) : pool.slice(3, 6);
+      col1All = appItems.length > 0 ? appItems.slice(0, 24) : pool.slice(0, 24);
+      col2All = gameItems.length > 0 ? gameItems.slice(0, 24) : pool.slice(3, 27);
     } else if (spotlightCat === 'Offerte') {
       col1Title = 'ULTIME OFFERTE';
       col2Title = 'LE MIGLIORI OFFERTE';
@@ -923,9 +927,8 @@ const App: React.FC = () => {
       'Emulatori'
     ];
 
-    const handleViewAll = () => {
-      handleNavClick(viewAllCat);
-    };
+    const [expandedCol, setExpandedCol] = useState<'col1' | 'col2' | null>(null);
+    const cascadeRef = useRef<HTMLDivElement>(null);
 
     const handleCatClick = (label: string) => {
       setSearchQuery(label);
@@ -944,6 +947,7 @@ const App: React.FC = () => {
     const accent = CATEGORY_COLORS[spotlightCat] || '#16a34a';
     const accent2 = spotlightCat === 'Smartphone' ? '#f59e0b' : spotlightCat === 'Offerte' ? '#e31b23' : spotlightCat === 'Guide' ? '#14b8a6' : spotlightCat === 'Recensioni' ? '#a855f7' : '#22c55e';
     const categoriesTint = '#6366f1';
+    const IMG_FALLBACK = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=200';
 
     const glassCardStyle = (tint: string): React.CSSProperties => ({
       borderColor: `${tint}30`,
@@ -958,23 +962,51 @@ const App: React.FC = () => {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
+    const cascadeItems =
+      expandedCol === 'col1' ? col1All
+      : expandedCol === 'col2' ? col2All
+      : [];
+    const cascadeTitle =
+      expandedCol === 'col1' ? formatSpotlightTitle(col1Title)
+      : expandedCol === 'col2' ? formatSpotlightTitle(col2Title)
+      : '';
+    const cascadeTint = expandedCol === 'col1' ? accent : accent2;
+
+    const toggleExpand = (col: 'col1' | 'col2') => {
+      setExpandedCol((prev) => {
+        const next = prev === col ? null : col;
+        if (next) {
+          setTimeout(() => {
+            cascadeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 50);
+        }
+        return next;
+      });
+    };
+
     const SpotlightList = ({
       title,
       icon,
       items,
-      onViewAll,
+      allItems,
+      colKey,
       tint,
       tiltClass = 'spotlight-tilt-left',
     }: {
       title: string;
       icon: SpotlightIconKind;
       items: Article[];
-      onViewAll: () => void;
+      allItems: Article[];
+      colKey: 'col1' | 'col2';
       tint: string;
       tiltClass?: string;
-    }) => (
+    }) => {
+      const isExpanded = expandedCol === colKey;
+      const extraCount = Math.max(0, allItems.length - items.length);
+
+      return (
       <div
-        className={`spotlight-glass ${tiltClass} rounded-2xl p-5 h-full flex flex-col relative overflow-hidden`}
+        className={`spotlight-glass ${tiltClass} rounded-2xl p-5 h-full flex flex-col relative overflow-hidden ${isExpanded ? 'spotlight-card-expanded' : ''}`}
         style={glassCardStyle(tint)}
       >
         <div
@@ -982,7 +1014,7 @@ const App: React.FC = () => {
           style={{ background: `linear-gradient(90deg, ${tint}, ${tint}55)` }}
           aria-hidden="true"
         />
-        <div className="flex items-center gap-2.5 mb-4 mt-1">
+        <div className="flex items-center gap-2.5 mb-3 mt-1">
           <span
             className="spotlight-icon-box w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ backgroundColor: `${tint}18`, color: tint, border: `1px solid ${tint}28` }}
@@ -994,16 +1026,23 @@ const App: React.FC = () => {
             {formatSpotlightTitle(title)}
           </h4>
         </div>
-        <div className="flex-1 space-y-0.5">
+        <div className="flex-1 space-y-1">
           {items.length > 0 ? (
             items.map((item: Article) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleArticleClick(item)}
-                className="spotlight-link group w-full text-left py-2.5 border-b border-white/50 last:border-0 rounded-lg hover:bg-white/35 transition-colors px-1"
+                className="spotlight-link group w-full text-left py-2 border-b border-white/50 last:border-0 rounded-lg hover:bg-white/40 transition-colors px-1 flex items-center gap-2.5"
               >
-                <span className="text-[14px] leading-[1.45] text-gray-700 font-semibold group-hover:text-gray-950 line-clamp-2 transition-colors">
+                <img
+                  src={item.imageUrl || IMG_FALLBACK}
+                  alt=""
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.src = IMG_FALLBACK; }}
+                  className="w-11 h-11 rounded-lg object-cover shrink-0 bg-gray-100 ring-1 ring-black/5 group-hover:scale-105 transition-transform duration-300"
+                />
+                <span className="text-[13px] leading-[1.4] text-gray-700 font-semibold group-hover:text-gray-950 line-clamp-2 transition-colors min-w-0">
                   {item.title}
                 </span>
               </button>
@@ -1016,15 +1055,24 @@ const App: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={onViewAll}
-          className="spotlight-cta mt-4 group inline-flex items-center gap-1.5 font-bold transition-colors"
+          onClick={() => toggleExpand(colKey)}
+          className="spotlight-cta mt-3 group inline-flex items-center gap-1.5 font-bold transition-colors"
           style={{ color: tint }}
+          aria-expanded={isExpanded}
         >
-          Vedi tutti
-          <span className="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+          {isExpanded ? 'Mostra meno' : 'Vedi tutti'}
+          <span className={`transition-transform ${isExpanded ? 'rotate-90' : 'group-hover:translate-x-0.5'}`} aria-hidden="true">
+            {isExpanded ? '↑' : '→'}
+          </span>
         </button>
+        {!isExpanded && extraCount > 0 && (
+          <span className="text-[10px] text-gray-400 font-medium mt-1">
+            +{extraCount} altri
+          </span>
+        )}
       </div>
-    );
+      );
+    };
 
     return (
       <section className="spotlight-section relative overflow-hidden border-t border-white/60 py-8 md:py-10">
@@ -1052,8 +1100,8 @@ const App: React.FC = () => {
           </div>
 
           <div className="spotlight-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} onViewAll={handleViewAll} tint={accent} tiltClass="spotlight-tilt-left" />
-            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} onViewAll={handleViewAll} tint={accent2} tiltClass="spotlight-tilt-right" />
+            <SpotlightList title={col1Title} icon={col1Icon} items={col1Items} allItems={col1All} colKey="col1" tint={accent} tiltClass="spotlight-tilt-left" />
+            <SpotlightList title={col2Title} icon={col2Icon} items={col2Items} allItems={col2All} colKey="col2" tint={accent2} tiltClass="spotlight-tilt-right" />
 
             <div
               className="spotlight-glass spotlight-tilt-center rounded-2xl p-5 h-full relative overflow-hidden"
@@ -1142,6 +1190,92 @@ const App: React.FC = () => {
               );
             })()}
           </div>
+
+          {/* Cascata dinamica: news/offerte a scorrimento */}
+          {expandedCol && cascadeItems.length > 0 && (
+            <div
+              ref={cascadeRef}
+              className="spotlight-cascade mt-5 rounded-2xl overflow-hidden relative"
+              style={{
+                border: `1px solid ${cascadeTint}28`,
+                boxShadow: `0 16px 48px ${cascadeTint}14, 0 4px 16px rgba(15,23,42,0.06)`,
+                background: `linear-gradient(160deg, rgba(255,255,255,0.95) 0%, ${cascadeTint}0c 100%)`,
+              }}
+            >
+              <div
+                className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/70"
+                style={{ background: `linear-gradient(90deg, ${cascadeTint}12, transparent)` }}
+              >
+                <div className="min-w-0">
+                  <p
+                    className="text-[10px] font-black uppercase tracking-[0.16em]"
+                    style={{ color: cascadeTint }}
+                  >
+                    {cascadeTitle}
+                  </p>
+                  <p className="text-xs font-semibold text-gray-500 mt-0.5">
+                    {cascadeItems.length} contenuti · scorri la cascata
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandedCol(null)}
+                  className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-white/80 transition-colors"
+                >
+                  Chiudi
+                </button>
+              </div>
+              <div className="spotlight-list-scroll max-h-[min(72vh,560px)] overflow-y-auto p-3 sm:p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {cascadeItems.map((article, idx) => (
+                    <button
+                      key={article.id}
+                      type="button"
+                      onClick={() => handleArticleClick(article)}
+                      className="spotlight-cascade-item group flex items-center gap-3 p-2.5 rounded-xl text-left bg-white/70 border border-white/80 hover:bg-white hover:shadow-md transition-all duration-200"
+                      style={{
+                        animationDelay: `${Math.min(idx, 24) * 38}ms`,
+                        borderColor: `${cascadeTint}14`,
+                      }}
+                    >
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-1 ring-black/5">
+                        <img
+                          src={article.imageUrl || IMG_FALLBACK}
+                          alt=""
+                          loading="lazy"
+                          onError={(e) => { e.currentTarget.src = IMG_FALLBACK; }}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-wide"
+                          style={{ color: cascadeTint }}
+                        >
+                          {article.category || article.tags?.[0] || 'Articolo'}
+                        </span>
+                        <h4 className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950 mt-0.5">
+                          {article.title}
+                        </h4>
+                        {article.date && (
+                          <p className="text-[11px] text-gray-400 font-medium mt-1">
+                            {article.date}
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className="text-sm shrink-0 opacity-40 group-hover:opacity-100 transition-opacity"
+                        style={{ color: cascadeTint }}
+                        aria-hidden="true"
+                      >
+                        →
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     );
