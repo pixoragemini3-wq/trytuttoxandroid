@@ -735,6 +735,43 @@ button:hover:not(.pill) {
   font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* Filigrana di sfondo (Android + smartphone) — dietro le card, non le copre */
+.spotlight-bg-filigree {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: #0f766e;
+}
+
+.spotlight-bg-filigree-android {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: min(42vw, 340px);
+  height: auto;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  opacity: 0.055;
+}
+
+.spotlight-bg-filigree-phone {
+  position: absolute;
+  right: 6%;
+  bottom: 4%;
+  width: min(12vw, 88px);
+  height: auto;
+  transform: rotate(14deg);
+  opacity: 0.04;
+  color: #1e40af;
+}
+
+@media (max-width: 767px) {
+  .spotlight-bg-filigree {
+    display: none;
+  }
+}
+
 .spotlight-section .spotlight-eyebrow {
   font-family: 'Outfit', system-ui, sans-serif;
   font-weight: 600;

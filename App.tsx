@@ -948,6 +948,27 @@ const App: React.FC = () => {
         <div className="absolute -bottom-16 right-[10%] w-72 h-72 rounded-full blur-3xl opacity-50" style={{ backgroundColor: `${accent2}22` }} aria-hidden="true" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-3xl opacity-30 bg-violet-300/40" aria-hidden="true" />
 
+        {/* Filigrana di sfondo — solo dietro le card, quasi impercettibile */}
+        <div className="spotlight-bg-filigree" aria-hidden="true">
+          <svg className="spotlight-bg-filigree-android" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M38 28 L28 12" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M82 28 L92 12" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M30 38 C30 28 42 22 60 22 C78 22 90 28 90 38" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+            <circle cx="46" cy="34" r="3.5" fill="currentColor" />
+            <circle cx="74" cy="34" r="3.5" fill="currentColor" />
+            <rect x="28" y="44" width="64" height="52" rx="12" stroke="currentColor" strokeWidth="3.5" />
+            <rect x="12" y="48" width="14" height="36" rx="7" stroke="currentColor" strokeWidth="3.5" />
+            <rect x="94" y="48" width="14" height="36" rx="7" stroke="currentColor" strokeWidth="3.5" />
+            <rect x="38" y="100" width="16" height="28" rx="8" stroke="currentColor" strokeWidth="3.5" />
+            <rect x="66" y="100" width="16" height="28" rx="8" stroke="currentColor" strokeWidth="3.5" />
+          </svg>
+          <svg className="spotlight-bg-filigree-phone" viewBox="0 0 64 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="4" width="48" height="102" rx="10" stroke="currentColor" strokeWidth="3" />
+            <line x1="26" y1="14" x2="38" y2="14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="32" cy="94" r="4" stroke="currentColor" strokeWidth="2.5" />
+          </svg>
+        </div>
+
         <div className="relative z-10 max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300/60 to-transparent" />
