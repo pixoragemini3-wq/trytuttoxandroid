@@ -1219,7 +1219,7 @@ const App: React.FC = () => {
                     {cascadeTitle}
                   </p>
                   <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                    {cascadeItems.length} contenuti · scorri la cascata
+                    {cascadeItems.length} contenuti · scorri la pagina per vederli tutti
                   </p>
                 </div>
                 <button
@@ -1230,10 +1230,8 @@ const App: React.FC = () => {
                   Chiudi
                 </button>
               </div>
-              <div
-                className="spotlight-list-scroll max-h-[min(72vh,560px)] overflow-y-auto overscroll-contain p-3 sm:p-4"
-                onWheel={(e) => e.stopPropagation()}
-              >
+              {/* Altezza libera: scorre con la pagina, senza box interno bloccato */}
+              <div className="p-3 sm:p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {cascadeItems.map((article, idx) => (
                     <button
