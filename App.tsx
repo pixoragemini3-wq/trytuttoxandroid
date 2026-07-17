@@ -76,7 +76,8 @@ const App: React.FC = () => {
   const scrollCascadeHorizontal = (direction: 'left' | 'right') => {
     const el = cascadeHScrollRef.current;
     if (!el) return;
-    const step = Math.min(360, Math.max(240, el.clientWidth * 0.75));
+    // Due colonne: scorre di ~2 card per click
+    const step = Math.min(520, Math.max(280, el.clientWidth * 0.65));
     el.scrollBy({ left: direction === 'left' ? -step : step, behavior: 'smooth' });
   };
   
@@ -1284,33 +1285,25 @@ const App: React.FC = () => {
               </div>
 
               <div className="relative py-3 sm:py-4">
-                <div
-                  className="pointer-events-none absolute inset-y-0 left-0 w-8 z-10"
-                  style={{ background: `linear-gradient(90deg, ${cascadeTint}12, transparent)` }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="pointer-events-none absolute inset-y-0 right-0 w-8 z-10"
-                  style={{ background: `linear-gradient(270deg, ${cascadeTint}12, transparent)` }}
-                  aria-hidden="true"
-                />
+                {/* Sfumature laterali (sopra lo scroll, senza intercettare i click) */}
+                <div className="spotlight-cascade-fade spotlight-cascade-fade-left" aria-hidden="true" />
+                <div className="spotlight-cascade-fade spotlight-cascade-fade-right" aria-hidden="true" />
                 <div
                   ref={cascadeHScrollRef}
-                  className="spotlight-cascade-track flex gap-3 overflow-x-auto px-4 sm:px-5 pb-2 scroll-smooth snap-x snap-mandatory"
-                  style={{ scrollbarWidth: 'thin' }}
+                  className="spotlight-cascade-track scroll-smooth snap-x snap-mandatory"
                 >
                   {cascadeItems.map((article, idx) => (
                     <button
                       key={article.id}
                       type="button"
                       onClick={() => handleArticleClick(article)}
-                      className="spotlight-cascade-item group snap-start shrink-0 w-[min(78vw,280px)] sm:w-[260px] flex flex-col text-left rounded-xl overflow-hidden bg-white border border-white/90 hover:shadow-lg transition-all duration-200"
+                      className="spotlight-cascade-item group snap-start flex flex-col text-left rounded-xl overflow-hidden bg-white border hover:shadow-lg transition-all duration-200"
                       style={{
-                        animationDelay: `${Math.min(idx, 16) * 30}ms`,
+                        animationDelay: `${Math.min(idx, 16) * 28}ms`,
                         borderColor: `${cascadeTint}18`,
                       }}
                     >
-                      <div className="aspect-[16/10] w-full overflow-hidden bg-gray-100">
+                      <div className="h-[88px] sm:h-[96px] w-full overflow-hidden bg-gray-100">
                         <img
                           src={article.imageUrl || IMG_FALLBACK}
                           alt=""
@@ -1319,18 +1312,18 @@ const App: React.FC = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
-                      <div className="p-3 flex flex-col gap-1 min-h-[5.5rem]">
+                      <div className="p-2.5 flex flex-col gap-0.5 min-h-[4.75rem]">
                         <span
-                          className="text-[10px] font-bold uppercase tracking-wide"
+                          className="text-[9px] font-bold uppercase tracking-wide"
                           style={{ color: cascadeTint }}
                         >
                           {article.category || article.tags?.[0] || 'Articolo'}
                         </span>
-                        <h4 className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950">
+                        <h4 className="text-[12px] sm:text-[13px] font-bold text-gray-800 leading-snug line-clamp-2 group-hover:text-gray-950">
                           {article.title}
                         </h4>
                         {article.date && (
-                          <p className="text-[11px] text-gray-400 font-medium mt-auto pt-1">
+                          <p className="text-[10px] text-gray-400 font-medium mt-auto pt-0.5">
                             {article.date}
                           </p>
                         )}

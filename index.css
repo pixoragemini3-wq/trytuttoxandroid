@@ -885,31 +885,75 @@ button:hover:not(.pill) {
   transform: rotateY(0deg) rotateX(0deg) translateY(-2px) translateZ(8px) !important;
 }
 
-/* Cascata orizzontale */
+/* Cascata orizzontale a 2 righe */
 .spotlight-cascade {
   animation: spotlightCascadeIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   overflow: hidden;
 }
 
 .spotlight-cascade-track {
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(200px, 230px);
+  gap: 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem 1.15rem 0.35rem;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  scroll-padding-inline: 1rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  scroll-padding-inline: 1.15rem;
+  /* Niente barra di avanzamento in basso */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .spotlight-cascade-track::-webkit-scrollbar {
-  height: 6px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-.spotlight-cascade-track::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
-  border-radius: 999px;
+.spotlight-cascade-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3rem;
+  z-index: 10;
+  pointer-events: none;
 }
 
-.spotlight-cascade-track::-webkit-scrollbar-track {
-  background: transparent;
+.spotlight-cascade-fade-left {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.spotlight-cascade-fade-right {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+@media (min-width: 640px) {
+  .spotlight-cascade-track {
+    grid-auto-columns: minmax(220px, 248px);
+    gap: 0.75rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .spotlight-cascade-fade {
+    width: 3.5rem;
+  }
 }
 
 @keyframes spotlightCascadeIn {
