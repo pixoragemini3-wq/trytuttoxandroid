@@ -67,6 +67,10 @@ const App: React.FC = () => {
 
   // Scroll To Top
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Spotlight cascade — state in App so nested remounts / scroll re-renders don't close it
+  const [spotlightExpandedCol, setSpotlightExpandedCol] = useState<'col1' | 'col2' | null>(null);
+  const spotlightCascadeRef = useRef<HTMLDivElement>(null);
   
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -289,16 +293,17 @@ const App: React.FC = () => {
     }
   }, [location.pathname, currentArticle, articles.length, isArticlesLoading]);
 
-  // Scroll handlers
+  // Scroll handlers — only setState when value changes (avoids remount thrash)
   useEffect(() => {
     const handleScroll = () => {
       if (staticBannerRef.current) {
-        const rect = staticBannerRef.current.getBoundingClientRect();
-        setShowStickyBanner(rect.bottom < 0);
+        const nextSticky = staticBannerRef.current.getBoundingClientRect().bottom < 0;
+        setShowStickyBanner((prev) => (prev === nextSticky ? prev : nextSticky));
       }
-      setShowScrollTop(window.scrollY > 500);
+      const nextTop = window.scrollY > 500;
+      setShowScrollTop((prev) => (prev === nextTop ? prev : nextTop));
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -927,8 +932,7 @@ const App: React.FC = () => {
       'Emulatori'
     ];
 
-    const [expandedCol, setExpandedCol] = useState<'col1' | 'col2' | null>(null);
-    const cascadeRef = useRef<HTMLDivElement>(null);
+    const expandedCol = spotlightExpandedCol;
 
     const handleCatClick = (label: string) => {
       setSearchQuery(label);
@@ -973,12 +977,13 @@ const App: React.FC = () => {
     const cascadeTint = expandedCol === 'col1' ? accent : accent2;
 
     const toggleExpand = (col: 'col1' | 'col2') => {
-      setExpandedCol((prev) => {
+      setSpotlightExpandedCol((prev) => {
         const next = prev === col ? null : col;
         if (next) {
-          setTimeout(() => {
-            cascadeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }, 50);
+          // Soft scroll once after open — avoid fighting page scroll while browsing cascade
+          requestAnimationFrame(() => {
+            spotlightCascadeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
         }
         return next;
       });
@@ -1075,17 +1080,17 @@ const App: React.FC = () => {
     };
 
     return (
-      <section className="spotlight-section relative overflow-hidden border-t border-white/60 py-8 md:py-10">
+      <section className="spotlight-section relative overflow-x-clip overflow-y-visible border-t border-white/60 py-8 md:py-10">
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
             background: `linear-gradient(135deg, ${accent}12 0%, #ecfdf5 35%, #eff6ff 70%, ${accent2}14 100%)`,
           }}
           aria-hidden="true"
         />
-        <div className="absolute -top-20 left-[8%] w-64 h-64 rounded-full blur-3xl opacity-60" style={{ backgroundColor: `${accent}25` }} aria-hidden="true" />
-        <div className="absolute -bottom-16 right-[10%] w-72 h-72 rounded-full blur-3xl opacity-50" style={{ backgroundColor: `${accent2}22` }} aria-hidden="true" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-3xl opacity-30 bg-violet-300/40" aria-hidden="true" />
+        <div className="absolute -top-20 left-[8%] w-64 h-64 rounded-full blur-3xl opacity-60 pointer-events-none" style={{ backgroundColor: `${accent}25` }} aria-hidden="true" />
+        <div className="absolute -bottom-16 right-[10%] w-72 h-72 rounded-full blur-3xl opacity-50 pointer-events-none" style={{ backgroundColor: `${accent2}22` }} aria-hidden="true" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-3xl opacity-30 bg-violet-300/40 pointer-events-none" aria-hidden="true" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
@@ -1191,11 +1196,11 @@ const App: React.FC = () => {
             })()}
           </div>
 
-          {/* Cascata dinamica: news/offerte a scorrimento */}
+          {/* Cascata dinamica: news/offerte a scorrimento (stato stabile a livello App) */}
           {expandedCol && cascadeItems.length > 0 && (
             <div
-              ref={cascadeRef}
-              className="spotlight-cascade mt-5 rounded-2xl overflow-hidden relative"
+              ref={spotlightCascadeRef}
+              className="spotlight-cascade mt-5 rounded-2xl relative"
               style={{
                 border: `1px solid ${cascadeTint}28`,
                 boxShadow: `0 16px 48px ${cascadeTint}14, 0 4px 16px rgba(15,23,42,0.06)`,
@@ -1203,8 +1208,8 @@ const App: React.FC = () => {
               }}
             >
               <div
-                className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/70"
-                style={{ background: `linear-gradient(90deg, ${cascadeTint}12, transparent)` }}
+                className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-white/70 backdrop-blur-md"
+                style={{ background: `linear-gradient(90deg, ${cascadeTint}18, rgba(255,255,255,0.92))` }}
               >
                 <div className="min-w-0">
                   <p
@@ -1219,13 +1224,16 @@ const App: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setExpandedCol(null)}
+                  onClick={() => setSpotlightExpandedCol(null)}
                   className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-white/80 transition-colors"
                 >
                   Chiudi
                 </button>
               </div>
-              <div className="spotlight-list-scroll max-h-[min(72vh,560px)] overflow-y-auto p-3 sm:p-4">
+              <div
+                className="spotlight-list-scroll max-h-[min(72vh,560px)] overflow-y-auto overscroll-contain p-3 sm:p-4"
+                onWheel={(e) => e.stopPropagation()}
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {cascadeItems.map((article, idx) => (
                     <button
@@ -1430,7 +1438,8 @@ const App: React.FC = () => {
                 On desktop it alternates categories daily. */}
             {isHome && activeCategory === 'Tutti' && !isSearch && (
               <div className="hidden md:block">
-                <AppsGamesMenu />
+                {/* Call as function (not <Component />) so expand state/DOM stay stable across App re-renders */}
+                {AppsGamesMenu()}
               </div>
             )}
 

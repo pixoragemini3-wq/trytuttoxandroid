@@ -860,6 +860,8 @@ button:hover:not(.pill) {
 .spotlight-list-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .spotlight-list-scroll::-webkit-scrollbar {
@@ -883,8 +885,11 @@ button:hover:not(.pill) {
   transform: rotateY(0deg) rotateX(0deg) translateY(-2px) translateZ(8px) !important;
 }
 
+/* Animate only on first open (class toggled in DOM); avoid re-hiding on scroll re-renders */
 .spotlight-cascade {
   animation: spotlightCascadeIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 @keyframes spotlightCascadeIn {
@@ -900,6 +905,7 @@ button:hover:not(.pill) {
 
 .spotlight-cascade-item {
   animation: spotlightCascadeItem 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 1;
 }
 
 @keyframes spotlightCascadeItem {
