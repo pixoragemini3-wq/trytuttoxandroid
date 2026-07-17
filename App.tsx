@@ -778,10 +778,12 @@ const App: React.FC = () => {
       });
     }
 
+    type SpotlightIconKind = 'tag' | 'star' | 'phone' | 'flame' | 'book' | 'bulb' | 'layers' | 'gamepad' | 'news' | 'note' | 'grid';
+
     let col1Title = `ULTIMI ${spotlightCat.toUpperCase()}`;
     let col2Title = `IN EVIDENZA ${spotlightCat.toUpperCase()}`;
-    let col1Icon = '📰';
-    let col2Icon = '⭐';
+    let col1Icon: SpotlightIconKind = 'news';
+    let col2Icon: SpotlightIconKind = 'star';
     let col1Items: Article[] = pool.slice(0, 3);
     let col2Items: Article[] = pool.slice(3, 6);
     let viewAllCat = spotlightCat;
@@ -790,8 +792,8 @@ const App: React.FC = () => {
     if (spotlightCat === 'App & Giochi') {
       col1Title = 'ULTIME APP';
       col2Title = 'ULTIMI GIOCHI';
-      col1Icon = '📱';
-      col2Icon = '🎮';
+      col1Icon = 'layers';
+      col2Icon = 'gamepad';
       const isGameLike = (a: Article) => {
         const hay = `${a.title} ${(a.tags || []).join(' ')}`.toLowerCase();
         return /gioco|game|play|arcade|indie/i.test(hay);
@@ -805,24 +807,113 @@ const App: React.FC = () => {
     } else if (spotlightCat === 'Offerte') {
       col1Title = 'ULTIME OFFERTE';
       col2Title = 'LE MIGLIORI OFFERTE';
-      col1Icon = '🏷️';
-      col2Icon = '💰';
+      col1Icon = 'tag';
+      col2Icon = 'star';
     } else if (spotlightCat === 'Smartphone') {
       col1Title = 'ULTIMI SMARTPHONE';
       col2Title = 'TOP DEVICE';
-      col1Icon = '📱';
-      col2Icon = '🔥';
+      col1Icon = 'phone';
+      col2Icon = 'flame';
     } else if (spotlightCat === 'Guide') {
       col1Title = 'ULTIME GUIDE';
       col2Title = 'TUTORIAL UTILI';
-      col1Icon = '📖';
-      col2Icon = '💡';
+      col1Icon = 'book';
+      col2Icon = 'bulb';
     } else if (spotlightCat === 'Recensioni') {
       col1Title = 'ULTIME RECENSIONI';
       col2Title = 'TEST & PROVE';
-      col1Icon = '⭐';
-      col2Icon = '📝';
+      col1Icon = 'star';
+      col2Icon = 'note';
     }
+
+    const SpotlightIcon: React.FC<{ kind: SpotlightIconKind; className?: string }> = ({ kind, className = 'w-5 h-5' }) => {
+      const common = { className, fill: 'none' as const, stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, viewBox: '0 0 24 24', 'aria-hidden': true as const };
+      switch (kind) {
+        case 'tag':
+          return (
+            <svg {...common}>
+              <path d="M20.59 13.41 11 3H4v7l9.59 9.59a2 2 0 0 0 2.82 0l4.18-4.18a2 2 0 0 0 0-2.82Z" />
+              <circle cx="7.5" cy="7.5" r="1.25" fill="currentColor" stroke="none" />
+            </svg>
+          );
+        case 'star':
+          return (
+            <svg {...common}>
+              <path d="M12 3.5 14.4 9l5.9.5-4.5 3.9 1.4 5.7L12 16.2 6.8 19.1l1.4-5.7L3.7 9.5 9.6 9 12 3.5Z" />
+            </svg>
+          );
+        case 'phone':
+          return (
+            <svg {...common}>
+              <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+              <path d="M10 5.5h4" />
+              <circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          );
+        case 'flame':
+          return (
+            <svg {...common}>
+              <path d="M12 3c-1.5 3-4 4.5-4 8a4 4 0 0 0 8 0c0-2.5-1.2-4-2-5.5-.5 1.5-1.2 2.2-2 2.5.3-1.8.8-3.5 0-5Z" />
+            </svg>
+          );
+        case 'book':
+          return (
+            <svg {...common}>
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
+              <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v16h5.5a2.5 2.5 0 0 1 2.5 2.5v-16Z" />
+            </svg>
+          );
+        case 'bulb':
+          return (
+            <svg {...common}>
+              <path d="M9 18h6" />
+              <path d="M10 21h4" />
+              <path d="M12 3a5.5 5.5 0 0 0-3 10c.4.4.8 1 .9 1.7h4.2c.1-.7.5-1.3.9-1.7A5.5 5.5 0 0 0 12 3Z" />
+            </svg>
+          );
+        case 'layers':
+          return (
+            <svg {...common}>
+              <path d="m12 3 8 4.5-8 4.5L4 7.5 12 3Z" />
+              <path d="m4 12 8 4.5 8-4.5" />
+              <path d="m4 16.5 8 4.5 8-4.5" />
+            </svg>
+          );
+        case 'gamepad':
+          return (
+            <svg {...common}>
+              <rect x="2.5" y="8" width="19" height="10" rx="4" />
+              <path d="M8 11v4M6 13h4" />
+              <circle cx="15.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+              <circle cx="17.5" cy="14" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+          );
+        case 'note':
+          return (
+            <svg {...common}>
+              <path d="M7 3.5h8.5L19 7v13.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5Z" />
+              <path d="M15 3.5V8h4.5" />
+              <path d="M9 12h6M9 15.5h4" />
+            </svg>
+          );
+        case 'grid':
+          return (
+            <svg {...common}>
+              <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+              <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+              <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+              <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+            </svg>
+          );
+        default:
+          return (
+            <svg {...common}>
+              <path d="M5 5h14v12H5z" />
+              <path d="M8 9h8M8 12h5" />
+            </svg>
+          );
+      }
+    };
 
     const categorieList = [
       'Giochi Android Gratis',
@@ -876,7 +967,7 @@ const App: React.FC = () => {
       tiltClass = 'spotlight-tilt-left',
     }: {
       title: string;
-      icon: string;
+      icon: SpotlightIconKind;
       items: Article[];
       onViewAll: () => void;
       tint: string;
@@ -893,13 +984,13 @@ const App: React.FC = () => {
         />
         <div className="flex items-center gap-2.5 mb-4 mt-1">
           <span
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 shadow-sm border border-white/60"
-            style={{ backgroundColor: `${tint}20`, color: tint }}
+            className="spotlight-icon-box w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${tint}18`, color: tint, border: `1px solid ${tint}28` }}
             aria-hidden="true"
           >
-            {icon}
+            <SpotlightIcon kind={icon} />
           </span>
-          <h4 className="spotlight-heading text-[15px] text-gray-800 leading-snug">
+          <h4 className="spotlight-heading text-[15px] text-gray-900 leading-snug font-bold">
             {formatSpotlightTitle(title)}
           </h4>
         </div>
@@ -912,7 +1003,7 @@ const App: React.FC = () => {
                 onClick={() => handleArticleClick(item)}
                 className="spotlight-link group w-full text-left py-2.5 border-b border-white/50 last:border-0 rounded-lg hover:bg-white/35 transition-colors px-1"
               >
-                <span className="text-[14px] leading-[1.45] text-gray-600 group-hover:text-gray-900 line-clamp-2 transition-colors">
+                <span className="text-[14px] leading-[1.45] text-gray-700 font-semibold group-hover:text-gray-950 line-clamp-2 transition-colors">
                   {item.title}
                 </span>
               </button>
@@ -926,7 +1017,7 @@ const App: React.FC = () => {
         <button
           type="button"
           onClick={onViewAll}
-          className="spotlight-cta mt-4 group inline-flex items-center gap-1.5 transition-colors"
+          className="spotlight-cta mt-4 group inline-flex items-center gap-1.5 font-bold transition-colors"
           style={{ color: tint }}
         >
           Vedi tutti
@@ -973,9 +1064,18 @@ const App: React.FC = () => {
                 style={{ background: `linear-gradient(90deg, ${categoriesTint}, ${categoriesTint}55)` }}
                 aria-hidden="true"
               />
-              <h4 className="spotlight-heading text-[15px] text-gray-800 mb-4 mt-1">
-                Categorie
-              </h4>
+              <div className="flex items-center gap-2.5 mb-4 mt-1">
+                <span
+                  className="spotlight-icon-box w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${categoriesTint}18`, color: categoriesTint, border: `1px solid ${categoriesTint}28` }}
+                  aria-hidden="true"
+                >
+                  <SpotlightIcon kind="grid" />
+                </span>
+                <h4 className="spotlight-heading text-[15px] text-gray-900 leading-snug font-bold">
+                  Categorie
+                </h4>
+              </div>
               <ul className="space-y-1">
                 {categorieList.map((c, idx) => (
                   <li key={idx}>
@@ -984,7 +1084,7 @@ const App: React.FC = () => {
                       onClick={() => handleCatClick(c)}
                       className="spotlight-cat group w-full flex items-center justify-between gap-2 text-left py-2 px-2 -mx-2 rounded-lg hover:bg-white/40 transition-colors"
                     >
-                      <span className="text-[14px] text-gray-600 group-hover:text-gray-900 font-medium transition-colors tracking-tight">
+                      <span className="text-[14px] text-gray-700 group-hover:text-gray-950 font-semibold transition-colors tracking-tight">
                         {c}
                       </span>
                       <span className="text-xs transition-colors group-hover:translate-x-0.5" style={{ color: `${categoriesTint}99` }} aria-hidden="true">›</span>
@@ -1027,14 +1127,14 @@ const App: React.FC = () => {
                     </span>
                   )}
                   <div className="relative z-10">
-                    <h4 className="spotlight-heading text-xl text-white leading-tight mb-2 drop-shadow-sm">
+                    <h4 className="spotlight-heading text-xl text-white leading-tight mb-2 drop-shadow-sm font-bold">
                       {promo.title}
                     </h4>
-                    <p className="text-[13px] text-white/90 leading-relaxed max-w-[28ch] font-normal">
+                    <p className="text-[13px] text-white/90 leading-relaxed max-w-[28ch] font-medium">
                       {promo.desc}
                     </p>
                   </div>
-                  <span className="spotlight-cta relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/25 backdrop-blur-md border border-white/35 text-white px-4 py-2 rounded-xl group-hover:bg-white/35 transition-colors shadow-sm">
+                  <span className="spotlight-cta relative z-10 mt-5 inline-flex items-center gap-2 self-start bg-white/25 backdrop-blur-md border border-white/35 text-white px-4 py-2 rounded-xl font-bold group-hover:bg-white/35 transition-colors shadow-sm">
                     {promo.btn}
                     <span aria-hidden="true">→</span>
                   </span>
