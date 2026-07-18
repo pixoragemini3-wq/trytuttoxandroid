@@ -36,13 +36,13 @@ const getCatColor = (cat: string) => CATEGORY_COLORS[cat] ?? hashColor(cat);
 const FALLBACK = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
 
 const Meta: React.FC<{ author: string; date: string }> = ({ author, date }) => (
-  <div className="flex items-center gap-2 mt-auto pt-3">
-    <div className="w-6 h-6 rounded-full bg-[#e31b23] flex items-center justify-center text-white text-[9px] font-black uppercase shrink-0">
+  <div className="flex items-center gap-2 mt-auto pt-1.5 md:pt-2">
+    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#e31b23] flex items-center justify-center text-white text-[9px] font-black uppercase shrink-0">
       {author?.[0] ?? 'T'}
     </div>
-    <span className="text-[12px] font-semibold text-gray-700 truncate">{author}</span>
+    <span className="text-[11px] md:text-[12px] font-semibold text-gray-700 truncate">{author}</span>
     <span className="text-gray-300 text-[10px]">·</span>
-    <span className="text-[12px] text-gray-400 whitespace-nowrap">{date}</span>
+    <span className="text-[11px] md:text-[12px] text-gray-400 whitespace-nowrap">{date}</span>
   </div>
 );
 
@@ -64,9 +64,9 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
         onClick={onClick}
         className={`group cursor-pointer flex flex-col md:flex-row bg-white overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full ${className}`}
       >
-        <div className="relative w-full md:w-[58%] h-full shrink-0 overflow-hidden bg-[#f8f8f8] p-2.5 md:p-3">
+        <div className="relative w-full md:w-[58%] h-full shrink-0 overflow-hidden bg-[#f8f8f8] p-2 md:p-2.5">
           {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
-          <div className="relative w-full h-full min-h-[180px] md:min-h-0 rounded-2xl overflow-hidden">
+          <div className="relative w-full h-full min-h-[140px] md:min-h-0 rounded-xl md:rounded-2xl overflow-hidden">
             <img
               src={article.imageUrl}
               alt={article.title}
@@ -82,11 +82,11 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             {badge.label}
           </span>
         </div>
-        <div className="flex flex-col justify-center p-5 md:p-6 lg:p-7 md:w-[42%]">
-          <h2 className="font-condensed text-[24px] md:text-[26px] lg:text-[30px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 md:line-clamp-4 mb-2 md:mb-3">
+        <div className="flex flex-col justify-center p-4 md:p-5 lg:p-6 md:w-[42%]">
+          <h2 className="font-condensed text-[22px] md:text-[24px] lg:text-[27px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
             {article.title}
           </h2>
-          <p className="hidden md:block text-[13px] leading-relaxed text-gray-500 line-clamp-2 lg:line-clamp-3 mb-3">
+          <p className="hidden md:block text-[12px] lg:text-[13px] leading-relaxed text-gray-500 line-clamp-2 mb-2">
             {article.excerpt}
           </p>
           <Meta author={article.author} date={article.date} />
@@ -133,13 +133,14 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   }
 
   /* ── STANDARD ─────────────────────────────────────────────────── */
+  /* Desktop: layout orizzontale compatto (~1.5–2 anteprime in viewport 15.6") */
   return (
     <div
       ref={cardRef}
       onClick={onClick}
-      className={`group cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col ${className}`}
+      className={`group cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:h-[168px] lg:h-[176px] ${className}`}
     >
-      <div className="relative w-full aspect-video overflow-hidden bg-gray-100 shrink-0">
+      <div className="relative w-full md:w-[38%] lg:w-[36%] h-[168px] sm:h-[180px] md:h-full shrink-0 overflow-hidden bg-gray-100">
         {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
         <img
           src={article.imageUrl}
@@ -149,17 +150,17 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
           className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
         />
       </div>
-      <div className="flex flex-col flex-1 p-4">
+      <div className="flex flex-col flex-1 justify-center p-3.5 md:p-4 min-w-0">
         <span
-          className="text-[10px] font-bold uppercase tracking-[0.12em] mb-2 block"
+          className="text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5 block"
           style={{ color }}
         >
           {badge.label}
         </span>
-        <h3 className="font-condensed text-[24px] md:text-[26px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
+        <h3 className="font-condensed text-[20px] md:text-[22px] lg:text-[23px] font-black leading-[1.08] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-2 md:line-clamp-3 mb-1.5">
           {article.title}
         </h3>
-        <p className="text-[13px] text-gray-400 leading-relaxed line-clamp-2 mb-3 hidden sm:block">
+        <p className="text-[12px] md:text-[13px] text-gray-400 leading-relaxed line-clamp-1 lg:line-clamp-2 mb-2 hidden sm:block">
           {article.excerpt}
         </p>
         <Meta author={article.author} date={article.date} />

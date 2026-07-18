@@ -1771,8 +1771,7 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && activeCategory === 'Tutti' && (
-                  {/* Hero più basso su desktop: più spazio per In Evidenza / griglia su laptop 15.6" */}
-                  <div className="w-full md:h-[340px] lg:h-[360px] flex gap-3 items-stretch px-2 md:px-0 mt-3 md:mt-1">
+                  <div className="w-full md:h-[260px] lg:h-[280px] flex gap-3 items-stretch px-2 md:px-0 mt-3 md:mt-1">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 
@@ -1929,7 +1928,7 @@ const App: React.FC = () => {
                     ) : displayArticles.length > 0 ? (
                       <div 
                         key={isSearch ? `search-${searchQuery}` : activeCategory} 
-                        className={`flex flex-col gap-6 mb-8 animate-in fade-in duration-500 ${slideDirection === 'right' ? 'slide-in-from-right-20' : 'slide-in-from-left-20'}`}
+                        className={`flex flex-col gap-3.5 md:gap-4 mb-8 animate-in fade-in duration-500 ${slideDirection === 'right' ? 'slide-in-from-right-20' : 'slide-in-from-left-20'}`}
                       >
                           {displayArticles.slice(0, visibleNewsCount).map(item => (
                             <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
