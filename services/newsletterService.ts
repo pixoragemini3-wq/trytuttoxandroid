@@ -1,10 +1,15 @@
 /**
- * Iscrizione newsletter → Google Apps Script → Foglio Google.
+ * Iscrizione newsletter (GDPR opt-in sul form).
  *
- * 1. Crea un Foglio Google "Newsletter TuttoXAndroid"
- * 2. Estensioni → Apps Script → incolla scripts/newsletter-apps-script.gs
- * 3. Distribuisci → Nuova distribuzione → App web (Chiunque)
- * 4. Incolla l'URL qui sotto in NEWSLETTER_WEBAPP_URL
+ * Flusso sicuro (API key Brevo MAI nel browser):
+ *   Form sito → Google Apps Script → Foglio Google + Brevo
+ *
+ * Guida completa: scripts/newsletter-apps-script.gs (commenti in testa)
+ * Brevo free: https://www.brevo.com
+ *
+ * 1. Setup Foglio + Apps Script (incolla lo .gs)
+ * 2. Proprietà script: BREVO_API_KEY + BREVO_LIST_ID
+ * 3. Distribuisci App web → incolla URL /exec qui sotto
  */
 
 /** URL dell'app web Apps Script (termina con /exec). Vuoto = form non ancora collegato. */
@@ -23,7 +28,10 @@ export type NewsletterPayload = {
 
 export type NewsletterResult =
   | { ok: true }
-  | { ok: false; error: 'invalid_email' | 'no_consent' | 'not_configured' | 'network' | 'server' };
+  | {
+      ok: false;
+      error: 'invalid_email' | 'no_consent' | 'not_configured' | 'network' | 'server' | 'brevo';
+    };
 
 const isValidEmail = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email.trim());
@@ -70,6 +78,7 @@ export async function subscribeNewsletter(
     try {
       const data = await res.json();
       if (data?.ok) return { ok: true };
+      if (data?.error === 'brevo') return { ok: false, error: 'brevo' };
     } catch {
       /* ignore */
     }

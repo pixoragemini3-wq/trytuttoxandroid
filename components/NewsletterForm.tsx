@@ -22,11 +22,12 @@ const ERROR_MSG: Record<string, string> = {
   not_configured: 'Iscrizioni in configurazione. Riprova tra poco.',
   network: 'Connessione non riuscita. Riprova.',
   server: 'Errore del server. Riprova più tardi.',
+  brevo: 'Servizio email non disponibile. Riprova tra poco.',
 };
 
 /**
  * Form newsletter con consenso GDPR esplicito (opt-in).
- * I dati vanno a Google Apps Script → Foglio Google (vedi scripts/newsletter-apps-script.gs).
+ * Sito → Apps Script → Foglio Google + Brevo (API key solo nello script).
  */
 const NewsletterForm: React.FC<Props> = ({
   source,

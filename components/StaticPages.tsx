@@ -180,10 +180,12 @@ export const PrivacyPage: React.FC = () => {
           4. Modalità e luogo di conservazione
         </h2>
         <p>
-          Le iscrizioni sono salvate su un <strong>Foglio Google</strong> associato all&apos;account
-          del titolare, tramite Google Apps Script. I dati possono essere trattati su infrastrutture
-          Google (UE / clausole contrattuali standard ove applicabile). Accesso limitato al titolare
-          e a collaboratori autorizzati.
+          Le iscrizioni sono registrate tramite Google Apps Script su un <strong>Foglio Google</strong>
+          (audit del consenso) e, se attivo, inviate alla piattaforma di email marketing{' '}
+          <strong>Brevo</strong> (Sendinblue) per la gestione della lista e l&apos;invio delle
+          newsletter. I dati possono essere trattati su infrastrutture di Google e/o Brevo
+          (UE / garanzie contrattuali applicabili). Accesso limitato al titolare e a collaboratori
+          autorizzati. Non vendiamo le email a terzi.
         </p>
 
         <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
