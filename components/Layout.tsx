@@ -92,7 +92,8 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Main header row */}
         <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-28 md:h-[215px] overflow-visible">
+          {/* Desktop: header più basso (~-25/30%) per laptop 15.6" e scroll più comodo */}
+          <div className="flex items-center justify-between h-28 md:h-[152px] lg:h-[160px] overflow-visible">
 
             {/* Logo */}
             <div
@@ -102,7 +103,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-[124px] max-h-none w-auto object-contain md:h-[205px] md:max-h-full"
+                className="h-[124px] max-h-none w-auto object-contain md:h-[140px] lg:h-[148px] md:max-h-full"
               />
             </div>
 

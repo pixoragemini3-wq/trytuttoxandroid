@@ -1771,7 +1771,8 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && activeCategory === 'Tutti' && (
-                  <div className="w-full md:h-[460px] flex gap-3 items-stretch px-2 md:px-0 mt-4 md:mt-1.5">
+                  {/* Hero più basso su desktop: più spazio per In Evidenza / griglia su laptop 15.6" */}
+                  <div className="w-full md:h-[340px] lg:h-[360px] flex gap-3 items-stretch px-2 md:px-0 mt-3 md:mt-1">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar 
                           articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 

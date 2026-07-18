@@ -64,9 +64,9 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
         onClick={onClick}
         className={`group cursor-pointer flex flex-col md:flex-row bg-white overflow-hidden rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full ${className}`}
       >
-        <div className="relative w-full md:w-[58%] h-full shrink-0 overflow-hidden bg-[#f8f8f8] p-3 md:p-4">
+        <div className="relative w-full md:w-[58%] h-full shrink-0 overflow-hidden bg-[#f8f8f8] p-2.5 md:p-3">
           {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
-          <div className="relative w-full h-full rounded-2xl overflow-hidden">
+          <div className="relative w-full h-full min-h-[180px] md:min-h-0 rounded-2xl overflow-hidden">
             <img
               src={article.imageUrl}
               alt={article.title}
@@ -76,17 +76,17 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             />
           </div>
           <span
-            className="absolute top-5 left-5 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-flex items-center min-h-[24px]"
+            className="absolute top-4 left-4 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-flex items-center min-h-[24px]"
             style={{ backgroundColor: color }}
           >
             {badge.label}
           </span>
         </div>
-        <div className="flex flex-col justify-center p-6 md:p-8 md:w-[42%]">
-          <h2 className="font-condensed text-[26px] md:text-[30px] lg:text-[34px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-4 mb-3">
+        <div className="flex flex-col justify-center p-5 md:p-6 lg:p-7 md:w-[42%]">
+          <h2 className="font-condensed text-[24px] md:text-[26px] lg:text-[30px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 md:line-clamp-4 mb-2 md:mb-3">
             {article.title}
           </h2>
-          <p className="hidden md:block text-[14px] leading-relaxed text-gray-500 line-clamp-3 mb-4">
+          <p className="hidden md:block text-[13px] leading-relaxed text-gray-500 line-clamp-2 lg:line-clamp-3 mb-3">
             {article.excerpt}
           </p>
           <Meta author={article.author} date={article.date} />
