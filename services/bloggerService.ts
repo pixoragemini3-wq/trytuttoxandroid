@@ -1189,13 +1189,18 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
 
     // Modello classico: se Telegram risponde, usiamo SOLO quelle offerte (canale live).
     // Blogger Amazon solo come fallback se il canale non è raggiungibile.
-    const sourceDeals = telegramDeals.length > 0 ? telegramDeals : bloggerDeals;
+    // Entrambe le fonti: solo offerte con anteprima verificata (no riquadri bianchi).
+    const sourceDeals =
+      telegramDeals.length > 0
+        ? telegramDeals
+        : await pickDealsWithPreviewImages(bloggerDeals, 8, 20);
 
     const seen = new Set<string>();
     const allDeals: Deal[] = [];
     for (const deal of sourceDeals) {
       const key = (deal.link || deal.product || '').toLowerCase();
       if (!key || seen.has(key)) continue;
+      if (!deal.imageUrl || /unsplash\.com/i.test(deal.imageUrl)) continue;
       seen.add(key);
       allDeals.push(deal);
       if (allDeals.length >= 12) break;
@@ -1268,6 +1273,47 @@ const ASIN_IMG_CACHE_PREFIX = 'txa_asin_img_v3_';
 export const isResolvedAmazonImage = (url?: string): boolean =>
   !!url && /m\.media-amazon\.com\/images\/I\//i.test(url);
 
+/** URL che *potrebbe* essere un'anteprima usabile (prima del probe load). */
+export const looksLikeDealPreviewUrl = (url?: string): boolean => {
+  if (!url || !/^https?:\/\//i.test(url)) return false;
+  if (/unsplash\.com/i.test(url)) return false;
+  // Path P/ASIN Amazon: spesso GIF 1×1 — non contare come anteprima finché non passa il probe
+  if (/media-amazon\.com\/images\/P\//i.test(url) || /ssl-images-amazon\.com\/images\/P\//i.test(url)) {
+    return false;
+  }
+  if (isResolvedAmazonImage(url)) return true;
+  if (/telesco\.pe|telegram-cdn\.org/i.test(url) && !/Q2dx|FGGwFKd/i.test(url)) return true;
+  if (/googleusercontent|bp\.blogspot|imgur\.com|cdn\.shopify/i.test(url)) return true;
+  if (/media-amazon\.com\/images\/I\//i.test(url)) return true;
+  return false;
+};
+
+/** Carica l'immagine e verifica che non sia un riquadro 1×1 / bianco. */
+export const probeImageLoads = (url: string, timeoutMs = 7000): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (!url || typeof Image === 'undefined') {
+      resolve(false);
+      return;
+    }
+    const img = new Image();
+    img.referrerPolicy = 'no-referrer';
+    let done = false;
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      resolve(ok);
+    };
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+    img.onload = () => {
+      const w = img.naturalWidth || 0;
+      const h = img.naturalHeight || 0;
+      finish(w > 2 && h > 2 && w * h >= 400);
+    };
+    img.onerror = () => finish(false);
+    img.src = url;
+  });
+
 /**
  * Risolve l'immagine prodotto reale (path /images/I/...) da ASIN.
  * I path /images/P/ASIN spesso sono GIF bianchi da 43 byte.
@@ -1330,31 +1376,66 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
   return null;
 };
 
-/** Arricchisce le prime N offerte con immagini prodotto reali (parallelo limitato). */
-export const enrichDealImages = async (deals: Deal[], limit = 8): Promise<Deal[]> => {
-  if (!deals.length) return deals;
-  const out = deals.map((d) => ({ ...d }));
-  const slice = out.slice(0, limit);
+/**
+ * Per ogni offerta tenta di ottenere un'anteprima verificata (load reale).
+ * Restituisce SOLO offerte con immagine ok, scartando quelle bianche/mancanti.
+ * Scansiona un pool più ampio finché non raggiunge `targetCount`.
+ */
+export const pickDealsWithPreviewImages = async (
+  deals: Deal[],
+  targetCount = 8,
+  maxScan = 28
+): Promise<Deal[]> => {
+  if (!deals.length) return [];
 
-  const queue = slice.filter(
-    (d) => extractAmazonAsin(d.link) && !isResolvedAmazonImage(d.imageUrl)
-  );
-
+  const pool = deals.slice(0, maxScan);
+  const selected: Deal[] = [];
   const concurrency = 3;
-  let i = 0;
-  const worker = async () => {
-    while (i < queue.length) {
-      const idx = i++;
-      const deal = queue[idx];
-      try {
-        const resolved = await resolveAmazonProductImage(deal.link);
-        if (resolved) deal.imageUrl = resolved;
-      } catch { /* keep existing */ }
+
+  const ensurePreview = async (deal: Deal): Promise<Deal | null> => {
+    const d = { ...deal };
+
+    // 1) URL già "buono" + probe load
+    if (looksLikeDealPreviewUrl(d.imageUrl) && (await probeImageLoads(d.imageUrl))) {
+      return d;
     }
+
+    // 2) Risoluzione ASIN → /images/I/
+    try {
+      const resolved = await resolveAmazonProductImage(d.link);
+      if (resolved && (await probeImageLoads(resolved))) {
+        d.imageUrl = resolved;
+        return d;
+      }
+    } catch { /* next */ }
+
+    // 3) Prova candidati P/ASIN (qualcuno funziona, es. B0F29QNQ4P)
+    for (const candidate of amazonImageCandidates(d.link)) {
+      if (/unsplash\.com/i.test(candidate)) continue;
+      if (await probeImageLoads(candidate)) {
+        d.imageUrl = candidate;
+        return d;
+      }
+    }
+
+    // Nessuna anteprima usabile → scarta
+    return null;
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
-  return out;
+
+  for (let i = 0; i < pool.length && selected.length < targetCount; i += concurrency) {
+    const batch = pool.slice(i, i + concurrency);
+    const results = await Promise.all(batch.map((d) => ensurePreview(d)));
+    for (const r of results) {
+      if (r && selected.length < targetCount) selected.push(r);
+    }
+  }
+
+  return selected;
 };
+
+/** @deprecated usa pickDealsWithPreviewImages */
+export const enrichDealImages = async (deals: Deal[], limit = 8): Promise<Deal[]> =>
+  pickDealsWithPreviewImages(deals, limit, Math.max(limit * 3, 16));
 
 /** Immagini da markdown jina / testo Telegram (telesco.pe, cdn). */
 const extractMediaUrlsFromText = (raw: string): string[] => {
@@ -1444,7 +1525,8 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     const product = formatDealProductTitle(m[1].replace(/[*_#]/g, '').trim());
     const link = rewriteDealAffiliateLink(m[2].replace(/[),.;]+$/, ''));
     pushDeal(product, link, m[0]);
-    if (deals.length >= 12) return deals;
+    // Pool ampio: poi pickDealsWithPreviewImages tiene solo quelle con foto
+    if (deals.length >= 28) return deals;
   }
 
   // Fallback: every amazon link with ~350 chars of preceding context
@@ -1462,7 +1544,7 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     product = product.replace(/^\d+\.\s*/, '').replace(/^a soli\s+/i, '');
     product = formatDealProductTitle(product);
     pushDeal(product, link, context);
-    if (deals.length >= 12) break;
+    if (deals.length >= 28) break;
   }
 
   return deals;
@@ -1520,7 +1602,7 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
         }
 
         deals.push({ ...deal, id: `tg-h-${i}-${deals.length}` });
-        if (deals.length >= 12) return deals;
+        if (deals.length >= 28) return deals;
       }
     }
     return deals;
@@ -1531,10 +1613,11 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  // v3: immagini prodotto reali via microlink/jina (non GIF bianchi P/ASIN)
-  const CACHE_KEY = 'txa_telegram_deals_v3';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v3_time';
+  // v4: solo offerte con anteprima verificata (probe load)
+  const CACHE_KEY = 'txa_telegram_deals_v4';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v4_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
+  const TARGET_WITH_IMG = 8;
 
   let cachedData: string | null = null;
   let cachedTime: string | null = null;
@@ -1547,17 +1630,19 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     try {
       const cached = JSON.parse(cachedData) as Deal[];
       if (Array.isArray(cached) && cached.length > 0) {
-        // Se la cache ha ancora placeholder bianchi, ri-arricchisci al volo
-        const needsImg = cached.slice(0, 4).some(
-          (d) => extractAmazonAsin(d.link) && !isResolvedAmazonImage(d.imageUrl)
+        // Cache valida solo se le anteprime sono ancora “reali”
+        const allHavePreview = cached.every(
+          (d) => looksLikeDealPreviewUrl(d.imageUrl) || isResolvedAmazonImage(d.imageUrl)
         );
-        if (!needsImg) return cached;
-        const fixed = await enrichDealImages(cached, 8);
-        try {
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(fixed));
-          sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-        } catch { /* */ }
-        return fixed;
+        if (allHavePreview) return cached;
+        const fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 28);
+        if (fixed.length > 0) {
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(fixed));
+            sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+          } catch { /* */ }
+          return fixed;
+        }
       }
     } catch { /* ignore */ }
   }
@@ -1579,14 +1664,17 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
       if (!response.ok) continue;
       const body = await response.text();
       if (!body || body.length < 200) continue;
-      let deals = parseDealsFromHtml(body);
-      if (deals.length > 0) {
-        deals = await enrichDealImages(deals, 8);
-        try {
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
-          sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-        } catch { /* ignore */ }
-        return deals;
+      const raw = parseDealsFromHtml(body);
+      if (raw.length > 0) {
+        // Solo offerte con foto prodotto che si carica davvero
+        const deals = await pickDealsWithPreviewImages(raw, TARGET_WITH_IMG, 28);
+        if (deals.length > 0) {
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
+            sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+          } catch { /* ignore */ }
+          return deals;
+        }
       }
     } catch (e) {
       console.warn('Telegram proxy failed', proxyUrl, e);
