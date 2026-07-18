@@ -1069,10 +1069,63 @@ const rewriteDealAffiliateLink = (rawLink: string): string => {
   }
 };
 
-const amazonImageFromLink = (link: string): string => {
-  const asin = link.match(/\/(?:dp|gp\/product|d)\/([A-Z0-9]{10})/i)?.[1];
-  if (asin) return `https://images.amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX300_.jpg`;
-  return 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=200';
+const DEAL_IMG_FALLBACK =
+  'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=300';
+
+/** Estrae ASIN da link Amazon (dp, gp, amzn.eu/d, query, ecc.). */
+export const extractAmazonAsin = (link: string): string | null => {
+  if (!link) return null;
+  const patterns = [
+    /\/(?:dp|gp\/product|gp\/aw\/d|gp\/offer-listing|d|product)\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /[?&]asin=([A-Z0-9]{10})(?:&|$)/i,
+    /amzn\.eu\/d\/([A-Z0-9]{10})/i,
+    /amazon\.[a-z.]+\/([A-Z0-9]{10})(?:[/?]|$)/i,
+  ];
+  for (const re of patterns) {
+    const m = link.match(re);
+    if (m?.[1] && /^[A-Z0-9]{10}$/i.test(m[1])) return m[1].toUpperCase();
+  }
+  return null;
+};
+
+/**
+ * Candidati immagine prodotto Amazon (in ordine).
+ * Il vecchio images.amazon.com/P/ASIN spesso restituisce riquadro bianco vuoto.
+ */
+export const amazonImageCandidates = (link: string): string[] => {
+  const asin = extractAmazonAsin(link);
+  if (!asin) return [DEAL_IMG_FALLBACK];
+  return [
+    // Widget ufficiale (EU) — più affidabile per anteprime
+    `https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=IT&ASIN=${asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=_SL300_`,
+    `https://m.media-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX300_.jpg`,
+    `https://images-eu.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`,
+    `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`,
+    DEAL_IMG_FALLBACK,
+  ];
+};
+
+const amazonImageFromLink = (link: string): string => amazonImageCandidates(link)[0];
+
+/** Immagini da markdown jina / testo Telegram (telesco.pe, cdn). */
+const extractMediaUrlsFromText = (raw: string): string[] => {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (u: string) => {
+    const clean = u.replace(/[),.;]+$/, '').replace(/\\/g, '');
+    if (!clean || seen.has(clean)) return;
+    if (/telesco\.pe\/file\/Q2dx/i.test(clean)) return; // logo / placeholder TG
+    if (!/^https?:\/\//i.test(clean)) return;
+    if (!/\.(jpe?g|png|webp|gif)(\?|$)/i.test(clean) && !/telesco\.pe|cdn4\.|cdn\d+\./i.test(clean)) return;
+    seen.add(clean);
+    out.push(clean);
+  };
+  const md = /!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = md.exec(raw)) !== null) push(m[1]);
+  const bare = /https?:\/\/(?:cdn\d*\.telesco\.pe|cdn\d*\.telegram-cdn\.org)\/[^\s)"'<>]+/gi;
+  while ((m = bare.exec(raw)) !== null) push(m[0]);
+  return out;
 };
 
 const extractPricesFromText = (text: string): { newPrice: string; oldPrice: string } => {
@@ -1101,8 +1154,35 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     .replace(/\*\*/g, '')
     .replace(/_+/g, '');
 
+  const mediaPool = extractMediaUrlsFromText(rawText || text);
+  let mediaIdx = 0;
+  const nextMedia = (): string | null => {
+    if (mediaIdx >= mediaPool.length) return null;
+    return mediaPool[mediaIdx++];
+  };
+
   const deals: Deal[] = [];
   const seenLinks = new Set<string>();
+
+  const pushDeal = (product: string, link: string, priceText: string) => {
+    if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) return false;
+    seenLinks.add(link);
+    const { newPrice, oldPrice } = extractPricesFromText(priceText);
+    // Preferisci copertina Telegram se presente, altrimenti ASIN Amazon (più robusto)
+    const tgImg = nextMedia();
+    const imageUrl = tgImg || amazonImageFromLink(link);
+    deals.push({
+      id: `tg-${deals.length}-${(extractAmazonAsin(link) || link).slice(-12)}`,
+      product,
+      oldPrice,
+      newPrice,
+      saveAmount: 'Telegram',
+      link,
+      imageUrl,
+      brandColor: 'bg-[#24A1DE]',
+    });
+    return true;
+  };
 
   // Prefer numbered product blocks: "1. Product ... 21,15 € ... amazon.it/dp/..."
   const numberedRe =
@@ -1110,30 +1190,16 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
   let m: RegExpExecArray | null;
   while ((m = numberedRe.exec(text)) !== null) {
     const product = formatDealProductTitle(m[1].replace(/[*_#]/g, '').trim());
-    let link = rewriteDealAffiliateLink(m[2].replace(/[),.;]+$/, ''));
-    if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) continue;
-    seenLinks.add(link);
-    const block = m[0];
-    const { newPrice, oldPrice } = extractPricesFromText(block);
-    deals.push({
-      id: `tg-n-${deals.length}-${link.slice(-12)}`,
-      product,
-      oldPrice,
-      newPrice,
-      saveAmount: 'Telegram',
-      link,
-      imageUrl: amazonImageFromLink(link),
-      brandColor: 'bg-[#24A1DE]',
-    });
+    const link = rewriteDealAffiliateLink(m[2].replace(/[),.;]+$/, ''));
+    pushDeal(product, link, m[0]);
     if (deals.length >= 12) return deals;
   }
 
   // Fallback: every amazon link with ~350 chars of preceding context
   const linkRe = /https?:\/\/(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+)/gi;
   while ((m = linkRe.exec(text)) !== null) {
-    let link = rewriteDealAffiliateLink(m[0].replace(/[),.;]+$/, ''));
-    if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) continue;
-    seenLinks.add(link);
+    const link = rewriteDealAffiliateLink(m[0].replace(/[),.;]+$/, ''));
+    if (seenLinks.has(link)) continue;
     const start = Math.max(0, m.index - 350);
     const context = text.slice(start, m.index + m[0].length);
     const lines = context
@@ -1143,17 +1209,7 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     let product = lines[lines.length - 1] || 'Offerta Tech';
     product = product.replace(/^\d+\.\s*/, '').replace(/^a soli\s+/i, '');
     product = formatDealProductTitle(product);
-    const { newPrice, oldPrice } = extractPricesFromText(context);
-    deals.push({
-      id: `tg-l-${deals.length}-${link.slice(-12)}`,
-      product,
-      oldPrice,
-      newPrice,
-      saveAmount: 'Telegram',
-      link,
-      imageUrl: amazonImageFromLink(link),
-      brandColor: 'bg-[#24A1DE]',
-    });
+    pushDeal(product, link, context);
     if (deals.length >= 12) break;
   }
 
@@ -1179,19 +1235,35 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
       const textContent = textEl?.textContent || '';
       const htmlInner = textEl?.innerHTML || '';
 
-      // Expand multi-product posts into multiple deals
+      // Foto post Telegram (singola o multi)
+      const photoUrls: string[] = [];
+      msg.querySelectorAll('.tgme_widget_message_photo_wrap').forEach((photoWrap) => {
+        const style = photoWrap.getAttribute('style') || '';
+        const bgMatch = style.match(/background-image:url\(['"]?([^'")\s]+)/);
+        if (bgMatch?.[1] && !/telesco\.pe\/file\/Q2dx/i.test(bgMatch[1])) {
+          photoUrls.push(bgMatch[1]);
+        }
+      });
+      // video thumb
+      const videoThumb = msg.querySelector('.tgme_widget_message_video_thumb') as HTMLElement | null;
+      if (videoThumb) {
+        const style = videoThumb.getAttribute('style') || '';
+        const bgMatch = style.match(/background-image:url\(['"]?([^'")\s]+)/);
+        if (bgMatch?.[1]) photoUrls.push(bgMatch[1]);
+      }
+
       const fromText = parseDealsFromTelegramText(`${textContent}\n${htmlInner}`);
+      let photoIdx = 0;
       for (const deal of fromText) {
         if (seenLinks.has(deal.link)) continue;
         seenLinks.add(deal.link);
 
-        const photoWrap = msg.querySelector('.tgme_widget_message_photo_wrap');
-        if (photoWrap) {
-          const style = photoWrap.getAttribute('style') || '';
-          const bgMatch = style.match(/background-image:url\(['"]?([^'")\s]+)/);
-          if (bgMatch?.[1] && !/telesco\.pe\/file\/Q2dx/i.test(bgMatch[1])) {
-            deal.imageUrl = bgMatch[1];
-          }
+        // 1 prodotto = 1 foto se disponibili; altrimenti mantieni ASIN Amazon
+        if (photoUrls.length > 0) {
+          deal.imageUrl = photoUrls[Math.min(photoIdx, photoUrls.length - 1)];
+          photoIdx++;
+        } else if (!deal.imageUrl || /unsplash\.com/i.test(deal.imageUrl)) {
+          deal.imageUrl = amazonImageFromLink(deal.link);
         }
 
         deals.push({ ...deal, id: `tg-h-${i}-${deals.length}` });
@@ -1206,8 +1278,9 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  const CACHE_KEY = 'txa_telegram_deals';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_time';
+  // v2: immagini ASIN più robuste (invalida cache vecchia con riquadri bianchi)
+  const CACHE_KEY = 'txa_telegram_deals_v2';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v2_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
 
   let cachedData: string | null = null;

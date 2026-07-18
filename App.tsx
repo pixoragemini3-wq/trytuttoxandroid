@@ -17,6 +17,7 @@ import { AboutPage, CollabPage, PrivacyPage } from './components/StaticPages';
 import GPSCalculator from './components/gps/GPSCalculator';
 import Layout from './components/Layout';
 import NewsletterForm from './components/NewsletterForm';
+import DealImage from './components/DealImage';
 
 // Utility per mescolare l'array (Fisher-Yates shuffle)
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -251,6 +252,8 @@ const App: React.FC = () => {
         try {
           sessionStorage.removeItem('txa_telegram_deals');
           sessionStorage.removeItem('txa_telegram_deals_time');
+          sessionStorage.removeItem('txa_telegram_deals_v2');
+          sessionStorage.removeItem('txa_telegram_deals_v2_time');
         } catch { /* private mode */ }
         const dealsData = await fetchBloggerDeals();
         if (dealsData.length > 0) setDeals(dealsData);
@@ -703,7 +706,12 @@ const App: React.FC = () => {
           {deals.slice(0, dealsToShow).map(deal => (
             <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'home_deals')} className="bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-4 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[170px]">
               <div className="w-full h-20 shrink-0 bg-white rounded-lg p-2 flex items-center justify-center">
-                <img src={deal.imageUrl} alt={deal.product} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
+                <DealImage
+                  src={deal.imageUrl}
+                  link={deal.link}
+                  alt={deal.product}
+                  className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+                />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <h4 className="font-bold text-xs text-white mb-2 leading-snug line-clamp-3 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>

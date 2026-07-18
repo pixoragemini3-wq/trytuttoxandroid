@@ -7,6 +7,7 @@ import AdUnit from './AdUnit';
 import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 import NewsletterForm from './NewsletterForm';
+import DealImage from './DealImage';
 
 interface ArticleDetailProps {
   article: Article;
@@ -934,7 +935,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
               className="min-w-[40%] max-w-[40%] bg-white border border-gray-200 rounded-xl p-3 snap-start shadow-sm flex flex-col justify-between hover:border-[#e31b23] transition-colors"
             >
               <div className="w-full aspect-square bg-gray-50 rounded-lg mb-2 p-2 flex items-center justify-center">
-                 <img src={deal.imageUrl} className="w-full h-full object-contain mix-blend-multiply" loading="lazy" alt={deal.product} />
+                 <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="w-full h-full object-contain mix-blend-multiply" />
               </div>
               <div className="flex-1 flex flex-col justify-between min-h-[72px]">
                  <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-3 mb-2">{deal.product}</p>
@@ -971,7 +972,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
            {deals.slice(0, 4).map(deal => (
               <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group min-h-[180px]">
                  <div className="w-full h-20 bg-white rounded-lg p-2 flex items-center justify-center">
-                    <img src={deal.imageUrl} className="max-w-full max-h-full object-contain" alt={deal.product} />
+                    <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="max-w-full max-h-full object-contain" />
                  </div>
                  <div className="min-w-0 flex-1 flex flex-col justify-between">
                     <p className="text-xs font-bold text-white leading-snug line-clamp-3 mb-2 group-hover:text-yellow-400">{deal.product}</p>
