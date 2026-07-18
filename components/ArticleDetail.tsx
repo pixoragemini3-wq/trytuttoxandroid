@@ -6,6 +6,7 @@ import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
 import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
+import NewsletterForm from './NewsletterForm';
 
 interface ArticleDetailProps {
   article: Article;
@@ -82,18 +83,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   });
   const [hasToc, setHasToc] = useState(false);
   
-  // Newsletter Logic
-  const [sidebarEmail, setSidebarEmail] = useState('');
-  const [sidebarSubscribeStatus, setSidebarSubscribeStatus] = useState<'idle' | 'success'>('idle');
-
-  const handleSidebarSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sidebarEmail.includes('@')) return;
-    setSidebarSubscribeStatus('success');
-    setSidebarEmail('');
-    setTimeout(() => setSidebarSubscribeStatus('idle'), 3000);
-  };
-
   // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
   useEffect(() => {
     if (!article) return;
@@ -1256,28 +1245,15 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 <div className="sticky top-24 space-y-6">
                     <div className="bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] text-center relative overflow-hidden group border border-gray-800">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-[#e31b23] rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                        <h4 className="relative z-10 font-condensed text-xl font-black uppercase italic mb-2">Resta Aggiornato</h4>
-                        <p className="relative z-10 text-[10px] text-gray-400 mb-4 font-medium px-4">Le migliori news tech, ogni mattina.</p>
-                        
-                        {sidebarSubscribeStatus === 'success' ? (
-                            <div className="relative z-10 bg-white text-black py-3 rounded-xl font-black text-xs uppercase tracking-widest">
-                                Grazie per l'iscrizione!
-                            </div>
-                        ) : (
-                          <form onSubmit={handleSidebarSubscribe} className="relative z-10 flex flex-col gap-2">
-                            <input 
-                              type="email" 
-                              value={sidebarEmail}
-                              onChange={(e) => setSidebarEmail(e.target.value)}
-                              placeholder="La tua email"
-                              className="w-full px-4 py-3 rounded-xl text-black text-xs font-bold focus:outline-none"
-                              required
-                            />
-                            <button type="submit" className="w-full bg-[#e31b23] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-colors shadow-lg">
-                              Iscriviti
-                            </button>
-                          </form>
-                        )}
+                        <div className="relative z-10">
+                          <NewsletterForm
+                            source="article_sidebar"
+                            variant="dark"
+                            title="Resta Aggiornato"
+                            subtitle="Le migliori news tech, ogni mattina."
+                            buttonLabel="Iscriviti"
+                          />
+                        </div>
                     </div>
                     <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
                 </div>

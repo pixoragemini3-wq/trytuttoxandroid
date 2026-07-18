@@ -23,7 +23,7 @@ interface LayoutProps {
   handleSearchSubmit: (e: React.FormEvent) => void;
   handleNavClick: (nav: string) => void;
   handleArticleClick: (article: Article) => void;
-  handleFooterLinkClick: (path: '/about' | '/collab' | '/') => void;
+  handleFooterLinkClick: (path: '/about' | '/collab' | '/privacy' | '/') => void;
   goToHome: () => void;
   showStickyBanner: boolean;
   showScrollTop: boolean;
@@ -224,13 +224,17 @@ const Layout: React.FC<LayoutProps> = ({
             onClick={goToHome}
           />
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 mb-8">
-            {['Chi Siamo', 'Collabora', 'Privacy Policy', 'Cookie Policy'].map((link, i) => (
+            {([
+              { label: 'Chi Siamo', path: '/about' as const },
+              { label: 'Collabora', path: '/collab' as const },
+              { label: 'Privacy Policy', path: '/privacy' as const },
+            ]).map(({ label, path }) => (
               <button
-                key={link}
-                onClick={() => i === 0 ? handleFooterLinkClick('/about') : i === 1 ? handleFooterLinkClick('/collab') : undefined}
+                key={label}
+                onClick={() => handleFooterLinkClick(path)}
                 className="text-[11px] font-medium tracking-widest uppercase text-white/30 hover:text-white/70 transition-colors"
               >
-                {link}
+                {label}
               </button>
             ))}
           </div>

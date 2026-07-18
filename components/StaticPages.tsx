@@ -123,3 +123,135 @@ export const CollabPage: React.FC = () => {
     </div>
   );
 };
+
+/** Informativa privacy (newsletter + sito) — art. 13/14 GDPR */
+export const PrivacyPage: React.FC = () => {
+  return (
+    <div className="bg-white min-h-screen animate-in fade-in duration-500">
+      <div className="bg-black text-white py-16 px-4 text-center border-b-8 border-[#e31b23]">
+        <h1 className="font-condensed text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-3">
+          Privacy Policy
+        </h1>
+        <p className="text-gray-400 text-xs md:text-sm font-medium uppercase tracking-widest">
+          Informativa sul trattamento dei dati personali · Aggiornata al 18 luglio 2026
+        </p>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 py-12 prose prose-sm prose-gray">
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4">
+          1. Titolare del trattamento
+        </h2>
+        <p>
+          Il titolare del trattamento è <strong>TuttoXAndroid</strong> (sito{' '}
+          <a href="https://www.tuttoxandroid.com">www.tuttoxandroid.com</a>).
+          Per questioni privacy: <a href="mailto:privacy@tuttoxandroid.com">privacy@tuttoxandroid.com</a>.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          2. Newsletter — dati raccolti e finalità
+        </h2>
+        <p>
+          Se ti iscrivi alla newsletter raccogliamo solo l&apos;<strong>indirizzo email</strong> che ci
+          fornisci e i metadati tecnici minimi dell&apos;iscrizione (data/ora, pagina di provenienza,
+          eventuale user-agent del browser) per:
+        </p>
+        <ul>
+          <li>inviarti la newsletter con news, guide e offerte tech;</li>
+          <li>gestire iscrizione, re-iscrizione e disiscrizione;</li>
+          <li>dimostrare il consenso espresso (obbligo di accountability GDPR).</li>
+        </ul>
+        <p>
+          <strong>Non</strong> usiamo l&apos;email per profilazione commerciale di terzi, né la
+          vendiamo. Eventuali link di affiliazione nelle email non modificano questa finalità
+          principale informativa.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          3. Base giuridica
+        </h2>
+        <p>
+          Il trattamento per la newsletter si basa sul tuo <strong>consenso libero, specifico,
+          informato e inequivocabile</strong> (art. 6, par. 1, lett. a) GDPR), espresso spuntando
+          la casella di accettazione prima dell&apos;invio del form. Senza consenso non iscriviamo
+          l&apos;email.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          4. Modalità e luogo di conservazione
+        </h2>
+        <p>
+          Le iscrizioni sono salvate su un <strong>Foglio Google</strong> associato all&apos;account
+          del titolare, tramite Google Apps Script. I dati possono essere trattati su infrastrutture
+          Google (UE / clausole contrattuali standard ove applicabile). Accesso limitato al titolare
+          e a collaboratori autorizzati.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          5. Periodo di conservazione
+        </h2>
+        <p>
+          Conserviamo l&apos;email <strong>fino alla revoca del consenso</strong> (disiscrizione) o
+          fino a richiesta di cancellazione. Dopo la revoca, l&apos;email viene rimossa o anonimizzata
+          entro tempi ragionevoli, salvo obblighi di legge.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          6. I tuoi diritti
+        </h2>
+        <p>Hai diritto di:</p>
+        <ul>
+          <li>accedere ai dati che ti riguardano;</li>
+          <li>ottenerne rettifica o cancellazione («diritto all&apos;oblio»);</li>
+          <li>limitare o opporti al trattamento;</li>
+          <li>revocare il consenso in qualsiasi momento (senza pregiudicare la liceità del
+            trattamento basato sul consenso prima della revoca);</li>
+          <li>proporre reclamo al Garante per la protezione dei dati personali
+            (<a href="https://www.garanteprivacy.it" target="_blank" rel="noopener noreferrer"> garanteprivacy.it</a>).
+          </li>
+        </ul>
+        <p>
+          Per esercitare i diritti scrivi a{' '}
+          <a href="mailto:privacy@tuttoxandroid.com">privacy@tuttoxandroid.com</a> dall&apos;indirizzo
+          da cancellare o indicando chiaramente l&apos;email iscritta. Oggetto consigliato:
+          «Cancellazione newsletter».
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          7. Natura del conferimento
+        </h2>
+        <p>
+          L&apos;iscrizione è facoltativa. Il mancato conferimento dell&apos;email o del consenso
+          impedisce solo l&apos;invio della newsletter, non la navigazione del sito.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          8. Cookie e navigazione
+        </h2>
+        <p>
+          Il sito può usare cookie tecnici e, previo consenso del banner, cookie di profilazione /
+          pubblicità (es. Google AdSense). Per i dettagli vedi la Cookie Policy e il banner cookie.
+        </p>
+
+        <h2 className="font-condensed text-2xl font-black uppercase text-gray-900 not-prose mb-4 mt-10">
+          9. Aggiornamenti
+        </h2>
+        <p>
+          Questa informativa può essere aggiornata. La data in testa alla pagina indica l&apos;ultima
+          revisione. Continuando a usare i servizi dopo modifiche sostanziali, ti invitiamo a
+          rileggerla.
+        </p>
+
+        <div className="not-prose mt-12 p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+          <p className="text-sm text-gray-600 mb-3">Domande sulla privacy o disiscrizione?</p>
+          <a
+            href="mailto:privacy@tuttoxandroid.com"
+            className="inline-block bg-[#e31b23] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-colors"
+          >
+            Contatta privacy@tuttoxandroid.com
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+

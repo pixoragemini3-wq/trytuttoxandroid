@@ -13,7 +13,7 @@ import SocialBannerMobile from './components/SocialBannerMobile';
 import ArticleDetail from './components/ArticleDetail';
 
 import DesktopSidebar from './components/DesktopSidebar'; 
-import { AboutPage, CollabPage } from './components/StaticPages'; 
+import { AboutPage, CollabPage, PrivacyPage } from './components/StaticPages'; 
 import GPSCalculator from './components/gps/GPSCalculator';
 import Layout from './components/Layout';
 
@@ -113,10 +113,11 @@ const App: React.FC = () => {
 
   const isAbout = location.pathname === '/about';
   const isCollab = location.pathname === '/collab';
+  const isPrivacy = location.pathname === '/privacy';
   const isGPS = location.pathname === '/calcolatore-gps';
   const isArticle = location.pathname.endsWith('.html') || location.pathname.startsWith('/article/');
   const isSearch = location.pathname === '/search';
-  const isHome = !isAbout && !isCollab && !isArticle && !isSearch && !isGPS;
+  const isHome = !isAbout && !isCollab && !isPrivacy && !isArticle && !isSearch && !isGPS;
 
   const enrichArticle = (article: Article): Article => ({
     ...article,
@@ -520,7 +521,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFooterLinkClick = (path: '/about' | '/collab' | '/') => {
+  const handleFooterLinkClick = (path: '/about' | '/collab' | '/privacy' | '/') => {
     navigate(path);
     window.scrollTo(0, 0);
   };
@@ -1521,6 +1522,7 @@ const App: React.FC = () => {
         {/* --- STATIC PAGES --- */}
         {isAbout && <AboutPage />}
         {isCollab && <CollabPage />}
+        {isPrivacy && <PrivacyPage />}
         {isGPS && <GPSCalculator />}
 
         {/* --- ARTICLE DETAIL VIEW --- */}

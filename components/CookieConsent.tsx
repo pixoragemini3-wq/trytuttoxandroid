@@ -40,7 +40,7 @@ const CookieConsent: React.FC = () => {
            <p className="text-xs text-gray-400 leading-relaxed max-w-2xl">
              Noi e i nostri partner terzi utilizziamo cookie e tecnologie simili per migliorare la tua esperienza, analizzare il traffico e mostrare annunci personalizzati. 
              Cliccando su "Accetta tutto", acconsenti all'uso di tutti i cookie. Puoi rifiutare o gestire le tue preferenze in qualsiasi momento.
-             <a href="#" className="underline text-gray-300 hover:text-white ml-1">Leggi la Privacy Policy</a>.
+             <a href="/privacy" className="underline text-gray-300 hover:text-white ml-1">Leggi la Privacy Policy</a>.
            </p>
         </div>
         <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
