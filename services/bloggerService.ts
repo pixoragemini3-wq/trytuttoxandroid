@@ -436,14 +436,65 @@ const stripNonTxaInlineStyles = (html: string): string => {
   });
 };
 
-const stripJsonArtifactsFromHtml = (html: string): string => {
+/**
+ * Rimuove residui JSON/template che a volte restano in coda al body Blogger
+ * (pipeline AI/autopost), es. """} } }  oppure  "" } } " }
+ *
+ * Perché succede: alcuni post vengono generati/incollati da risposte strutturate
+ * (JSON o template) e le graffe/virgolette di chiusura restano nel HTML.
+ */
+export const stripJsonArtifactsFromHtml = (html: string): string => {
+  if (!html) return html;
+
+  const isJunkRun = (raw: string): boolean => {
+    const t = raw.trim();
+    if (t.length < 2) return false;
+    // Solo virgolette, graffe chiuse e spazi
+    if (!/^(?:(?:["'`]|&quot;|&#34;|&#x22;)|\}|\s)+$/i.test(t)) return false;
+    const hasQuote = /(?:["'`]|&quot;|&#34;|&#x22;)/i.test(t);
+    const hasBrace = /\}/.test(t);
+    return hasQuote && hasBrace;
+  };
+
+  // Sequenza mista di " e } (anche con spazi / entity HTML)
+  const junkChunk = String.raw`(?:(?:&quot;|&#34;|&#x22;|["'\`]|\})\s*){2,24}`;
+
   let clean = html;
+
+  // <p>"""} } }</p> e simili
   clean = clean.replace(
-    /(?:\s*"[\s\n]*")+\s*\}\s*(?=<(?:p|div)[^>]*\bclass=["'][^"']*txa-source)/gi,
+    new RegExp(String.raw`<(p|div|span)(\s[^>]*)?>\s*(${junkChunk})\s*</\1>`, 'gi'),
+    (full, _tag, _attrs, inner: string) => (isJunkRun(inner) ? '' : full)
+  );
+
+  // Dopo un blocco chiuso, prima del tag successivo / fine stringa
+  clean = clean.replace(
+    new RegExp(
+      String.raw`(</(?:p|div|section|article|blockquote|h[1-6]|ul|ol|li|table|nav|figure)>)(\s*${junkChunk})(?=\s*<|\s*$)`,
+      'gi'
+    ),
+    (full, before: string, junk: string) => (isJunkRun(junk) ? before : full)
+  );
+
+  // Testo grezzo tra due tag (es. >"""} } }<hr)
+  clean = clean.replace(
+    new RegExp(String.raw`>(\s*${junkChunk})(?=\s*<)`, 'g'),
+    (full, junk: string) => (isJunkRun(junk) ? '>' : full)
+  );
+
+  // Coda documento
+  clean = clean.replace(
+    new RegExp(String.raw`(\s*${junkChunk})\s*$`, 'i'),
+    (m) => (isJunkRun(m) ? '' : m)
+  );
+
+  // Varianti legacy già note
+  clean = clean.replace(
+    /(?:\s*"[\s\n]*")+\s*(?:\}\s*)+(?=<(?:p|div)[^>]*\bclass=["'][^"']*txa-source)/gi,
     ''
   );
-  clean = clean.replace(/<\/div>\s*"\s*(?:\n\s*")?\s*\}\s*/gi, '</div>');
-  clean = clean.replace(/(?:^|>)\s*"\s*"\s*\}\s*(?=<|$)/g, '>');
+  clean = clean.replace(/<\/div>\s*"\s*(?:\n\s*")?\s*(?:\}\s*)+/gi, '</div>');
+
   return clean;
 };
 

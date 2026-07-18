@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote, hydrateArticle } from '../services/bloggerService';
+import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote, hydrateArticle, stripJsonArtifactsFromHtml } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 import NewsletterForm from './NewsletterForm';
 import DealImage from './DealImage';
@@ -206,19 +206,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return false;
   };
 
-  const stripJsonArtifacts = (html: string): string => {
-    let out = html;
-    out = out.replace(
-      /(?:\s*"[\s\n]*")+\s*\}\s*(?=<(?:p|div)[^>]*\bclass=["'][^"']*txa-source)/gi,
-      ''
-    );
-    out = out.replace(/<\/div>\s*"\s*(?:\n\s*")?\s*\}\s*/gi, '</div>');
-    out = out.replace(/(?:^|>)\s*"\s*"\s*\}\s*(?=<|$)/g, '>');
-    return out;
-  };
-
   const sanitizeArticleHtml = (html: string): string => {
-    let out = stripJsonArtifacts(html);
+    let out = stripJsonArtifactsFromHtml(html);
     out = out.replace(/<div[^>]*\bclass=["'][^"']*txa-img[^"']*["'][^>]*>\s*<\/div>/gi, '');
     const navMatch = out.match(
       /<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/i
