@@ -311,6 +311,12 @@ a:hover {
 /* ============================================
    BEAUTIFUL ANIMATIONS (framer + CSS)
    ============================================ */
+/* Shine sweep sulle card social (hover) */
+@keyframes socialShine {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(280%) skewX(-12deg); }
+}
+
 @keyframes fadeUp {
   from { 
     opacity: 0; 

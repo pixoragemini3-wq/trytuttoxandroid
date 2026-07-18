@@ -1346,20 +1346,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
             {/* SIDEBAR (Right) */}
             <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
-                <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-[#24A1DE] rounded-3xl p-6 text-center text-white shadow-xl relative overflow-hidden group hover:-translate-y-1 hover:shadow-2xl transition-all duration-200">
-                   {/* Soft glow orb */}
-                   <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-[1.2] transition-transform duration-500"></div>
+                <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-br from-[#2AABEE] via-[#24A1DE] to-[#0d8ecf] rounded-3xl p-6 text-center text-white shadow-xl relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(36,161,222,0.55)] transition-all duration-300">
+                   <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-[1.25] transition-transform duration-500"></div>
+                   <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                     <span className="absolute -inset-full top-0 block h-full w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[socialShine_0.85s_ease]" />
+                   </span>
                    
-                   {/* Icon */}
                    <div className="relative z-10 w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-xl ring-1 ring-white/50 group-hover:scale-105 group-hover:-rotate-3 transition-all duration-200">
                       <svg className="w-8 h-8 text-[#24A1DE]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg>
                    </div>
                    
                    <div className="relative z-10">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90 mb-1">17.5k iscritti</p>
                      <h3 className="font-condensed text-2xl font-black uppercase italic leading-none tracking-[-0.5px] mb-1.5 text-white">Canale Offerte</h3>
                      <p className="text-[11px] font-medium text-white/90 mb-5 max-w-[18ch] mx-auto">Errori di prezzo e sconti esclusivi in tempo reale.</p>
                      
-                     <span className="inline-flex items-center justify-center gap-2 bg-white text-[#24A1DE] px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg group-hover:bg-white group-hover:scale-[1.02] active:scale-[0.985] transition-all">
+                     <span className="inline-flex items-center justify-center gap-2 bg-white text-[#24A1DE] px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg group-hover:scale-[1.02] active:scale-[0.985] transition-all">
                        UNISCITI ORA 
                        <span className="text-base leading-none transition-transform group-hover:translate-x-0.5">→</span>
                      </span>
