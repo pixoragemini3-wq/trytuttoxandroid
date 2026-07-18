@@ -79,8 +79,8 @@ const Layout: React.FC<LayoutProps> = ({
       <style>{`
         @media (min-width: 768px) {
           .txa-header-band {
-            height: 200px !important;
-            max-height: 200px !important;
+            height: 180px !important;
+            max-height: 180px !important;
             overflow: hidden !important;
             display: flex !important;
             flex-direction: column !important;
@@ -96,15 +96,15 @@ const Layout: React.FC<LayoutProps> = ({
             min-height: 0 !important;
           }
           .txa-header-logo {
-            height: 148px !important;
-            max-height: 148px !important;
+            height: 132px !important;
+            max-height: 132px !important;
             width: auto !important;
             object-fit: contain !important;
           }
         }
       `}</style>
       <header className="bg-[#111111] text-white overflow-visible">
-        {/* Desktop: banda nera ESATTAMENTE 200px; logo 148px invariato */}
+        {/* Desktop: banda nera ESATTAMENTE 180px */}
         <div className="txa-header-band">
         {/* Top utility bar */}
         <div className="hidden md:block border-b border-white/[0.06] shrink-0">
@@ -218,7 +218,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Red accent bottom line */}
         <div className="h-[2px] bg-[#e31b23] shrink-0" />
-        </div>{/* /.txa-header-band 200px */}
+        </div>{/* /.txa-header-band 180px */}
 
         {/* MegaMenu */}
         {activeMegaMenu && !isSearchVisible && (
