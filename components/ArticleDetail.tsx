@@ -1030,10 +1030,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                     <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="max-w-full max-h-full object-contain" />
                  </div>
                  <div className="min-w-0 flex-1 flex flex-col justify-between">
-                    <p className="text-xs font-bold text-white leading-snug line-clamp-3 mb-2 group-hover:text-yellow-400">{deal.product}</p>
+                    <p className="txa-deal-title text-xs font-bold text-white leading-snug line-clamp-3 mb-2 group-hover:text-yellow-400">{deal.product}</p>
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-lg font-black text-yellow-400">{deal.newPrice}</span>
-                      {deal.oldPrice && <span className="text-xs font-bold text-white/50 line-through">{deal.oldPrice}</span>}
+                      <span className="txa-deal-price text-lg font-black text-yellow-400">{deal.newPrice}</span>
+                      {deal.oldPrice && <span className="txa-deal-old-price text-xs font-bold text-white/50 line-through">{deal.oldPrice}</span>}
                     </div>
                  </div>
               </a>

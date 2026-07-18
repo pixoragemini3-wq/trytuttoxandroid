@@ -787,10 +787,10 @@ const App: React.FC = () => {
                 />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-between">
-                <h4 className="font-bold text-xs text-white mb-2 leading-snug line-clamp-3 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
+                <h4 className="txa-deal-title font-bold text-xs text-white mb-2 leading-snug line-clamp-3 group-hover:text-yellow-400 transition-colors">{deal.product}</h4>
                 <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-sm sm:text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
-                    {deal.oldPrice && <span className="text-xs font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
+                    <span className="txa-deal-price text-sm sm:text-base font-black text-yellow-400 tracking-tight">{deal.newPrice}</span>
+                    {deal.oldPrice && <span className="txa-deal-old-price text-xs font-bold text-gray-400 line-through">{deal.oldPrice}</span>}
                 </div>
               </div>
             </a>

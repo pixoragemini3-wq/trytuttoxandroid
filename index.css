@@ -557,16 +557,111 @@ h3.font-condensed:not(.txa-deals-banner-title) {
   color: #111;
 }
 
-/* Banner Offerte del Giorno (modello classico scuro): titolo sempre bianco */
+/*
+ * Banner Offerte del Giorno — testo SEMPRE chiaro su sfondo scuro/rosso.
+ * Dentro gli articoli il banner vive sotto .prose (color: #1e2937) e i link
+ * ereditano / ricevono hover verde con !important: titoli e prezzi spariscono.
+ */
+.txa-deals-banner,
+.txa-deals-banner h1,
+.txa-deals-banner h2,
+.txa-deals-banner h3,
+.txa-deals-banner h4,
+.txa-deals-banner h5,
+.txa-deals-banner h6,
+.txa-deals-banner p,
+.txa-deals-banner span,
+.txa-deals-banner a,
+.txa-deals-banner li,
+.txa-deals-banner label,
+.txa-deals-banner div {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
 .txa-deals-banner .txa-deals-banner-title,
 .txa-deals-banner h2.txa-deals-banner-title,
 .txa-deals-banner h3.txa-deals-banner-title {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .txa-deals-banner .txa-deals-banner-title::after {
   display: none !important;
+}
+
+/* Titolo prodotto nelle card */
+.txa-deals-banner .txa-deal-title,
+.txa-deals-banner h4,
+.txa-deals-banner a p {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Prezzo scontato in giallo (alto contrasto sul rosso) */
+.txa-deals-banner .txa-deal-price,
+.txa-deals-banner .text-yellow-400,
+.txa-deals-banner .text-yellow-300 {
+  color: #fde047 !important;
+  -webkit-text-fill-color: #fde047 !important;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Prezzo barrato / meta: bianco semi-trasparente */
+.txa-deals-banner .txa-deal-old-price,
+.txa-deals-banner .line-through,
+.txa-deals-banner .text-gray-400 {
+  color: rgba(255, 255, 255, 0.75) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.txa-deals-banner .text-white\/50,
+.txa-deals-banner .text-white\/70,
+.txa-deals-banner .text-white\/80,
+.txa-deals-banner .text-white\/90 {
+  color: rgba(255, 255, 255, 0.9) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Hover card: giallo leggibile, non verde globale */
+.txa-deals-banner a:hover,
+.txa-deals-banner a:hover h4,
+.txa-deals-banner a:hover p,
+.txa-deals-banner a:hover span:not(.txa-deal-price):not(.line-through) {
+  color: #fef08a !important;
+  -webkit-text-fill-color: #fef08a !important;
+}
+
+.txa-deals-banner a:hover .txa-deal-price,
+.txa-deals-banner a:hover .text-yellow-400 {
+  color: #fde047 !important;
+  -webkit-text-fill-color: #fde047 !important;
+}
+
+/* CTA Telegram bianca: testo scuro sul bottone (non ereditare bianco) */
+.txa-deals-banner a.bg-white,
+.txa-deals-banner a.bg-white span,
+.txa-deals-banner a.bg-white i {
+  color: #111111 !important;
+  -webkit-text-fill-color: #111111 !important;
+}
+
+.txa-deals-banner a.bg-white:hover,
+.txa-deals-banner a.bg-white:hover span,
+.txa-deals-banner a.bg-white:hover i {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Badge HOT bianco su rosso: testo brand leggibile */
+.txa-deals-banner .bg-white.text-\[\#e31b23\],
+.txa-deals-banner span.bg-white {
+  color: #b91c1c !important;
+  -webkit-text-fill-color: #b91c1c !important;
 }
 
 h3.font-condensed.text-4xl {
