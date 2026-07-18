@@ -1043,23 +1043,26 @@ const App: React.FC = () => {
 
     /** Sempre almeno 3 pezzi per card: preferiti → pool → resto feed. */
     const PREVIEW_COUNT = 3;
+    /** Col1 e Col2 mai con gli stessi articoli (niente fallback che reintroduce i già usati). */
     const takePreviewPair = (primaryA: Article[], primaryB: Article[], shared: Article[]) => {
-      const col1 = takeUnique([primaryA, shared, allSource], PREVIEW_COUNT);
-      const col1Ids = new Set(col1.map((a) => a.id));
-      const col2 = takeUnique([
-        primaryB.filter((a) => !col1Ids.has(a.id)),
-        shared.filter((a) => !col1Ids.has(a.id)),
-        primaryB,
-        shared,
-        allSource.filter((a) => !col1Ids.has(a.id)),
-        allSource,
-      ], PREVIEW_COUNT);
+      const col1 = takeUnique([primaryA, shared, pool, allSource], PREVIEW_COUNT);
+      const used = new Set(col1.map((a) => a.id));
+      const notUsed = (list: Article[]) => list.filter((a) => a?.id && !used.has(a.id));
+      const col2 = takeUnique(
+        [notUsed(primaryB), notUsed(shared), notUsed(pool), notUsed(allSource)],
+        PREVIEW_COUNT
+      );
       return { col1, col2 };
     };
 
-    /** Cascata “Vedi tutti”: preferiti prima, poi fill dal feed. */
-    const fillCascadePool = (primary: Article[], limit = 48): Article[] =>
-      takeUnique([primary, pool, allSource], limit);
+    /** Cascata “Vedi tutti”: preferiti prima, poi fill dal feed (opz. esclude id già in altra colonna). */
+    const fillCascadePool = (primary: Article[], limit = 48, excludeIds?: Set<string>): Article[] => {
+      const ok = (list: Article[]) =>
+        excludeIds?.size
+          ? list.filter((a) => a?.id && !excludeIds.has(a.id))
+          : list;
+      return takeUnique([ok(primary), ok(pool), ok(allSource)], limit);
+    };
 
     type SpotlightIconKind = 'tag' | 'star' | 'phone' | 'flame' | 'book' | 'bulb' | 'layers' | 'gamepad' | 'news' | 'note' | 'grid';
 
@@ -1067,9 +1070,18 @@ const App: React.FC = () => {
     let col2Title = `IN EVIDENZA ${spotlightCat.toUpperCase()}`;
     let col1Icon: SpotlightIconKind = 'news';
     let col2Icon: SpotlightIconKind = 'star';
-    let { col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool);
+    // Default: metà “recenti” vs metà “successive” senza overlap
+    let { col1: col1Items, col2: col2Items } = takePreviewPair(
+      pool,
+      pool.slice(PREVIEW_COUNT),
+      pool
+    );
     let col1All: Article[] = fillCascadePool(pool, 48);
-    let col2All: Article[] = fillCascadePool(pool.slice(PREVIEW_COUNT).concat(pool.slice(0, PREVIEW_COUNT)), 48);
+    let col2All: Article[] = fillCascadePool(
+      pool.slice(PREVIEW_COUNT),
+      48,
+      new Set(col1All.map((a) => a.id))
+    );
     let viewAllCat = spotlightCat;
 
     if (spotlightCat === 'App & Giochi') {
@@ -1086,40 +1098,59 @@ const App: React.FC = () => {
         pool
       ));
       col1All = fillCascadePool(appItems.length > 0 ? appItems : pool, 48);
-      col2All = fillCascadePool(gameItems.length > 0 ? gameItems : pool, 48);
+      col2All = fillCascadePool(
+        gameItems.length > 0 ? gameItems : pool.slice(PREVIEW_COUNT),
+        48,
+        new Set(col1All.map((a) => a.id))
+      );
     } else if (spotlightCat === 'Offerte') {
       col1Title = 'ULTIME OFFERTE';
       col2Title = 'LE MIGLIORI OFFERTE';
       col1Icon = 'tag';
       col2Icon = 'star';
+      // col2: pezzi successivi del pool, mai quelli già in col1
+      ({ col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool));
+      col1All = fillCascadePool(pool, 48);
+      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, new Set(col1All.map((a) => a.id)));
     } else if (spotlightCat === 'Smartphone') {
       col1Title = 'ULTIMI SMARTPHONE';
       col2Title = 'TOP DEVICE';
       col1Icon = 'phone';
       col2Icon = 'flame';
+      ({ col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool));
+      col1All = fillCascadePool(pool, 48);
+      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, new Set(col1All.map((a) => a.id)));
     } else if (spotlightCat === 'Guide') {
       col1Title = 'ULTIME GUIDE';
       col2Title = 'TUTORIAL UTILI';
       col1Icon = 'book';
       col2Icon = 'bulb';
       const isTutorialLike = (a: Article) =>
-        /tutorial|trucchi|come |how to|passo.?passo|soluzione|risolvere|impostare/i.test(haystack(a))
+        /tutorial|trucchi|come |how to|passo.?passo|soluzione|risolvere|impostare|prompt|multidevice|due telefoni/i.test(haystack(a))
         || (a.category || '').toLowerCase() === 'tutorial'
         || (a.tags || []).some((t) => /tutorial/i.test(t));
-      const guideItems = pool.filter((a: Article) => !isTutorialLike(a));
       const tutorialItems = pool.filter(isTutorialLike);
+      const guideItems = pool.filter((a: Article) => !isTutorialLike(a));
+      // Preferisci guide “pure” vs tutorial; se un lato è scarso, usa il resto del pool SENZA overlap
       ({ col1: col1Items, col2: col2Items } = takePreviewPair(
-        guideItems.length > 0 ? guideItems : pool,
+        guideItems.length >= PREVIEW_COUNT ? guideItems : pool,
         tutorialItems.length > 0 ? tutorialItems : pool.slice(PREVIEW_COUNT),
         pool
       ));
       col1All = fillCascadePool(guideItems.length > 0 ? guideItems : pool, 48);
-      col2All = fillCascadePool(tutorialItems.length > 0 ? tutorialItems : pool, 48);
+      col2All = fillCascadePool(
+        tutorialItems.length > 0 ? tutorialItems : pool.slice(PREVIEW_COUNT),
+        48,
+        new Set(col1All.map((a) => a.id))
+      );
     } else if (spotlightCat === 'Recensioni') {
       col1Title = 'ULTIME RECENSIONI';
       col2Title = 'TEST & PROVE';
       col1Icon = 'star';
       col2Icon = 'note';
+      ({ col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool));
+      col1All = fillCascadePool(pool, 48);
+      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, new Set(col1All.map((a) => a.id)));
     }
 
     const SpotlightIcon: React.FC<{ kind: SpotlightIconKind; className?: string }> = ({ kind, className = 'w-5 h-5' }) => {
