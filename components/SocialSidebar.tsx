@@ -113,7 +113,7 @@ const SocialSidebar: React.FC<{
               <div
                 key={art.id}
                 onClick={() => onArticleClick && onArticleClick(art)}
-                className="group relative h-20 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
+                className="group relative h-[5.5rem] overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
               >
                 {/* Immagine assoluta: a riposo ~22% a sinistra; in hover 100% con zoom + blur */}
                 <div className="absolute inset-y-0 left-0 z-0 w-[22%] overflow-hidden transition-[width] duration-300 ease-out group-hover:w-full">
@@ -137,10 +137,12 @@ const SocialSidebar: React.FC<{
                   </div>
                 </div>
 
-                {/* Hover: titolo su tutto il blocco (da bordo a bordo), non solo a destra */}
-                <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-center px-3.5 py-2.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:px-4">
-                  <span className="mb-1 text-[10px] font-bold tracking-wide text-white/90 drop-shadow-sm">{art.category}</span>
-                  <div className="w-full text-[13px] font-semibold leading-snug text-white drop-shadow-md line-clamp-3 sm:text-[14px] sm:leading-snug">
+                {/* Hover: titolo più grande e centrato su tutto il blocco */}
+                <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-3 py-2 text-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:px-4">
+                  <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-white/90 drop-shadow-sm sm:text-[11px]">
+                    {art.category}
+                  </span>
+                  <div className="w-full max-w-full font-condensed text-[15px] font-black leading-tight tracking-tight text-white drop-shadow-md line-clamp-3 sm:text-[16px] sm:leading-snug">
                     {art.title}
                   </div>
                 </div>
