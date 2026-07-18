@@ -770,60 +770,87 @@ const App: React.FC = () => {
   );
 
   const AppsGamesMenu = () => {
-    // Alterna random tra categorie (seed giornaliero per stabilità, piace il layout delle app → lo generalizziamo)
+    // Rotazione multi-slot al giorno: Guide, Offerte, Smartphone, App, Recensioni
+    // (ogni ~4 ore cambia; seed giornaliero mescola l'ordine così non è sempre la stessa sequenza)
     const spotlightCats = ['App & Giochi', 'Smartphone', 'Offerte', 'Guide', 'Recensioni'];
-    const spotlightCat = spotlightCats[(new Date().getDate()) % spotlightCats.length];
+    const now = new Date();
+    const daySeed = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+    const hourSlot = Math.floor(now.getHours() / 4); // 6 slot/giorno
+    const rotated = [...spotlightCats].sort((a, b) => {
+      const ha = (daySeed * 17 + a.length * 13 + a.charCodeAt(0)) % 97;
+      const hb = (daySeed * 17 + b.length * 13 + b.charCodeAt(0)) % 97;
+      return ha - hb;
+    });
+    const spotlightCat = rotated[(hourSlot + daySeed) % rotated.length];
 
     const allSource = articles.length > 0 ? articles : MOCK_ARTICLES;
+    const haystack = (a: Article) => `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
+
     let pool = allSource.filter((a: Article) => a.category === spotlightCat);
 
-    // Allarga il pool per sezioni dove Blogger usa etichette diverse (es. tutorial→Guide)
-    // o keyword nel titolo, così le card non restano su "Contenuti in aggiornamento."
+    // Allarga il pool (etichette Blogger + keyword titolo) così le card hanno sempre materiale
     if (spotlightCat === 'Offerte') {
-      pool = allSource.filter((a: Article) => {
-        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
-        return a.category === 'Offerte' ||
-               /offerta|offerte|sconto|prezzo|amazon|deal|black friday|prime|risparmio|cashback|coupon/i.test(hay);
-      });
+      pool = allSource.filter((a: Article) =>
+        a.category === 'Offerte' ||
+        /offerta|offerte|sconto|prezzo|amazon|deal|black friday|prime|risparmio|cashback|coupon/i.test(haystack(a))
+      );
     } else if (spotlightCat === 'Guide') {
       pool = allSource.filter((a: Article) => {
         const cat = (a.category || '').toLowerCase();
-        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
         return cat === 'guide' || cat === 'tutorial' ||
-               /guida|guide|tutorial|come fare|how to|trucchi|soluzioni|passo.?passo|impostare|nascondere|risolvere/i.test(hay);
+          /guida|guide|tutorial|come fare|how to|trucchi|soluzioni|passo.?passo|impostare|nascondere|risolvere/i.test(haystack(a));
       });
     } else if (spotlightCat === 'Recensioni') {
-      pool = allSource.filter((a: Article) => {
-        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
-        return a.category === 'Recensioni' ||
-               /recensione|review|prova|test\b|analisi|opinioni/i.test(hay);
-      });
+      pool = allSource.filter((a: Article) =>
+        a.category === 'Recensioni' ||
+        /recensione|review|prova|test\b|analisi|opinioni/i.test(haystack(a))
+      );
     } else if (spotlightCat === 'Smartphone') {
-      pool = allSource.filter((a: Article) => {
-        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
-        return a.category === 'Smartphone' ||
-               /smartphone|galaxy|pixel|iphone|xiaomi|redmi|poco|oneplus|motorola|honor|realme|nothing|oppo|huawei/i.test(hay);
-      });
+      pool = allSource.filter((a: Article) =>
+        a.category === 'Smartphone' ||
+        /smartphone|galaxy|pixel|iphone|xiaomi|redmi|poco|oneplus|motorola|honor|realme|nothing|oppo|huawei/i.test(haystack(a))
+      );
+    } else if (spotlightCat === 'App & Giochi') {
+      pool = allSource.filter((a: Article) =>
+        a.category === 'App & Giochi' ||
+        /app\b|gioco|giochi|game|play store|apk|whatsapp|instagram|telegram|tiktok/i.test(haystack(a))
+      );
     }
 
-    /** Riempie la cascata con altri articoli se la categoria ha pochi pezzi (evita il tetto “solo 8”). */
-    const fillCascadePool = (primary: Article[], limit = 48): Article[] => {
+    /** Unisce liste in ordine, senza duplicati, fino a limit. */
+    const takeUnique = (lists: Article[][], limit: number): Article[] => {
       const out: Article[] = [];
       const seen = new Set<string>();
-      for (const a of primary) {
-        if (seen.has(a.id)) continue;
-        seen.add(a.id);
-        out.push(a);
-        if (out.length >= limit) return out;
-      }
-      for (const a of allSource) {
-        if (seen.has(a.id)) continue;
-        seen.add(a.id);
-        out.push(a);
-        if (out.length >= limit) break;
+      for (const list of lists) {
+        for (const a of list) {
+          if (!a?.id || seen.has(a.id)) continue;
+          seen.add(a.id);
+          out.push(a);
+          if (out.length >= limit) return out;
+        }
       }
       return out;
     };
+
+    /** Sempre almeno 3 pezzi per card: preferiti → pool → resto feed. */
+    const PREVIEW_COUNT = 3;
+    const takePreviewPair = (primaryA: Article[], primaryB: Article[], shared: Article[]) => {
+      const col1 = takeUnique([primaryA, shared, allSource], PREVIEW_COUNT);
+      const col1Ids = new Set(col1.map((a) => a.id));
+      const col2 = takeUnique([
+        primaryB.filter((a) => !col1Ids.has(a.id)),
+        shared.filter((a) => !col1Ids.has(a.id)),
+        primaryB,
+        shared,
+        allSource.filter((a) => !col1Ids.has(a.id)),
+        allSource,
+      ], PREVIEW_COUNT);
+      return { col1, col2 };
+    };
+
+    /** Cascata “Vedi tutti”: preferiti prima, poi fill dal feed. */
+    const fillCascadePool = (primary: Article[], limit = 48): Article[] =>
+      takeUnique([primary, pool, allSource], limit);
 
     type SpotlightIconKind = 'tag' | 'star' | 'phone' | 'flame' | 'book' | 'bulb' | 'layers' | 'gamepad' | 'news' | 'note' | 'grid';
 
@@ -831,30 +858,26 @@ const App: React.FC = () => {
     let col2Title = `IN EVIDENZA ${spotlightCat.toUpperCase()}`;
     let col1Icon: SpotlightIconKind = 'news';
     let col2Icon: SpotlightIconKind = 'star';
-    let col1Items: Article[] = pool.slice(0, 3);
-    let col2Items: Article[] = pool.slice(3, 6);
+    let { col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool);
     let col1All: Article[] = fillCascadePool(pool, 48);
-    let col2All: Article[] = fillCascadePool(pool.slice(3).concat(pool.slice(0, 3)), 48);
+    let col2All: Article[] = fillCascadePool(pool.slice(PREVIEW_COUNT).concat(pool.slice(0, PREVIEW_COUNT)), 48);
     let viewAllCat = spotlightCat;
 
-    // Caso speciale che ti è piaciuto: split App vs Giochi con keyword
     if (spotlightCat === 'App & Giochi') {
       col1Title = 'ULTIME APP';
       col2Title = 'ULTIMI GIOCHI';
       col1Icon = 'layers';
       col2Icon = 'gamepad';
-      const isGameLike = (a: Article) => {
-        const hay = `${a.title} ${(a.tags || []).join(' ')}`.toLowerCase();
-        return /gioco|game|play|arcade|indie/i.test(hay);
-      };
-
+      const isGameLike = (a: Article) => /gioco|giochi|game|play|arcade|indie/i.test(haystack(a));
       const appItems = pool.filter((a: Article) => !isGameLike(a));
       const gameItems = pool.filter(isGameLike);
-
-      col1Items = appItems.length > 0 ? appItems.slice(0, 3) : pool.slice(0, 3);
-      col2Items = gameItems.length > 0 ? gameItems.slice(0, 3) : pool.slice(3, 6);
+      ({ col1: col1Items, col2: col2Items } = takePreviewPair(
+        appItems.length > 0 ? appItems : pool,
+        gameItems.length > 0 ? gameItems : pool.slice(PREVIEW_COUNT),
+        pool
+      ));
       col1All = fillCascadePool(appItems.length > 0 ? appItems : pool, 48);
-      col2All = fillCascadePool(gameItems.length > 0 ? gameItems : pool.slice(3), 48);
+      col2All = fillCascadePool(gameItems.length > 0 ? gameItems : pool, 48);
     } else if (spotlightCat === 'Offerte') {
       col1Title = 'ULTIME OFFERTE';
       col2Title = 'LE MIGLIORI OFFERTE';
@@ -870,17 +893,17 @@ const App: React.FC = () => {
       col2Title = 'TUTORIAL UTILI';
       col1Icon = 'book';
       col2Icon = 'bulb';
-      const isTutorialLike = (a: Article) => {
-        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
-        return /tutorial|trucchi|come |how to|passo.?passo|soluzione|risolvere|impostare/i.test(hay)
-          || (a.category || '').toLowerCase() === 'tutorial'
-          || (a.tags || []).some((t) => /tutorial/i.test(t));
-      };
+      const isTutorialLike = (a: Article) =>
+        /tutorial|trucchi|come |how to|passo.?passo|soluzione|risolvere|impostare/i.test(haystack(a))
+        || (a.category || '').toLowerCase() === 'tutorial'
+        || (a.tags || []).some((t) => /tutorial/i.test(t));
       const guideItems = pool.filter((a: Article) => !isTutorialLike(a));
       const tutorialItems = pool.filter(isTutorialLike);
-      col1Items = (guideItems.length > 0 ? guideItems : pool).slice(0, 3);
-      col2Items = (tutorialItems.length > 0 ? tutorialItems : pool.slice(3)).slice(0, 3);
-      if (col2Items.length === 0) col2Items = pool.slice(0, 3);
+      ({ col1: col1Items, col2: col2Items } = takePreviewPair(
+        guideItems.length > 0 ? guideItems : pool,
+        tutorialItems.length > 0 ? tutorialItems : pool.slice(PREVIEW_COUNT),
+        pool
+      ));
       col1All = fillCascadePool(guideItems.length > 0 ? guideItems : pool, 48);
       col2All = fillCascadePool(tutorialItems.length > 0 ? tutorialItems : pool, 48);
     } else if (spotlightCat === 'Recensioni') {
