@@ -96,17 +96,39 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     gpsPromos: []
   });
   const [hasToc, setHasToc] = useState(false);
-  /** Banner newsletter (logica interna: ogni 3 articoli; non comunicata all'utente) */
-  const [showNlPrompt, setShowNlPrompt] = useState(false);
-  const [nlPromptDismissed, setNlPromptDismissed] = useState(false);
+
+  /** Overlay fisso mobile: ogni 3 articoli, auto-hide 15s (pausa se l'utente digita) */
+  const [showNlFixed, setShowNlFixed] = useState(false);
+  const [nlFixedDismissed, setNlFixedDismissed] = useState(false);
+  const [nlFixedTyping, setNlFixedTyping] = useState(false);
+
+  /** Banner in mezzo all'articolo: ~1/3 articoli (hash stabile), non auto-hide */
+  const [showNlInline, setShowNlInline] = useState(false);
+  const [nlInlineDismissed, setNlInlineDismissed] = useState(false);
+
+  const isSubscribed = (): boolean => {
+    try {
+      return localStorage.getItem('txa_newsletter_subscribed') === '1';
+    } catch {
+      return false;
+    }
+  };
+
+  /** Hash stabile su id articolo → ~33% articoli con banner mid-content */
+  const articleGetsInlineNl = (id: string): boolean => {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+    return Math.abs(h) % 3 === 0;
+  };
 
   useEffect(() => {
     if (!article?.id) return;
+    if (isSubscribed()) {
+      setShowNlFixed(false);
+      setShowNlInline(false);
+      return;
+    }
     try {
-      if (localStorage.getItem('txa_newsletter_subscribed') === '1') {
-        setShowNlPrompt(false);
-        return;
-      }
       const KEY = 'txa_article_views';
       const prev = parseInt(sessionStorage.getItem(KEY) || '0', 10) || 0;
       const lastId = sessionStorage.getItem('txa_last_article_id');
@@ -116,19 +138,25 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         sessionStorage.setItem(KEY, String(next));
         sessionStorage.setItem('txa_last_article_id', article.id);
       }
-      setNlPromptDismissed(false);
-      setShowNlPrompt(next > 0 && next % 3 === 0);
+      setNlFixedDismissed(false);
+      setNlInlineDismissed(false);
+      setNlFixedTyping(false);
+      // Overlay mobile: ogni 3 pagine articolo
+      setShowNlFixed(next > 0 && next % 3 === 0);
+      // Inline mid-article: sottoinsieme “random” stabile di articoli
+      setShowNlInline(articleGetsInlineNl(article.id));
     } catch {
-      setShowNlPrompt(false);
+      setShowNlFixed(false);
+      setShowNlInline(false);
     }
   }, [article?.id]);
 
-  // Banner fisso: scompare da solo dopo 10 secondi
+  // Solo overlay fisso: sparisce dopo 15s, ma non se l'utente sta scrivendo nel form
   useEffect(() => {
-    if (!showNlPrompt || nlPromptDismissed) return;
-    const t = window.setTimeout(() => setNlPromptDismissed(true), 10000);
+    if (!showNlFixed || nlFixedDismissed || nlFixedTyping) return;
+    const t = window.setTimeout(() => setNlFixedDismissed(true), 15000);
     return () => window.clearTimeout(t);
-  }, [showNlPrompt, nlPromptDismissed, article?.id]);
+  }, [showNlFixed, nlFixedDismissed, nlFixedTyping, article?.id]);
 
   // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
   useEffect(() => {
@@ -1289,12 +1317,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                         portalNodes.inArticleAd
                     )}
 
-                    {portalNodes.newsletter && showNlPrompt && !nlPromptDismissed && createPortal(
+                    {/* Banner mid-articolo: non auto-hide (solo X o iscrizione ok) */}
+                    {portalNodes.newsletter && showNlInline && !nlInlineDismissed && createPortal(
                         <div className="rounded-2xl border-2 border-[#e31b23]/30 bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 shadow-md relative overflow-hidden">
                           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#e31b23] to-[#ff6b6b]" />
                           <button
                             type="button"
-                            onClick={() => setNlPromptDismissed(true)}
+                            onClick={() => setNlInlineDismissed(true)}
                             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-black hover:text-white text-sm font-black"
                             aria-label="Chiudi"
                           >
@@ -1310,7 +1339,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                             subtitle="News e guide tech, gratis. Niente spam."
                             buttonLabel="Iscriviti ora"
                             compactLegal
-                            onSuccess={() => setNlPromptDismissed(true)}
+                            onSuccess={() => setNlInlineDismissed(true)}
                           />
                         </div>,
                         portalNodes.newsletter
@@ -1451,13 +1480,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         </div>
       </div>
 
-      {/* Banner fisso solo mobile: su desktop resta nella sidebar (niente overlay sul testo) */}
-      {showNlPrompt && !nlPromptDismissed && (
+      {/* Overlay fisso solo mobile: auto-hide 15s; non sparisce se si sta digitando */}
+      {showNlFixed && !nlFixedDismissed && (
         <div className="lg:hidden fixed bottom-0 inset-x-0 z-[9985] p-3 pointer-events-none">
-          <div className="max-w-lg mx-auto pointer-events-auto bg-gray-950 text-white rounded-2xl shadow-2xl border border-white/10 p-4 relative animate-in slide-in-from-bottom duration-300">
+          <div
+            className="max-w-lg mx-auto pointer-events-auto bg-gray-950 text-white rounded-2xl shadow-2xl border border-white/10 p-4 relative animate-in slide-in-from-bottom duration-300"
+            onFocusCapture={() => setNlFixedTyping(true)}
+            onBlurCapture={(e) => {
+              const next = e.relatedTarget as Node | null;
+              if (!e.currentTarget.contains(next)) setNlFixedTyping(false);
+            }}
+          >
             <button
               type="button"
-              onClick={() => setNlPromptDismissed(true)}
+              onClick={() => setNlFixedDismissed(true)}
               className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/10 hover:bg-white hover:text-black text-sm font-black"
               aria-label="Chiudi"
             >
@@ -1470,14 +1506,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
               subtitle="News e guide tech, gratis. Zero spam."
               buttonLabel="Iscriviti gratis"
               compactLegal
-              onSuccess={() => setNlPromptDismissed(true)}
+              onSuccess={() => setNlFixedDismissed(true)}
             />
           </div>
         </div>
       )}
 
       {/* Navigazione mobile rapida: Home + categoria + Indice (niente "Su": c'è già la freccia globale) */}
-      <div className={`lg:hidden fixed ${showNlPrompt && !nlPromptDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
+      <div className={`lg:hidden fixed ${showNlFixed && !nlFixedDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
         <a
           href="/"
           onClick={goHome}
