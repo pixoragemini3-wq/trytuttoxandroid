@@ -76,8 +76,10 @@ const Layout: React.FC<LayoutProps> = ({
       {/* ───── HEADER + TOP NEWS (mobile: blocco sticky unico) ───── */}
       <div className="sticky top-0 z-50">
       <header className="bg-[#111111] text-white overflow-visible">
+        {/* Desktop: banda nera fissa 200px (prima ~250); logo stessa misura */}
+        <div className="md:h-[200px] md:flex md:flex-col md:overflow-hidden">
         {/* Top utility bar */}
-        <div className="hidden md:block border-b border-white/[0.06]">
+        <div className="hidden md:block border-b border-white/[0.06] shrink-0">
           <div className="max-w-[1200px] mx-auto px-6 flex justify-between items-center h-8">
             <div className="flex gap-5 text-[10px] font-medium tracking-widest text-white/30 uppercase">
               <button onClick={() => handleFooterLinkClick('/about')} className="hover:text-white/70 transition-colors">Chi Siamo</button>
@@ -90,12 +92,11 @@ const Layout: React.FC<LayoutProps> = ({
           </div>
         </div>
 
-        {/* Main header row */}
-        <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-          {/* Desktop: header più basso (~-25/30%) per laptop 15.6" e scroll più comodo */}
-          <div className="flex items-center justify-between h-28 md:h-[152px] lg:h-[160px] overflow-visible">
+        {/* Main header row — su md+ riempie lo spazio tra utility e riga rossa */}
+        <div className="max-w-[1200px] mx-auto px-4 md:px-6 w-full md:flex-1 md:min-h-0">
+          <div className="flex items-center justify-between h-28 md:h-full overflow-visible">
 
-            {/* Logo */}
+            {/* Logo — misure invariate */}
             <div
               className={`cursor-pointer shrink-0 overflow-visible ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
               onClick={goToHome}
@@ -103,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-[124px] max-h-none w-auto object-contain md:h-[140px] lg:h-[148px] md:max-h-full"
+                className="h-[124px] max-h-none w-auto object-contain md:h-[140px] lg:h-[148px]"
               />
             </div>
 
@@ -188,7 +189,8 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         {/* Red accent bottom line */}
-        <div className="h-[2px] bg-[#e31b23]" />
+        <div className="h-[2px] bg-[#e31b23] shrink-0" />
+        </div>{/* /md:h-[200px] band */}
 
         {/* MegaMenu */}
         {activeMegaMenu && !isSearchVisible && (
