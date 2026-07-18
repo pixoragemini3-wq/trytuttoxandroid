@@ -1034,8 +1034,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         <style>{`
           .txa-deals-banner,.txa-deals-banner h1,.txa-deals-banner h2,.txa-deals-banner h3,.txa-deals-banner h4,
           .txa-deals-banner p,.txa-deals-banner span,.txa-deals-banner a:not(.txa-deal-cta-light),
-          .txa-deals-banner .txa-deals-banner-title,.txa-deals-banner .txa-deal-title,.txa-deals-banner .font-condensed{
+          .txa-deals-banner .txa-deal-title,.txa-deals-banner .font-condensed{
             color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+          }
+          .txa-deals-banner .txa-deals-banner-title{
+            color:#e8ff00!important;-webkit-text-fill-color:#e8ff00!important;
+            text-shadow:0 0 14px rgba(232,255,0,.45),0 1px 3px rgba(0,0,0,.4)!important;
           }
           .txa-deals-banner .txa-deal-price{color:#fde047!important;-webkit-text-fill-color:#fde047!important;}
           .txa-deals-banner .txa-deal-old-price{color:rgba(255,255,255,.75)!important;-webkit-text-fill-color:rgba(255,255,255,.75)!important;}
@@ -1048,8 +1052,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         <div className="flex items-center justify-between mb-6 relative z-10 gap-4">
            <div>
               <h3
-                className="txa-deals-banner-title font-condensed text-3xl font-black uppercase italic leading-none"
-                style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+                className="txa-deals-banner-title font-condensed text-4xl font-black uppercase italic leading-none"
+                style={{ color: '#e8ff00', WebkitTextFillColor: '#e8ff00', textShadow: '0 0 14px rgba(232,255,0,0.45), 0 1px 3px rgba(0,0,0,0.4)' }}
               >
                 Offerte del Giorno
               </h3>

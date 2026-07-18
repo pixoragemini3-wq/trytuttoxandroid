@@ -588,9 +588,9 @@ h3.font-condensed:not(.txa-deals-banner-title) {
 .txa-deals-banner .txa-deals-banner-title,
 .txa-deals-banner h2.txa-deals-banner-title,
 .txa-deals-banner h3.txa-deals-banner-title {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  color: #e8ff00 !important;
+  -webkit-text-fill-color: #e8ff00 !important;
+  text-shadow: 0 0 14px rgba(232, 255, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .txa-deals-banner .txa-deals-banner-title::after {
