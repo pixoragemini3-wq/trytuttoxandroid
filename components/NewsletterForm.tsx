@@ -14,6 +14,9 @@ type Props = {
   subtitle?: string;
   buttonLabel?: string;
   className?: string;
+  /** Chiamato dopo iscrizione ok (es. chiudi banner articolo). */
+  onSuccess?: () => void;
+  compactLegal?: boolean;
 };
 
 const ERROR_MSG: Record<string, string> = {
@@ -36,6 +39,8 @@ const NewsletterForm: React.FC<Props> = ({
   subtitle,
   buttonLabel = 'Iscriviti alla Newsletter',
   className = '',
+  onSuccess,
+  compactLegal = false,
 }) => {
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(false);
@@ -58,6 +63,10 @@ const NewsletterForm: React.FC<Props> = ({
       setStatus('success');
       setEmail('');
       setConsent(false);
+      try {
+        localStorage.setItem('txa_newsletter_subscribed', '1');
+      } catch { /* ignore */ }
+      onSuccess?.();
       setTimeout(() => setStatus('idle'), 5000);
       return;
     }
@@ -108,11 +117,11 @@ const NewsletterForm: React.FC<Props> = ({
       )}
 
       <form onSubmit={onSubmit} className="flex flex-col gap-2" noValidate>
-        <label className="sr-only" htmlFor={`nl-email-${source}`}>
+        <label className="sr-only" htmlFor={`nl-email-${source}-${variant}`}>
           Indirizzo email
         </label>
         <input
-          id={`nl-email-${source}`}
+          id={`nl-email-${source}-${variant}`}
           type="email"
           name="email"
           autoComplete="email"
@@ -138,16 +147,14 @@ const NewsletterForm: React.FC<Props> = ({
             disabled={status === 'loading'}
           />
           <span className="text-[9px] leading-snug font-medium">
-            Acconsento al trattamento della mia email da parte di TuttoXAndroid per l&apos;invio
-            della newsletter informativa (art. 6.1.a GDPR). Posso revocare il consenso in ogni
-            momento. Leggi l&apos;{' '}
+            Acconsento al trattamento della mia email per la newsletter (art. 6.1.a GDPR).{' '}
             <a
               href="/privacy"
               className={`underline font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              informativa privacy
+              Privacy
             </a>
             .
           </span>
@@ -169,13 +176,15 @@ const NewsletterForm: React.FC<Props> = ({
           </p>
         )}
 
-        <p className={`text-[8px] leading-snug ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Titolare: TuttoXAndroid · Finalità: invio newsletter · Base giuridica: consenso ·
-          Conservazione: fino a revoca · Diritti: accesso, cancellazione, opposizione a{' '}
-          <a href="mailto:privacy@tuttoxandroid.com" className="underline">
-            privacy@tuttoxandroid.com
-          </a>
-        </p>
+        {!compactLegal && (
+          <p className={`text-[8px] leading-snug ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            Titolare: TuttoXAndroid · Finalità: invio newsletter · Base giuridica: consenso ·
+            Conservazione: fino a revoca · Diritti: accesso, cancellazione, opposizione a{' '}
+            <a href="mailto:privacy@tuttoxandroid.com" className="underline">
+              privacy@tuttoxandroid.com
+            </a>
+          </p>
+        )}
       </form>
     </div>
   );

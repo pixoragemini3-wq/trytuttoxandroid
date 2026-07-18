@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Article } from '../types';
+import NewsletterForm from './NewsletterForm';
 
 const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article: Article) => void }> = ({ articles = [], onArticleClick }) => {
   const socialLinks = [
@@ -53,6 +54,21 @@ const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article:
   const suggested = (articles || []).slice(0, 10);
 
   return (
+    <div className="space-y-6 lg:sticky lg:top-24">
+      {/* Newsletter — home / sidebar */}
+      <div className="bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] shadow-lg border border-gray-800 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#e31b23] rounded-full blur-[50px] opacity-25 pointer-events-none" />
+        <div className="relative z-10">
+          <NewsletterForm
+            source="home_sidebar"
+            variant="dark"
+            title="Newsletter"
+            subtitle="News, guide e offerte tech. Zero spam."
+            buttonLabel="Iscriviti gratis"
+          />
+        </div>
+      </div>
+
     <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
       <h3 className="font-condensed text-3xl font-black uppercase italic mb-6 tracking-tight text-gray-900 border-b-4 border-[#e31b23] pb-1 w-fit">Seguici</h3>
       <div className="grid grid-cols-2 gap-3">
@@ -123,6 +139,7 @@ const SocialSidebar: React.FC<{ articles?: Article[]; onArticleClick?: (article:
           <div className="mt-2 text-[10px] text-gray-400 font-medium">Altri articoli ti aspettano →</div>
         </div>
       )}
+    </div>
     </div>
   );
 };

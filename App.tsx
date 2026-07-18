@@ -16,6 +16,7 @@ import DesktopSidebar from './components/DesktopSidebar';
 import { AboutPage, CollabPage, PrivacyPage } from './components/StaticPages'; 
 import GPSCalculator from './components/gps/GPSCalculator';
 import Layout from './components/Layout';
+import NewsletterForm from './components/NewsletterForm';
 
 // Utility per mescolare l'array (Fisher-Yates shuffle)
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -1746,9 +1747,20 @@ const App: React.FC = () => {
                         </button>
                       </div>
                     )}
+
+                    {/* Newsletter mobile (sidebar desktop è a destra) */}
+                    <div className="lg:hidden mt-10 bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] shadow-lg border border-gray-800">
+                      <NewsletterForm
+                        source="home_sidebar"
+                        variant="dark"
+                        title="Newsletter"
+                        subtitle="News, guide e offerte tech. Zero spam."
+                        buttonLabel="Iscriviti gratis"
+                      />
+                    </div>
                   </div>
                   
-                  <div className="hidden lg:block">
+                  <div className="hidden lg:block w-full max-w-[320px] shrink-0">
                       <SocialSidebar articles={displayArticles.length > 0 ? displayArticles : articles} onArticleClick={handleArticleClick} />
                   </div>
                 </div>

@@ -69,6 +69,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   const [portalNodes, setPortalNodes] = useState<{
     deals: Element | null,
     inArticleAd: Element | null,
+    newsletter: Element | null,
     readAlso1: Element | null,
     readAlso2: Element | null,
     summaries: Element[],
@@ -76,13 +77,42 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
   }>({
     deals: null,
     inArticleAd: null,
+    newsletter: null,
     readAlso1: null,
     readAlso2: null,
     summaries: [],
     gpsPromos: []
   });
   const [hasToc, setHasToc] = useState(false);
-  
+  /** Banner newsletter ogni 3 articoli aperti in sessione */
+  const [showNlPrompt, setShowNlPrompt] = useState(false);
+  const [nlPromptDismissed, setNlPromptDismissed] = useState(false);
+
+  // Conta le pagine articolo consultate: al 3°, 6°, 9°… mostra il banner iscrizione
+  useEffect(() => {
+    if (!article?.id) return;
+    try {
+      if (localStorage.getItem('txa_newsletter_subscribed') === '1') {
+        setShowNlPrompt(false);
+        return;
+      }
+      const KEY = 'txa_article_views';
+      const prev = parseInt(sessionStorage.getItem(KEY) || '0', 10) || 0;
+      // evita doppio conteggio stesso articolo in refresh rapido
+      const lastId = sessionStorage.getItem('txa_last_article_id');
+      let next = prev;
+      if (lastId !== article.id) {
+        next = prev + 1;
+        sessionStorage.setItem(KEY, String(next));
+        sessionStorage.setItem('txa_last_article_id', article.id);
+      }
+      setNlPromptDismissed(false);
+      setShowNlPrompt(next > 0 && next % 3 === 0);
+    } catch {
+      setShowNlPrompt(false);
+    }
+  }, [article?.id]);
+
   // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
   useEffect(() => {
     if (!article) return;
@@ -718,6 +748,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     );
     let dealsNode = null;
     let inArticleAdNode = null;
+    let newsletterNode = null;
     let readAlso1Node = null;
     let readAlso2Node = null;
 
@@ -741,6 +772,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       (paragraphs[adInsertIdx] as HTMLElement).after(inArticleAdNode);
     }
 
+    // Slot newsletter a metà articolo (visibile solo ogni 3 pagine consultate)
+    const nlIdx = Math.max(2, Math.min(paragraphs.length - 1, Math.floor(paragraphs.length * 0.45)));
+    if (paragraphs.length >= 3) {
+      newsletterNode = document.createElement('div');
+      newsletterNode.className = 'injected-newsletter my-10 not-prose';
+      (paragraphs[nlIdx] as HTMLElement).after(newsletterNode);
+    }
+
     if (paragraphs.length >= 6) {
       readAlso2Node = document.createElement('div');
       readAlso2Node.className = 'injected-read-also my-8 not-prose';
@@ -754,6 +793,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     setPortalNodes({
       deals: dealsNode,
       inArticleAd: inArticleAdNode,
+      newsletter: newsletterNode,
       readAlso1: readAlso1Node,
       readAlso2: readAlso2Node,
       summaries: summaryNodes,
@@ -801,6 +841,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       expandableRows.forEach(row => row.removeEventListener('click', handleRowClick as EventListener));
       if (dealsNode) dealsNode.remove();
       if (inArticleAdNode) inArticleAdNode.remove();
+      if (newsletterNode) newsletterNode.remove();
       if (readAlso1Node) readAlso1Node.remove();
       if (readAlso2Node) readAlso2Node.remove();
     };
@@ -1143,6 +1184,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                         portalNodes.inArticleAd
                     )}
 
+                    {portalNodes.newsletter && showNlPrompt && !nlPromptDismissed && createPortal(
+                        <div className="rounded-2xl border-2 border-[#e31b23]/30 bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 shadow-md relative overflow-hidden">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#e31b23] to-[#ff6b6b]" />
+                          <button
+                            type="button"
+                            onClick={() => setNlPromptDismissed(true)}
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-black hover:text-white text-sm font-black"
+                            aria-label="Chiudi"
+                          >
+                            ×
+                          </button>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#e31b23] mb-1">
+                            Ti piace TuttoXAndroid?
+                          </p>
+                          <NewsletterForm
+                            source="article_prompt"
+                            variant="light"
+                            title="Iscriviti alla newsletter"
+                            subtitle="News e guide tech, gratis. Niente spam."
+                            buttonLabel="Iscriviti ora"
+                            compactLegal
+                            onSuccess={() => setNlPromptDismissed(true)}
+                          />
+                        </div>,
+                        portalNodes.newsletter
+                    )}
+
                     {portalNodes.readAlso1 && !isTruncated && moreArticles.length > 0 && createPortal(
                         <ReadAlsoBlock article={moreArticles[0]} />,
                         portalNodes.readAlso1
@@ -1261,8 +1329,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
         </div>
       </div>
 
+      {/* Banner fisso: ogni 3 articoli aperti (mobile + desktop) */}
+      {showNlPrompt && !nlPromptDismissed && (
+        <div className="fixed bottom-0 inset-x-0 z-[9985] p-3 md:p-4 pointer-events-none">
+          <div className="max-w-lg mx-auto pointer-events-auto bg-gray-950 text-white rounded-2xl shadow-2xl border border-white/10 p-4 relative animate-in slide-in-from-bottom duration-300">
+            <button
+              type="button"
+              onClick={() => setNlPromptDismissed(true)}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/10 hover:bg-white hover:text-black text-sm font-black"
+              aria-label="Chiudi"
+            >
+              ×
+            </button>
+            <NewsletterForm
+              source="article_prompt"
+              variant="dark"
+              title="Non perdere le news"
+              subtitle="Iscriviti dopo 3 articoli letti — zero spam."
+              buttonLabel="Iscriviti gratis"
+              compactLegal
+              onSuccess={() => setNlPromptDismissed(true)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Navigazione mobile rapida */}
-      <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm">
+      <div className={`lg:hidden fixed ${showNlPrompt && !nlPromptDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
         <button
           type="button"
           onClick={() => handleSuggestedClick({ ...article, id: 'home', category: 'Tutti' } as Article)}
