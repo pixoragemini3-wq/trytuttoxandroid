@@ -12,19 +12,99 @@ const BADGE_COLORS: Record<string, string> = {
   Amazon: '#ff9900',
 };
 
-export const resolveArticleBadge = (article: Pick<Article, 'title' | 'category' | 'tags' | 'content' | 'excerpt'>): { label: string; color: string } => {
-  const hay = `${article.title} ${article.excerpt || ''} ${(article.tags || []).join(' ')} ${article.category} ${article.content || ''}`.toLowerCase();
-  const hasAmazon = /amazon\.|amzn\.|amz-safe|affiliate/i.test(hay);
-  const isOffer = article.category === 'Offerte'
-    || (article.tags || []).some((t) => /offert|amazon|sconto|deal|prime/i.test(t))
-    || /offerta|offerte|sconto|in saldo|prime day|black friday/i.test(hay);
+/** Segnali tipici di un post-offerta (prezzo, Amazon, sconto) anche se Blogger ha solo "news". */
+const OFFER_TAG_RE = /offert|amazon|sconto|deal|prime|coupon|promo|volantino|saldi?/i;
+const OFFER_WORD_RE =
+  /\b(?:offerta|offerte|sconto|sconti|scontat[oaie]|in\s+saldo|saldi|coupon|codice\s+sconto|promo(?:zione)?|volantino|black\s*friday|prime\s*day|cyber\s*monday|minimo\s+storico|prezzo\s+minimo|a\s+soli|solo\s+oggi|imperdibil[ei]|affarone|risparmi|in\s+offerta|su\s+amazon|acquista\s+su)\b/i;
+const PRICE_SIGNAL_RE =
+  /(?:€\s*\d|\d+[.,]\d{2}\s*€|\d+\s*€|\b\d{2,4}\s*(?:euro|eur)\b|\ba\s+\d+[.,]?\d*\s*€|\bsotto\s+(?:i\s+)?\d+)/i;
+const AMAZON_LINK_RE = /amazon\.|amzn\.|amz-safe|\/dp\/|\/gp\/product\//i;
 
+type OfferSignalInput = {
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  category?: string;
+  tags?: string[];
+  dealData?: DealData | null;
+};
+
+/** Score ≥ 3 → trattalo come offerta (etichetta + badge). */
+export const scoreOfferSignals = (input: OfferSignalInput): number => {
+  const tags = (input.tags || []).map((t) => t.toLowerCase().trim());
+  const title = (input.title || '').toLowerCase();
+  const excerpt = (input.excerpt || '').toLowerCase();
+  // Solo prime ~2.5k del body: abbastanza per deal box/link, meno rumore da footer
+  const body = `${input.content || ''}`.toLowerCase().slice(0, 2500);
+  const hay = `${title} ${excerpt} ${tags.join(' ')} ${input.category || ''} ${body}`;
+
+  let score = 0;
+  if (input.dealData?.link || input.dealData?.newPrice) score += 6;
+  if ((input.category || '').toLowerCase() === 'offerte') score += 5;
+  if (tags.some((t) => OFFER_TAG_RE.test(t) || t === 'offerteimperdibili')) score += 5;
+  if (AMAZON_LINK_RE.test(hay)) score += 3;
+  if (OFFER_WORD_RE.test(title) || OFFER_WORD_RE.test(excerpt)) score += 3;
+  else if (OFFER_WORD_RE.test(body)) score += 2;
+  if (PRICE_SIGNAL_RE.test(title)) score += 3;
+  else if (PRICE_SIGNAL_RE.test(excerpt) || PRICE_SIGNAL_RE.test(body)) score += 2;
+  // Prezzo + Amazon insieme = offerta quasi certa
+  if (AMAZON_LINK_RE.test(hay) && PRICE_SIGNAL_RE.test(hay)) score += 2;
+  return score;
+};
+
+export const isOfferArticle = (input: OfferSignalInput): boolean => scoreOfferSignals(input) >= 3;
+
+/**
+ * Ricalibra la categoria navigazione: se è soprattutto un'offerta
+ * (anche con etichetta news/brand), vince Offerte. Non sovrascrive
+ * recensioni/guide esplicite.
+ */
+export const refineMainCategory = (
+  labelCategory: Category,
+  input: OfferSignalInput
+): Category => {
+  const tags = (input.tags || []).map((t) => t.toLowerCase().trim());
+  const hasExplicitReview = tags.some((t) => t === 'recensioni' || t === 'recensione')
+    || labelCategory === 'Recensioni';
+  const hasExplicitGuide = tags.some((t) => t === 'guide' || t === 'guida' || t === 'tutorial')
+    || labelCategory === 'Guide'
+    || labelCategory === 'Tutorial';
+  const hasExplicitOffer = tags.some((t) =>
+    t === 'offerte' || t === 'offerteimperdibili' || t === 'amazon' || OFFER_TAG_RE.test(t)
+  );
+
+  if (hasExplicitOffer || isOfferArticle(input)) {
+    // Recensione/guida con prezzo citato restano tali; dealData o tag offerte forzano Offerte
+    if (hasExplicitReview && !hasExplicitOffer && !input.dealData?.link) return 'Recensioni';
+    if (hasExplicitGuide && !hasExplicitOffer && !input.dealData?.link) return 'Guide';
+    return 'Offerte';
+  }
+  return labelCategory;
+};
+
+export const resolveArticleBadge = (
+  article: Pick<Article, 'title' | 'category' | 'tags' | 'content' | 'excerpt' | 'dealData'>
+): { label: string; color: string } => {
+  const hayTitle = `${article.title} ${article.excerpt || ''}`.toLowerCase();
+  const hay = `${hayTitle} ${(article.tags || []).join(' ')} ${article.category} ${(article.content || '').slice(0, 2500)}`.toLowerCase();
+  const hasAmazon = AMAZON_LINK_RE.test(hay);
+  const isOffer = article.category === 'Offerte' || isOfferArticle(article);
+
+  // Offerte prima di brand/smartphone: un deal su Galaxy non è "Smartphone"
   if (isOffer && hasAmazon) return { label: 'Amazon', color: BADGE_COLORS.Amazon };
   if (isOffer) return { label: 'Offerte', color: BADGE_COLORS.Offerte };
-  if (article.category === 'Recensioni' || /recensione|review|test\b/i.test(hay)) return { label: 'Recensioni', color: BADGE_COLORS.Recensioni };
-  if (article.category === 'Guide' || /guida|tutorial|come fare/i.test(hay)) return { label: 'Guide', color: BADGE_COLORS.Guide };
-  if (article.category === 'Smartphone' || /smartphone|galaxy|pixel|iphone|xiaomi|oneplus/i.test(hay)) return { label: 'Smartphone', color: BADGE_COLORS.Smartphone };
-  if (article.category === 'App & Giochi' || /app\b|gioco|game|play store/i.test(hay)) return { label: 'App & Giochi', color: BADGE_COLORS['App & Giochi'] };
+  if (article.category === 'Recensioni' || /\brecensione\b|\breview\b/i.test(hayTitle)) {
+    return { label: 'Recensioni', color: BADGE_COLORS.Recensioni };
+  }
+  if (article.category === 'Guide' || article.category === 'Tutorial' || /\bguida\b|\btutorial\b|come fare/i.test(hayTitle)) {
+    return { label: 'Guide', color: BADGE_COLORS.Guide };
+  }
+  if (article.category === 'Smartphone' || /\bsmartphone\b|\bgalaxy\b|\bpixel\b|\biphone\b|\bxiaomi\b|\boneplus\b/i.test(hayTitle)) {
+    return { label: 'Smartphone', color: BADGE_COLORS.Smartphone };
+  }
+  if (article.category === 'App & Giochi' || article.category === 'App' || /\bapp\b|\bgioco\b|\bgame\b|play store/i.test(hayTitle)) {
+    return { label: 'App & Giochi', color: BADGE_COLORS['App & Giochi'] };
+  }
   return { label: article.category || 'News', color: BADGE_COLORS[article.category] || BADGE_COLORS.News };
 };
 
@@ -558,7 +638,7 @@ const BLOGGER_FEED_LABELS: Record<string, string[]> = {
   'App & Giochi': ['app', 'giochi'],
   Smartphone: ['smartphone'],
   Guide: ['guide', 'guida', 'tutorial'],
-  Offerte: ['offerte', 'offerteimperdibili'],
+  Offerte: ['offerte', 'offerteimperdibili', 'amazon', 'sconto', 'coupon', 'promo'],
   News: ['news'],
   Modding: ['modding'],
   Wearable: ['wearable'],
@@ -577,6 +657,12 @@ const NAV_LABEL_ALIASES: Record<string, Category> = {
   offerte: 'Offerte',
   offerteimperdibili: 'Offerte',
   amazon: 'Offerte',
+  sconto: 'Offerte',
+  sconti: 'Offerte',
+  coupon: 'Offerte',
+  promo: 'Offerte',
+  promozione: 'Offerte',
+  deal: 'Offerte',
   guide: 'Guide',
   guida: 'Guide',
   // Tutorial Blogger = stessa sezione navigazione "Guide"
@@ -603,8 +689,10 @@ const getFeedLabelsForCategory = (category: string): string[] => {
 const normalizeMainCategory = (categories: string[]): Category => {
   const lower = categories.map((c) => c.toLowerCase().trim());
   const brandPriority = [...SMARTPHONE_BRAND_TAGS];
+  // Offerte prima dei brand: un post "samsung + news" con prezzo non deve finire in Smartphone
   const priority = [
-    'recensioni', 'recensione', 'offerte', 'offerteimperdibili', 'amazon',
+    'recensioni', 'recensione',
+    'offerte', 'offerteimperdibili', 'amazon', 'sconto', 'sconti', 'coupon', 'promo', 'promozione', 'deal',
     'guide', 'guida', 'tutorial', 'smartphone', ...brandPriority,
     'app', 'giochi', 'news', 'modding', 'wearable',
   ];
@@ -629,6 +717,8 @@ const articleMatchesNavCategory = (article: Article, category: Category): boolea
   // Guide e Tutorial sono la stessa sezione nel sito
   if (target === 'guide' && (articleCategory === 'tutorial' || articleTags.includes('tutorial'))) return true;
   if (target === 'tutorial' && (articleCategory === 'guide' || articleTags.includes('guide') || articleTags.includes('guida'))) return true;
+  // Offerte: include post classificati via contenuto (prezzo/Amazon) anche senza etichetta Blogger
+  if (target === 'offerte' && isOfferArticle(article)) return true;
   const feedLabels = getFeedLabelsForCategory(category).map((l) => l.toLowerCase());
   if (feedLabels.some((l) => articleTags.includes(l) || articleCategory === l)) return true;
   return false;
@@ -642,7 +732,7 @@ const mapFeedEntryToArticle = (entry: any): Article => {
 
   const categories = entry.category ? entry.category.map((c: any) => c.term.trim()) : [];
   const isFeatured = categories.some((c: string) => c === 'Evidenza' || c === 'Featured');
-  const mainCategory = normalizeMainCategory(categories);
+  const labelCategory = normalizeMainCategory(categories);
 
   let imageUrl = '';
   if (entry.media$thumbnail && entry.media$thumbnail.url) {
@@ -660,6 +750,13 @@ const mapFeedEntryToArticle = (entry: any): Article => {
   const { cleanContent, dealData } = parseArticleContent(rawContent);
   const cleanExcerpt = getSmartExcerpt(cleanContent);
   const cleanTitle = stripHtml(rawTitle);
+  const mainCategory = refineMainCategory(labelCategory, {
+    title: cleanTitle,
+    excerpt: cleanExcerpt,
+    content: cleanContent,
+    tags: categories,
+    dealData,
+  });
 
   return {
     id,
@@ -854,10 +951,17 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           const { cleanContent, dealData } = parseArticleContent(p.content || '');
           const cleanExcerpt = getSmartExcerpt(cleanContent);
           const tags = Array.isArray(p.tags) ? p.tags.map((t: string) => t.trim()) : (p.category ? [p.category] : []);
-          
-          const mainCategory = normalizeMainCategory(
+          const cleanTitle = stripHtml(p.title);
+          const labelCategory = normalizeMainCategory(
             tags.length ? tags : (p.category ? [p.category] : ['news'])
           );
+          const mainCategory = refineMainCategory(labelCategory, {
+            title: cleanTitle,
+            excerpt: cleanExcerpt,
+            content: cleanContent,
+            tags,
+            dealData,
+          });
 
           const publishedAt =
             p.publishedAt ||
@@ -867,7 +971,7 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
 
           return {
             ...p,
-            title: stripHtml(p.title),
+            title: cleanTitle,
             imageUrl: forceHighResImage(p.imageUrl),
             authorImageUrl: resolveAuthorImageUrl(p.author, p.authorImageUrl),
             featured: isFeatured,

@@ -155,12 +155,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     }
   }, [article]);
 
-  // Check if article is deals related
+  // Check if article is deals related (categoria, deal box, o segnali prezzo/Amazon)
   const isDealCategory = useMemo(() => {
     if (article.category === 'Offerte') return true;
     if (article.dealData?.link) return true;
     const tags = (article.tags || []).map((t) => t.toLowerCase().trim());
-    return tags.some((t) => t === 'offerteimperdibili');
+    if (tags.some((t) => /offert|amazon|sconto|coupon|promo|deal/i.test(t))) return true;
+    const hay = `${article.title} ${article.excerpt || ''}`.toLowerCase();
+    return /(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli)/i.test(hay);
   }, [article]);
 
   // Check if content appears truncated

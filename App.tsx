@@ -623,7 +623,7 @@ const App: React.FC = () => {
         'news': ['news', 'notizie', 'novità', 'aggiornamento', 'leaks', 'rumors', 'anteprima', 'tech', 'tecnologia', 'android', 'google'],
         'recensioni': ['recensioni', 'recensione', 'review', 'prova', 'test', 'analisi', 'opinioni'],
         'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips', 'impostare', 'nascondere'],
-        'offerte': ['offerte', 'offerta', 'sconto', 'promo', 'prezzo', 'amazon', 'ebay', 'coupon', 'black friday', 'prime day', 'volantino'],
+        'offerte': ['offerte', 'offerta', 'offerteimperdibili', 'sconto', 'promo', 'prezzo', 'amazon', 'ebay', 'coupon', 'black friday', 'prime day', 'volantino', 'deal'],
         'app & giochi': ['app', 'applicazione', 'giochi', 'game', 'play store', 'apk', 'whatsapp', 'instagram', 'telegram', 'facebook', 'tiktok'],
         'modding': ['modding', 'root', 'rom', 'custom rom', 'bootloader', 'recovery', 'magisk', 'adb', 'fastboot', 'kernel'],
         'wearable': ['wearable', 'smartwatch', 'smartband', 'cuffie', 'auricolari', 'tws', 'watch', 'fitbit', 'garmin', 'amazfit', 'galaxy watch', 'pixel watch', 'apple watch']
@@ -639,7 +639,7 @@ const App: React.FC = () => {
         const labelAliases: Record<string, string[]> = {
           'recensioni': ['recensioni', 'recensione'],
           'guide': ['guide', 'guida', 'tutorial'],
-          'offerte': ['offerte', 'offerteimperdibili'],
+          'offerte': ['offerte', 'offerteimperdibili', 'amazon', 'sconto', 'coupon', 'promo'],
           'app & giochi': ['app', 'giochi'],
         };
         const aliases = labelAliases[target];
@@ -648,6 +648,13 @@ const App: React.FC = () => {
         if (target === 'app & giochi') {
              if (articleTags.some(t => t.includes('app') || t.includes('giochi') || t.includes('game'))) return true;
              if (articleCategory.includes('app') || articleCategory.includes('giochi')) return true;
+        }
+
+        // Offerte: match anche su titolo/excerpt (prezzo, Amazon) se categoria non era etichettata
+        if (target === 'offerte') {
+          const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
+          if (a.dealData?.link) return true;
+          if (/(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli|amzn\.|amazon\.)/i.test(hay)) return true;
         }
 
         const keywords = categoryKeywords[target];
