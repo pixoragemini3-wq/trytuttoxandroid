@@ -120,6 +120,8 @@ const App: React.FC = () => {
   const isArticle = location.pathname.endsWith('.html') || location.pathname.startsWith('/article/');
   const isSearch = location.pathname === '/search';
   const isHome = !isAbout && !isCollab && !isPrivacy && !isArticle && !isSearch && !isGPS;
+  /** Pagina post Blogger: navigate() SPA non esce dalla .html → serve location.assign */
+  const isOnArticlePage = isArticle;
 
   const enrichArticle = (article: Article): Article => {
     const hydrated = hydrateArticle(article);
@@ -481,6 +483,19 @@ const App: React.FC = () => {
   };
 
   const handleNavClick = async (nav: string) => {
+    // Da articolo Blogger: hard reload home (+ categoria). navigate() SPA resta sulla .html
+    if (isOnArticlePage) {
+      try {
+        (window as any).currentSinglePost = null;
+      } catch { /* */ }
+      const dest =
+        nav && nav !== 'Tutti'
+          ? `${window.location.origin}/?cat=${encodeURIComponent(nav)}`
+          : `${window.location.origin}/`;
+      window.location.assign(dest);
+      return;
+    }
+
     const currentIndex = ALL_CATEGORIES.indexOf(activeCategory);
     const newIndex = ALL_CATEGORIES.indexOf(nav);
     
@@ -526,9 +541,9 @@ const App: React.FC = () => {
     setTimeout(() => {
         newsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
-    
+
     if (!isHome) {
-        navigate('/');
+      navigate('/');
     }
   };
 
@@ -538,13 +553,44 @@ const App: React.FC = () => {
   };
 
   const goToHome = () => {
-    navigate('/');
+    try {
+      (window as any).currentSinglePost = null;
+    } catch { /* */ }
     setSearchQuery('');
     setActiveCategory('Tutti');
-    setVisibleNewsCount(6); 
+    setVisibleNewsCount(6);
     setFilteredArticles(articles);
+
+    if (isOnArticlePage) {
+      // Hard navigation: esce davvero dalla pagina articolo su Blogger
+      window.location.assign(`${window.location.origin}/`);
+      return;
+    }
+    navigate('/');
     window.scrollTo(0, 0);
   };
+
+  // Home caricata da articolo con ?cat=Smartphone → attiva la categoria
+  useEffect(() => {
+    if (!isHome) return;
+    try {
+      const params = new URLSearchParams(location.search);
+      const cat = params.get('cat');
+      if (!cat) return;
+      const match = ALL_CATEGORIES.find(
+        (c) => c.toLowerCase() === cat.toLowerCase().trim()
+      );
+      if (match && match !== 'Tutti') {
+        setActiveCategory(match);
+        // Pulisci query senza ricaricare
+        navigate('/', { replace: true });
+        setTimeout(() => {
+          newsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 200);
+      }
+    } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHome, location.search]);
 
   const loadMoreNews = async () => {
     const currentDisplayCount = displayArticles.length;

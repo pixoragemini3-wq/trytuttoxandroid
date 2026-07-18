@@ -874,9 +874,15 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const goHome = () => {
-    if (onHomeClick) onHomeClick();
-    else window.location.assign('/');
+  const goHome = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (onHomeClick) {
+      onHomeClick();
+      return;
+    }
+    // Fallback assoluto se manca il callback (Blogger / edge case)
+    window.location.assign(`${window.location.origin}/`);
   };
 
   const goCategory = (cat?: string) => {
@@ -1106,13 +1112,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                 
                 {/* Breadcrumbs + navigazione rapida */}
                 <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 mb-4 justify-center md:justify-start">
-                     <button
-                       type="button"
+                     <a
+                       href="/"
                        onClick={goHome}
-                       className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-gray-500 hover:text-black px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-100 transition-colors"
+                       className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-gray-500 hover:text-black px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-100 transition-colors no-underline"
                      >
                        <span aria-hidden="true">←</span> Home
-                     </button>
+                     </a>
                      <button
                        type="button"
                        onClick={() => goCategory(article.category)}
@@ -1422,13 +1428,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
       {/* Navigazione mobile rapida */}
       <div className={`lg:hidden fixed ${showNlPrompt && !nlPromptDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
-        <button
-          type="button"
+        <a
+          href="/"
           onClick={goHome}
-          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10"
+          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10 text-white no-underline"
         >
           Home
-        </button>
+        </a>
         <button
           type="button"
           onClick={() => goCategory(article.category)}
