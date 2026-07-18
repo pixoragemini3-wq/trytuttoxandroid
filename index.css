@@ -762,17 +762,25 @@ button:hover:not(.pill) {
   margin: 1.75rem 0 2rem;
   display: block;
   clear: both;
+  /* Compensa header fisso quando si clicca "Indice" */
+  scroll-margin-top: 8.5rem;
 }
 
+/* Mobile: niente sticky (faceva atterrare a metà indice). Desktop: sticky ok. */
 @media (max-width: 1023px) {
   .prose nav.txa-toc {
-    position: sticky;
-    top: 10rem;
-    z-index: 30;
-    max-height: 38vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.06);
+    position: relative;
+    top: auto;
+    z-index: auto;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .prose nav.txa-toc {
+    scroll-margin-top: 6rem;
   }
 }
 

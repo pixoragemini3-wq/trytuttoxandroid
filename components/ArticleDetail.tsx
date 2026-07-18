@@ -908,6 +908,19 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     else goHome();
   };
 
+  /** Scroll all'inizio dell'indice (compensa header fisso; evita atterraggio a metà TOC). */
+  const scrollToIndice = () => {
+    const toc = contentRef.current?.querySelector('nav.txa-toc') as HTMLElement | null;
+    if (!toc) return;
+    const headerOffset = 130; // header + ticker mobile
+    const y = toc.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    // Porta l'indice in cima al riquadro se ha scroll interno
+    try {
+      toc.scrollTop = 0;
+    } catch { /* */ }
+  };
+
   const displayTags = (() => {
     const raw = (article.tags || [])
       .map((t) => String(t).trim())
@@ -1164,7 +1177,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                      {hasToc && (
                        <button
                          type="button"
-                         onClick={() => contentRef.current?.querySelector('nav.txa-toc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                         onClick={scrollToIndice}
                          className="lg:hidden ml-auto text-[10px] font-black uppercase tracking-widest text-[#1a73e8] bg-blue-50 px-3 py-1 rounded-full"
                        >
                          Indice
@@ -1470,7 +1483,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         </div>
       )}
 
-      {/* Navigazione mobile rapida */}
+      {/* Navigazione mobile rapida: Home + categoria + Indice (niente "Su": c'è già la freccia globale) */}
       <div className={`lg:hidden fixed ${showNlPrompt && !nlPromptDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
         <a
           href="/"
@@ -1489,19 +1502,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         {hasToc && (
           <button
             type="button"
-            onClick={() => contentRef.current?.querySelector('nav.txa-toc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={scrollToIndice}
             className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-[#e31b23] hover:bg-[#c41820]"
           >
             Indice
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10"
-        >
-          Su
-        </button>
       </div>
     </div>
   );
