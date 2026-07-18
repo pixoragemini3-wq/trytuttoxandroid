@@ -113,34 +113,34 @@ const SocialSidebar: React.FC<{
               <div
                 key={art.id}
                 onClick={() => onArticleClick && onArticleClick(art)}
-                className="group relative flex h-20 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
+                className="group relative h-20 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
               >
-                {/* Immagine: a riposo striscia laterale; in hover copre il box con leggero zoom + blur */}
-                <div className="relative w-[22%] flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out group-hover:w-full">
+                {/* Immagine assoluta: a riposo ~22% a sinistra; in hover 100% con zoom + blur */}
+                <div className="absolute inset-y-0 left-0 z-0 w-[22%] overflow-hidden transition-[width] duration-300 ease-out group-hover:w-full">
                   {art.imageUrl ? (
                     <img
                       src={art.imageUrl}
                       alt=""
-                      className="absolute inset-0 w-full h-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-110 group-hover:blur-[2.5px]"
+                      className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-110 group-hover:blur-[2.5px]"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gray-200 transition-transform duration-500 group-hover:scale-110" />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent group-hover:from-black/55 group-hover:via-black/45 group-hover:to-black/55 transition-colors duration-300" />
+                  <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/50" />
                 </div>
 
-                {/* Stato normale: titolo a destra dell'immagine */}
-                <div className="flex-1 min-w-0 px-2.5 py-1.5 flex flex-col justify-center transition-opacity duration-200 group-hover:opacity-0">
-                  <span className="text-[10px] font-extrabold text-[#e31b23] tracking-wide leading-none mb-0.5">{art.category}</span>
-                  <div className="text-sm font-semibold leading-tight text-gray-900 line-clamp-2 pr-1">
+                {/* Stato normale: testo a destra della striscia immagine */}
+                <div className="relative z-[1] flex h-full flex-col justify-center py-1.5 pl-[calc(22%+10px)] pr-2.5 transition-opacity duration-200 group-hover:opacity-0">
+                  <span className="mb-0.5 text-[10px] font-extrabold leading-none tracking-wide text-[#e31b23]">{art.category}</span>
+                  <div className="line-clamp-2 pr-1 text-sm font-semibold leading-tight text-gray-900">
                     {art.title}
                   </div>
                 </div>
 
-                {/* Hover: titolo occupa tutto il box sopra l'immagine */}
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-3 py-2 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                  <span className="text-[10px] font-bold text-white/85 tracking-wide mb-1 drop-shadow-sm">{art.category}</span>
-                  <div className="text-white text-[13px] sm:text-sm font-semibold leading-snug line-clamp-3 drop-shadow-md w-full">
+                {/* Hover: titolo su tutto il blocco (da bordo a bordo), non solo a destra */}
+                <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-center px-3.5 py-2.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:px-4">
+                  <span className="mb-1 text-[10px] font-bold tracking-wide text-white/90 drop-shadow-sm">{art.category}</span>
+                  <div className="w-full text-[13px] font-semibold leading-snug text-white drop-shadow-md line-clamp-3 sm:text-[14px] sm:leading-snug">
                     {art.title}
                   </div>
                 </div>
