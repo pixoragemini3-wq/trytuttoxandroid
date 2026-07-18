@@ -15,7 +15,7 @@
 /** URL dell'app web Apps Script (termina con /exec). Vuoto = form non ancora collegato. */
 export const NEWSLETTER_WEBAPP_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_NEWSLETTER_WEBAPP_URL) ||
-  '';
+  'https://script.google.com/macros/s/AKfycbyrnVEEiIa1jCntfRodCLe02vwdtRGzlVYwwxbQ-oHw0hxLfsg4UQ5qY7O2Csqo8Fu8hQ/exec';
 
 export type NewsletterSource = 'home_sidebar' | 'article_sidebar' | 'other';
 
