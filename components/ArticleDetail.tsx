@@ -1368,8 +1368,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
             </div>
 
-            {/* SIDEBAR (Right) */}
-            <div className="hidden lg:block lg:col-span-4 space-y-8 h-fit">
+            {/* SIDEBAR (Right) — flusso normale, niente sticky multipli (sovrapposizioni) */}
+            <aside className="hidden lg:block lg:col-span-4 space-y-8 self-start min-w-0">
                 <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-br from-[#2AABEE] via-[#24A1DE] to-[#0d8ecf] rounded-3xl p-6 text-center text-white shadow-xl relative overflow-hidden group hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(36,161,222,0.55)] transition-all duration-300">
                    <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-[1.25] transition-transform duration-500"></div>
                    <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -1391,6 +1391,21 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                      </span>
                    </div>
                 </a>
+
+                {/* Newsletter in colonna, non sticky: evita sovrapposizione al testo articolo */}
+                <div className="bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] text-center relative overflow-hidden border border-gray-800 w-full max-w-full">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-[#e31b23] rounded-full blur-[60px] opacity-20 pointer-events-none"></div>
+                    <div className="relative z-10">
+                      <NewsletterForm
+                        source="article_sidebar"
+                        variant="dark"
+                        title="Resta Aggiornato"
+                        subtitle="Le migliori news tech, ogni mattina."
+                        buttonLabel="Iscriviti"
+                      />
+                    </div>
+                </div>
+
                 <div className="bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm">
                   <h3 className="font-condensed text-2xl font-black uppercase italic mb-4 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">
                     I Più Letti
@@ -1417,29 +1432,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                     ))}
                   </div>
                 </div>
-                <SocialSidebar articles={moreArticles || []} onArticleClick={onArticleClick} />
-                <div className="sticky top-24 space-y-6">
-                    <div className="bg-gradient-to-br from-gray-900 to-black text-white p-6 rounded-[2rem] text-center relative overflow-hidden group border border-gray-800">
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-[#e31b23] rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                        <div className="relative z-10">
-                          <NewsletterForm
-                            source="article_sidebar"
-                            variant="dark"
-                            title="Resta Aggiornato"
-                            subtitle="Le migliori news tech, ogni mattina."
-                            buttonLabel="Iscriviti"
-                          />
-                        </div>
-                    </div>
-                    <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
-                </div>
-            </div>
+
+                <SocialSidebar
+                  articles={moreArticles || []}
+                  onArticleClick={onArticleClick}
+                  sticky={false}
+                  showNewsletter={false}
+                />
+
+                <AdUnit slotId="5244362740" format="auto" label="Sponsor" />
+            </aside>
         </div>
       </div>
 
-      {/* Banner fisso: ogni 3 articoli aperti (mobile + desktop) */}
+      {/* Banner fisso solo mobile: su desktop resta nella sidebar (niente overlay sul testo) */}
       {showNlPrompt && !nlPromptDismissed && (
-        <div className="fixed bottom-0 inset-x-0 z-[9985] p-3 md:p-4 pointer-events-none">
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-[9985] p-3 pointer-events-none">
           <div className="max-w-lg mx-auto pointer-events-auto bg-gray-950 text-white rounded-2xl shadow-2xl border border-white/10 p-4 relative animate-in slide-in-from-bottom duration-300">
             <button
               type="button"
