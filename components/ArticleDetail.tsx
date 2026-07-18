@@ -97,12 +97,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   });
   const [hasToc, setHasToc] = useState(false);
 
-  /** Overlay fisso mobile: ogni 3 articoli, auto-hide 15s (pausa se l'utente digita) */
-  const [showNlFixed, setShowNlFixed] = useState(false);
-  const [nlFixedDismissed, setNlFixedDismissed] = useState(false);
-  const [nlFixedTyping, setNlFixedTyping] = useState(false);
-
-  /** Banner in mezzo all'articolo: ~1/3 articoli (hash stabile), non auto-hide */
+  /**
+   * Banner newsletter SOLO in mezzo all'articolo (non overlay fisso).
+   * - Appare ogni 3 articoli letti in sessione
+   * - Non auto-hide: resta finché X o iscrizione ok
+   */
   const [showNlInline, setShowNlInline] = useState(false);
   const [nlInlineDismissed, setNlInlineDismissed] = useState(false);
 
@@ -114,18 +113,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     }
   };
 
-  /** Hash stabile su id articolo → ~33% articoli con banner mid-content */
-  const articleGetsInlineNl = (id: string): boolean => {
-    let h = 0;
-    for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
-    return Math.abs(h) % 3 === 0;
-  };
-
   useEffect(() => {
     if (!article?.id) return;
     if (isSubscribed()) {
-      setShowNlFixed(false);
       setShowNlInline(false);
+      setNlInlineDismissed(true);
       return;
     }
     try {
@@ -138,25 +130,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         sessionStorage.setItem(KEY, String(next));
         sessionStorage.setItem('txa_last_article_id', article.id);
       }
-      setNlFixedDismissed(false);
-      setNlInlineDismissed(false);
-      setNlFixedTyping(false);
-      // Overlay mobile: ogni 3 pagine articolo
-      setShowNlFixed(next > 0 && next % 3 === 0);
-      // Inline mid-article: sottoinsieme “random” stabile di articoli
-      setShowNlInline(articleGetsInlineNl(article.id));
+      // Solo chiusura manuale: non resettare dismissed se l'utente ha già chiuso su QUESTO articolo
+      const dismissKey = `txa_nl_inline_dismissed_${article.id}`;
+      const alreadyDismissed = sessionStorage.getItem(dismissKey) === '1';
+      setNlInlineDismissed(alreadyDismissed);
+      setShowNlInline(next > 0 && next % 3 === 0);
     } catch {
-      setShowNlFixed(false);
       setShowNlInline(false);
     }
   }, [article?.id]);
 
-  // Solo overlay fisso: sparisce dopo 15s, ma non se l'utente sta scrivendo nel form
-  useEffect(() => {
-    if (!showNlFixed || nlFixedDismissed || nlFixedTyping) return;
-    const t = window.setTimeout(() => setNlFixedDismissed(true), 15000);
-    return () => window.clearTimeout(t);
-  }, [showNlFixed, nlFixedDismissed, nlFixedTyping, article?.id]);
+  const dismissInlineNl = () => {
+    setNlInlineDismissed(true);
+    try {
+      if (article?.id) sessionStorage.setItem(`txa_nl_inline_dismissed_${article.id}`, '1');
+    } catch { /* ignore */ }
+  };
 
   // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
   useEffect(() => {
@@ -1317,13 +1306,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                         portalNodes.inArticleAd
                     )}
 
-                    {/* Banner mid-articolo: non auto-hide (solo X o iscrizione ok) */}
+                    {/* Banner mid-articolo: resta visibile (niente timer); solo ogni 3 articoli */}
                     {portalNodes.newsletter && showNlInline && !nlInlineDismissed && createPortal(
                         <div className="rounded-2xl border-2 border-[#e31b23]/30 bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 shadow-md relative overflow-hidden">
                           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#e31b23] to-[#ff6b6b]" />
                           <button
                             type="button"
-                            onClick={() => setNlInlineDismissed(true)}
+                            onClick={dismissInlineNl}
                             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-black hover:text-white text-sm font-black"
                             aria-label="Chiudi"
                           >
@@ -1339,7 +1328,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                             subtitle="News e guide tech, gratis. Niente spam."
                             buttonLabel="Iscriviti ora"
                             compactLegal
-                            onSuccess={() => setNlInlineDismissed(true)}
+                            onSuccess={dismissInlineNl}
                           />
                         </div>,
                         portalNodes.newsletter
@@ -1480,40 +1469,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         </div>
       </div>
 
-      {/* Overlay fisso solo mobile: auto-hide 15s; non sparisce se si sta digitando */}
-      {showNlFixed && !nlFixedDismissed && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-[9985] p-3 pointer-events-none">
-          <div
-            className="max-w-lg mx-auto pointer-events-auto bg-gray-950 text-white rounded-2xl shadow-2xl border border-white/10 p-4 relative animate-in slide-in-from-bottom duration-300"
-            onFocusCapture={() => setNlFixedTyping(true)}
-            onBlurCapture={(e) => {
-              const next = e.relatedTarget as Node | null;
-              if (!e.currentTarget.contains(next)) setNlFixedTyping(false);
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setNlFixedDismissed(true)}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/10 hover:bg-white hover:text-black text-sm font-black"
-              aria-label="Chiudi"
-            >
-              ×
-            </button>
-            <NewsletterForm
-              source="article_prompt"
-              variant="dark"
-              title="Non perdere le news"
-              subtitle="News e guide tech, gratis. Zero spam."
-              buttonLabel="Iscriviti gratis"
-              compactLegal
-              onSuccess={() => setNlFixedDismissed(true)}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Navigazione mobile rapida: Home + categoria + Indice (niente "Su": c'è già la freccia globale) */}
-      <div className={`lg:hidden fixed ${showNlFixed && !nlFixedDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
+      {/* Navigazione mobile rapida: Home + categoria + Indice (niente overlay newsletter fisso) */}
+      <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all">
         <a
           href="/"
           onClick={goHome}
