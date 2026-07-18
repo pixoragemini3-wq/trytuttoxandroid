@@ -79,6 +79,30 @@ export const refineMainCategory = (
     if (hasExplicitGuide && !hasExplicitOffer && !input.dealData?.link) return 'Guide';
     return 'Offerte';
   }
+
+  // Se Blogger ha messo "news" come prima etichetta ma ci sono tag/titolo smartphone → Smartphone
+  const hay = `${input.title || ''} ${input.excerpt || ''} ${tags.join(' ')}`.toLowerCase();
+  const isGenericNews =
+    !labelCategory ||
+    labelCategory === 'News' ||
+    String(labelCategory).toLowerCase() === 'news';
+
+  if (isGenericNews) {
+    if (
+      tags.some((t) =>
+        /^(smartphone|samsung|xiaomi|pixel|oneplus|motorola|honor|realme|sony|nothing|oppo|huawei|apple|redmi|poco)$/i.test(t)
+      ) ||
+      /\b(galaxy\s*[sz]?\d*|pixel\s*\d*|iphone|xiaomi|redmi|poco\s*[xf]?\d*|oneplus|smartphone|honor|realme|motorola|nothing\s*phone)\b/i.test(
+        hay
+      )
+    ) {
+      return 'Smartphone';
+    }
+    if (tags.some((t) => t === 'app' || t === 'giochi' || t === 'game')) return 'App & Giochi';
+    if (tags.some((t) => t === 'modding' || t === 'root')) return 'Modding';
+    if (tags.some((t) => t === 'wearable' || t === 'smartwatch')) return 'Wearable';
+  }
+
   return labelCategory;
 };
 
@@ -707,6 +731,35 @@ const normalizeMainCategory = (categories: string[]): Category => {
   return NAV_LABEL_ALIASES[term] || ((first || 'News') as Category);
 };
 
+/**
+ * Normalizza tags + category per post grezzi (bridge Blogger, native, deep link).
+ * currentSinglePost spesso ha solo la prima etichetta e tags vuoti.
+ */
+export const hydrateArticle = <T extends Pick<Article, 'title' | 'category'> & Partial<Article>>(
+  article: T
+): T & { category: Category; tags: string[] } => {
+  const tags = (article.tags && article.tags.length > 0
+    ? article.tags
+    : article.category
+      ? [String(article.category)]
+      : ['news']
+  )
+    .map((t) => String(t).trim())
+    .filter(Boolean);
+
+  const labelCategory = normalizeMainCategory(tags);
+  const category = refineMainCategory(labelCategory, {
+    title: article.title,
+    excerpt: article.excerpt,
+    content: article.content,
+    tags,
+    category: article.category,
+    dealData: article.dealData,
+  });
+
+  return { ...article, tags, category };
+};
+
 const articleMatchesNavCategory = (article: Article, category: Category): boolean => {
   if (!category || category === 'Tutti') return true;
   const target = category.toLowerCase().trim();
@@ -952,25 +1005,25 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
           const cleanExcerpt = getSmartExcerpt(cleanContent);
           const tags = Array.isArray(p.tags) ? p.tags.map((t: string) => t.trim()) : (p.category ? [p.category] : []);
           const cleanTitle = stripHtml(p.title);
-          const labelCategory = normalizeMainCategory(
-            tags.length ? tags : (p.category ? [p.category] : ['news'])
-          );
-          const mainCategory = refineMainCategory(labelCategory, {
-            title: cleanTitle,
-            excerpt: cleanExcerpt,
-            content: cleanContent,
-            tags,
-            dealData,
-          });
-
           const publishedAt =
             p.publishedAt ||
             (p.date && (/^\d{10,13}$/.test(String(p.date)) || String(p.date).includes('T'))
               ? String(p.date)
               : undefined);
 
+          const hydrated = hydrateArticle({
+            ...p,
+            title: cleanTitle,
+            excerpt: cleanExcerpt,
+            content: cleanContent,
+            tags,
+            dealData,
+            category: p.category || (tags[0] as Category) || 'News',
+          });
+
           return {
             ...p,
+            ...hydrated,
             title: cleanTitle,
             imageUrl: forceHighResImage(p.imageUrl),
             authorImageUrl: resolveAuthorImageUrl(p.author, p.authorImageUrl),
@@ -978,8 +1031,6 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
             excerpt: cleanExcerpt,
             content: cleanContent,
             dealData: dealData,
-            category: mainCategory,
-            tags: tags,
             publishedAt,
           };
       });

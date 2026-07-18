@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote } from '../services/bloggerService';
+import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote, hydrateArticle } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 import NewsletterForm from './NewsletterForm';
 import DealImage from './DealImage';
@@ -16,6 +16,8 @@ interface ArticleDetailProps {
   deals?: Deal[];
   offerNews?: Article[];
   onArticleClick?: (article: Article) => void;
+  onHomeClick?: () => void;
+  onCategoryClick?: (category: string) => void;
 }
 
 // --- SUB-COMPONENTS ---
@@ -62,7 +64,16 @@ const GPSPromo = () => (
   </div>
 );
 
-const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, moreArticles = [], deals = [], offerNews = [], onArticleClick }) => {
+const ArticleDetail: React.FC<ArticleDetailProps> = ({
+  article,
+  relatedArticle,
+  moreArticles = [],
+  deals = [],
+  offerNews = [],
+  onArticleClick,
+  onHomeClick,
+  onCategoryClick,
+}) => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -863,6 +874,42 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const goHome = () => {
+    if (onHomeClick) onHomeClick();
+    else window.location.assign('/');
+  };
+
+  const goCategory = (cat?: string) => {
+    const raw = (cat || article.category || 'News').trim();
+    // Mappa etichette grezze Blogger (es. samsung, smartphone) → sezione nav
+    const mapped = hydrateArticle({
+      title: article.title,
+      category: raw,
+      tags: [raw, ...(article.tags || [])],
+      excerpt: article.excerpt,
+    }).category;
+    if (onCategoryClick) onCategoryClick(mapped);
+    else goHome();
+  };
+
+  const displayTags = (() => {
+    const raw = (article.tags || [])
+      .map((t) => String(t).trim())
+      .filter(Boolean)
+      .filter((t) => !/inevidenza|evidenza|featured/i.test(t));
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const t of [article.category, ...raw]) {
+      if (!t) continue;
+      const key = t.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(t);
+      if (out.length >= 6) break;
+    }
+    return out.length ? out : [article.category || 'News'];
+  })();
+
   const handleForceNativeLoad = () => {
     if (article.url) window.open(article.url, '_blank');
   };
@@ -1061,15 +1108,19 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                 <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 mb-4 justify-center md:justify-start">
                      <button
                        type="button"
-                       onClick={() => handleSuggestedClick({ ...article, id: 'home', category: 'Tutti' } as Article)}
-                       className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-gray-500 hover:text-black px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+                       onClick={goHome}
+                       className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-gray-500 hover:text-black px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-100 transition-colors"
                      >
                        <span aria-hidden="true">←</span> Home
                      </button>
-                     <span className="text-[10px] text-gray-300">/</span>
-                     <span className={`inline-block ${catBgClass} text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest`}>
-                        {article.category}
-                     </span>
+                     <button
+                       type="button"
+                       onClick={() => goCategory(article.category)}
+                       className={`inline-block ${catBgClass} text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-sm`}
+                       title={`Vedi tutti gli articoli in ${article.category}`}
+                     >
+                        {article.category || 'News'}
+                     </button>
                      {hasToc && (
                        <button
                          type="button"
@@ -1238,10 +1289,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
                     )}
                 </div>
 
-                {/* Tags */}
+                {/* Tags reali (cliccabili → filtro categoria/etichetta) */}
                 <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap gap-2 mb-8">
-                    {['Tech', 'Android', article.category, 'News'].map(tag => (
-                        <span key={tag} className="px-3 py-1 bg-gray-100 rounded text-[10px] font-bold uppercase text-gray-500 hover:bg-black hover:text-white transition-colors cursor-pointer">#{tag}</span>
+                    {displayTags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => goCategory(tag)}
+                          className="px-3 py-1 bg-gray-100 rounded text-[10px] font-bold uppercase text-gray-500 hover:bg-black hover:text-white transition-colors"
+                        >
+                          #{tag}
+                        </button>
                     ))}
                 </div>
 
@@ -1366,10 +1424,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       <div className={`lg:hidden fixed ${showNlPrompt && !nlPromptDismissed ? 'bottom-36' : 'bottom-4'} left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all`}>
         <button
           type="button"
-          onClick={() => handleSuggestedClick({ ...article, id: 'home', category: 'Tutti' } as Article)}
+          onClick={goHome}
           className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10"
         >
           Home
+        </button>
+        <button
+          type="button"
+          onClick={() => goCategory(article.category)}
+          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-[#e31b23] hover:bg-[#c41820]"
+        >
+          {article.category || 'News'}
         </button>
         {hasToc && (
           <button

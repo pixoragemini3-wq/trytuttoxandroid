@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL, CATEGORY_COLORS } from './constants';
 import ArticleCard from './components/ArticleCard';
 import { Article, Deal } from './types';
-import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl, resolveAuthorImageUrl } from './services/bloggerService';
+import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl, resolveAuthorImageUrl, hydrateArticle } from './services/bloggerService';
 import { isInAppBrowser } from './utils/browser';
 import SocialSidebar from './components/SocialSidebar';
 import SocialSection from './components/SocialSection';
@@ -121,10 +121,13 @@ const App: React.FC = () => {
   const isSearch = location.pathname === '/search';
   const isHome = !isAbout && !isCollab && !isPrivacy && !isArticle && !isSearch && !isGPS;
 
-  const enrichArticle = (article: Article): Article => ({
-    ...article,
-    authorImageUrl: resolveAuthorImageUrl(article.author, article.authorImageUrl),
-  });
+  const enrichArticle = (article: Article): Article => {
+    const hydrated = hydrateArticle(article);
+    return {
+      ...hydrated,
+      authorImageUrl: resolveAuthorImageUrl(hydrated.author, hydrated.authorImageUrl),
+    };
+  };
 
   // Function to extract the current article based on URL
   const getCurrentArticle = () => {
@@ -657,12 +660,25 @@ const App: React.FC = () => {
           if (/(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli|amzn\.|amazon\.)/i.test(hay)) return true;
         }
 
+        // Smartphone: match su titolo (Galaxy, Pixel…) oltre a tag/categoria
+        if (target === 'smartphone') {
+          const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
+          if (/\b(galaxy|pixel|iphone|xiaomi|redmi|poco|oneplus|smartphone|honor|realme|motorola|nothing)\b/i.test(hay)) {
+            return true;
+          }
+        }
+
         const keywords = categoryKeywords[target];
         if (keywords) {
            const hasKeywordMatch = keywords.some(k => 
              articleTags.some(t => t.includes(k)) || articleCategory.includes(k)
            );
            if (hasKeywordMatch) return true;
+           // Anche sul titolo per keyword categoria (es. "samsung" nel titolo)
+           if (target === 'smartphone' || target === 'recensioni' || target === 'guide') {
+             const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
+             if (keywords.some((k) => k.length >= 4 && hay.includes(k))) return true;
+           }
         }
 
         return false;
@@ -1553,6 +1569,8 @@ const App: React.FC = () => {
                   deals={deals}
                   offerNews={articles.filter(a => a.category === 'Offerte' && a.id !== currentArticle.id).slice(0, 4)}
                   onArticleClick={handleArticleClick}
+                  onHomeClick={goToHome}
+                  onCategoryClick={(cat) => handleNavClick(cat)}
                 />
               ) : (
                 <div className="min-h-screen pt-20 flex flex-col items-center">
