@@ -75,9 +75,37 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* ───── HEADER + TOP NEWS (mobile: blocco sticky unico) ───── */}
       <div className="sticky top-0 z-50">
+      {/* CSS esplicito: su Blogger Tailwind h-[200px] da esm non è affidabile */}
+      <style>{`
+        @media (min-width: 768px) {
+          .txa-header-band {
+            height: 200px !important;
+            max-height: 200px !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
+          }
+          .txa-header-band .txa-header-main {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            height: auto !important;
+          }
+          .txa-header-band .txa-header-row {
+            height: 100% !important;
+            min-height: 0 !important;
+          }
+          .txa-header-logo {
+            height: 148px !important;
+            max-height: 148px !important;
+            width: auto !important;
+            object-fit: contain !important;
+          }
+        }
+      `}</style>
       <header className="bg-[#111111] text-white overflow-visible">
-        {/* Desktop: banda nera fissa 200px (prima ~250); logo stessa misura */}
-        <div className="md:h-[200px] md:flex md:flex-col md:overflow-hidden">
+        {/* Desktop: banda nera ESATTAMENTE 200px; logo 148px invariato */}
+        <div className="txa-header-band">
         {/* Top utility bar */}
         <div className="hidden md:block border-b border-white/[0.06] shrink-0">
           <div className="max-w-[1200px] mx-auto px-6 flex justify-between items-center h-8">
@@ -93,18 +121,18 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         {/* Main header row — su md+ riempie lo spazio tra utility e riga rossa */}
-        <div className="max-w-[1200px] mx-auto px-4 md:px-6 w-full md:flex-1 md:min-h-0">
-          <div className="flex items-center justify-between h-28 md:h-full overflow-visible">
+        <div className="txa-header-main max-w-[1200px] mx-auto px-4 md:px-6 w-full md:flex-1 md:min-h-0">
+          <div className="txa-header-row flex items-center justify-between h-28 md:h-full overflow-hidden">
 
-            {/* Logo — misure invariate */}
+            {/* Logo — 148px desktop (stessa misura), non si ridimensiona con la banda */}
             <div
-              className={`cursor-pointer shrink-0 overflow-visible ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
+              className={`cursor-pointer shrink-0 ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
               onClick={goToHome}
             >
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="h-[124px] max-h-none w-auto object-contain md:h-[140px] lg:h-[148px]"
+                className="txa-header-logo h-[124px] w-auto object-contain"
               />
             </div>
 
@@ -190,7 +218,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Red accent bottom line */}
         <div className="h-[2px] bg-[#e31b23] shrink-0" />
-        </div>{/* /md:h-[200px] band */}
+        </div>{/* /.txa-header-band 200px */}
 
         {/* MegaMenu */}
         {activeMegaMenu && !isSearchVisible && (
