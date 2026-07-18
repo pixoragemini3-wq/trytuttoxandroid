@@ -84,11 +84,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
     gpsPromos: []
   });
   const [hasToc, setHasToc] = useState(false);
-  /** Banner newsletter ogni 3 articoli aperti in sessione */
+  /** Banner newsletter (logica interna: ogni 3 articoli; non comunicata all'utente) */
   const [showNlPrompt, setShowNlPrompt] = useState(false);
   const [nlPromptDismissed, setNlPromptDismissed] = useState(false);
 
-  // Conta le pagine articolo consultate: al 3°, 6°, 9°… mostra il banner iscrizione
   useEffect(() => {
     if (!article?.id) return;
     try {
@@ -98,7 +97,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       }
       const KEY = 'txa_article_views';
       const prev = parseInt(sessionStorage.getItem(KEY) || '0', 10) || 0;
-      // evita doppio conteggio stesso articolo in refresh rapido
       const lastId = sessionStorage.getItem('txa_last_article_id');
       let next = prev;
       if (lastId !== article.id) {
@@ -112,6 +110,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
       setShowNlPrompt(false);
     }
   }, [article?.id]);
+
+  // Banner fisso: scompare da solo dopo 10 secondi
+  useEffect(() => {
+    if (!showNlPrompt || nlPromptDismissed) return;
+    const t = window.setTimeout(() => setNlPromptDismissed(true), 10000);
+    return () => window.clearTimeout(t);
+  }, [showNlPrompt, nlPromptDismissed, article?.id]);
 
   // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
   useEffect(() => {
@@ -1345,7 +1350,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, relatedArticle, 
               source="article_prompt"
               variant="dark"
               title="Non perdere le news"
-              subtitle="Iscriviti dopo 3 articoli letti — zero spam."
+              subtitle="News e guide tech, gratis. Zero spam."
               buttonLabel="Iscriviti gratis"
               compactLegal
               onSuccess={() => setNlPromptDismissed(true)}
