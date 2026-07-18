@@ -561,8 +561,15 @@ const App: React.FC = () => {
     setVisibleNewsCount(6);
     setFilteredArticles(articles);
 
-    if (isOnArticlePage) {
-      // Hard navigation: esce davvero dalla pagina articolo su Blogger
+    const path = window.location.pathname || '';
+    // Hard nav se siamo su un post Blogger (anche se React Router non lo classifica come articolo)
+    const mustHardNav =
+      isOnArticlePage ||
+      path.endsWith('.html') ||
+      path.startsWith('/article/') ||
+      /\/\d{4}\/\d{2}\//.test(path);
+
+    if (mustHardNav) {
       window.location.assign(`${window.location.origin}/`);
       return;
     }

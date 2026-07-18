@@ -877,12 +877,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   const goHome = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (onHomeClick) {
-      onHomeClick();
-      return;
+    try {
+      (window as any).currentSinglePost = null;
+    } catch { /* */ }
+    // Su Blogger, navigate('/') SPA NON lascia la pagina .html: sempre hard reload home.
+    // onHomeClick resta per stato React, ma la navigazione reale è location.assign.
+    try {
+      onHomeClick?.();
+    } catch { /* */ }
+    const path = window.location.pathname || '';
+    const onPostPage =
+      path.endsWith('.html') ||
+      path.startsWith('/article/') ||
+      /\/\d{4}\/\d{2}\//.test(path);
+    if (onPostPage || path !== '/') {
+      window.location.assign(`${window.location.origin}/`);
     }
-    // Fallback assoluto se manca il callback (Blogger / edge case)
-    window.location.assign(`${window.location.origin}/`);
   };
 
   const goCategory = (cat?: string) => {
