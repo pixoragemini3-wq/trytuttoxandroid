@@ -633,7 +633,7 @@ const App: React.FC = () => {
 
         const labelAliases: Record<string, string[]> = {
           'recensioni': ['recensioni', 'recensione'],
-          'guide': ['guide', 'guida'],
+          'guide': ['guide', 'guida', 'tutorial'],
           'offerte': ['offerte', 'offerteimperdibili'],
           'app & giochi': ['app', 'giochi'],
         };
@@ -777,13 +777,32 @@ const App: React.FC = () => {
     const allSource = articles.length > 0 ? articles : MOCK_ARTICLES;
     let pool = allSource.filter((a: Article) => a.category === spotlightCat);
 
-    // Per la categoria Offerte, allarga il filtro per includere articoli a tema (offerte, sconti, amazon, prezzi...)
-    // così non resta mai vuoto con il messaggio "non disponibili"
+    // Allarga il pool per sezioni dove Blogger usa etichette diverse (es. tutorial→Guide)
+    // o keyword nel titolo, così le card non restano su "Contenuti in aggiornamento."
     if (spotlightCat === 'Offerte') {
       pool = allSource.filter((a: Article) => {
         const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
         return a.category === 'Offerte' ||
                /offerta|offerte|sconto|prezzo|amazon|deal|black friday|prime|risparmio|cashback|coupon/i.test(hay);
+      });
+    } else if (spotlightCat === 'Guide') {
+      pool = allSource.filter((a: Article) => {
+        const cat = (a.category || '').toLowerCase();
+        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
+        return cat === 'guide' || cat === 'tutorial' ||
+               /guida|guide|tutorial|come fare|how to|trucchi|soluzioni|passo.?passo|impostare|nascondere|risolvere/i.test(hay);
+      });
+    } else if (spotlightCat === 'Recensioni') {
+      pool = allSource.filter((a: Article) => {
+        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
+        return a.category === 'Recensioni' ||
+               /recensione|review|prova|test\b|analisi|opinioni/i.test(hay);
+      });
+    } else if (spotlightCat === 'Smartphone') {
+      pool = allSource.filter((a: Article) => {
+        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
+        return a.category === 'Smartphone' ||
+               /smartphone|galaxy|pixel|iphone|xiaomi|redmi|poco|oneplus|motorola|honor|realme|nothing|oppo|huawei/i.test(hay);
       });
     }
 
@@ -851,6 +870,19 @@ const App: React.FC = () => {
       col2Title = 'TUTORIAL UTILI';
       col1Icon = 'book';
       col2Icon = 'bulb';
+      const isTutorialLike = (a: Article) => {
+        const hay = `${a.title} ${(a.tags || []).join(' ')} ${a.category}`.toLowerCase();
+        return /tutorial|trucchi|come |how to|passo.?passo|soluzione|risolvere|impostare/i.test(hay)
+          || (a.category || '').toLowerCase() === 'tutorial'
+          || (a.tags || []).some((t) => /tutorial/i.test(t));
+      };
+      const guideItems = pool.filter((a: Article) => !isTutorialLike(a));
+      const tutorialItems = pool.filter(isTutorialLike);
+      col1Items = (guideItems.length > 0 ? guideItems : pool).slice(0, 3);
+      col2Items = (tutorialItems.length > 0 ? tutorialItems : pool.slice(3)).slice(0, 3);
+      if (col2Items.length === 0) col2Items = pool.slice(0, 3);
+      col1All = fillCascadePool(guideItems.length > 0 ? guideItems : pool, 48);
+      col2All = fillCascadePool(tutorialItems.length > 0 ? tutorialItems : pool, 48);
     } else if (spotlightCat === 'Recensioni') {
       col1Title = 'ULTIME RECENSIONI';
       col2Title = 'TEST & PROVE';

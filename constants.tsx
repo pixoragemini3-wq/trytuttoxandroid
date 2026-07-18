@@ -161,7 +161,7 @@ export const MOCK_ARTICLES: Article[] = [
     title: "Come velocizzare il tuo smartphone Android in 5 passaggi",
     excerpt: '',
     content: DUMMY_CONTENT,
-    category: 'Tutorial',
+    category: 'Guide',
     tags: ['Tutorial', 'Guide', 'Ottimizzazione'],
     imageUrl: 'https://images.unsplash.com/photo-1512428559087-560fa5ce7d25?auto=format&fit=crop&q=80&w=600',
     author: 'Sara Verdi',

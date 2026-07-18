@@ -557,12 +557,12 @@ const BLOGGER_FEED_LABELS: Record<string, string[]> = {
   Recensioni: ['recensioni', 'recensione'],
   'App & Giochi': ['app', 'giochi'],
   Smartphone: ['smartphone'],
-  Guide: ['guide', 'guida'],
+  Guide: ['guide', 'guida', 'tutorial'],
   Offerte: ['offerte', 'offerteimperdibili'],
   News: ['news'],
   Modding: ['modding'],
   Wearable: ['wearable'],
-  Tutorial: ['tutorial'],
+  Tutorial: ['tutorial', 'guide', 'guida'],
 };
 
 const SMARTPHONE_BRAND_TAGS = new Set([
@@ -579,7 +579,8 @@ const NAV_LABEL_ALIASES: Record<string, Category> = {
   amazon: 'Offerte',
   guide: 'Guide',
   guida: 'Guide',
-  tutorial: 'Tutorial',
+  // Tutorial Blogger = stessa sezione navigazione "Guide"
+  tutorial: 'Guide',
   smartphone: 'Smartphone',
   app: 'App & Giochi',
   giochi: 'App & Giochi',
@@ -625,6 +626,9 @@ const articleMatchesNavCategory = (article: Article, category: Category): boolea
   const articleTags = (article.tags || []).map((t) => t.toLowerCase().trim());
   if (articleCategory === target) return true;
   if (articleTags.includes(target)) return true;
+  // Guide e Tutorial sono la stessa sezione nel sito
+  if (target === 'guide' && (articleCategory === 'tutorial' || articleTags.includes('tutorial'))) return true;
+  if (target === 'tutorial' && (articleCategory === 'guide' || articleTags.includes('guide') || articleTags.includes('guida'))) return true;
   const feedLabels = getFeedLabelsForCategory(category).map((l) => l.toLowerCase());
   if (feedLabels.some((l) => articleTags.includes(l) || articleCategory === l)) return true;
   return false;
