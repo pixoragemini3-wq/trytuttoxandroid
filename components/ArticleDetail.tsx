@@ -1013,14 +1013,37 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   );
 
   const DesktopDealsBanner = () => (
-    <div className="txa-deals-banner hidden lg:block not-prose my-10 bg-gradient-to-r from-gray-900 to-[#e31b23] rounded-2xl p-6 text-white shadow-xl relative overflow-visible">
+    <div
+      className="txa-deals-banner hidden lg:block not-prose my-10 bg-gradient-to-r from-gray-900 to-[#e31b23] rounded-2xl p-6 shadow-xl relative overflow-visible"
+      style={{ color: '#ffffff' }}
+    >
+        {/* Stili inline: su Blogger index.css via esm non è affidabile */}
+        <style>{`
+          .txa-deals-banner,.txa-deals-banner h1,.txa-deals-banner h2,.txa-deals-banner h3,.txa-deals-banner h4,
+          .txa-deals-banner p,.txa-deals-banner span,.txa-deals-banner a:not(.txa-deal-cta-light),
+          .txa-deals-banner .txa-deals-banner-title,.txa-deals-banner .txa-deal-title,.txa-deals-banner .font-condensed{
+            color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+          }
+          .txa-deals-banner .txa-deal-price{color:#fde047!important;-webkit-text-fill-color:#fde047!important;}
+          .txa-deals-banner .txa-deal-old-price{color:rgba(255,255,255,.75)!important;-webkit-text-fill-color:rgba(255,255,255,.75)!important;}
+          .txa-deals-banner a.txa-deal-cta-light,.txa-deals-banner a.txa-deal-cta-light *{
+            color:#111!important;-webkit-text-fill-color:#111!important;
+          }
+          .txa-deals-banner .txa-deals-banner-title::after{display:none!important;content:none!important;}
+        `}</style>
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
         <div className="flex items-center justify-between mb-6 relative z-10 gap-4">
            <div>
-              <h3 className="txa-deals-banner-title font-condensed text-3xl font-black uppercase italic leading-none text-white">
+              <h3
+                className="txa-deals-banner-title font-condensed text-3xl font-black uppercase italic leading-none"
+                style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+              >
                 Offerte del Giorno
               </h3>
-              <p className="text-xs text-white/80 mt-1">
+              <p
+                className="text-xs mt-1"
+                style={{ color: 'rgba(255,255,255,0.92)', WebkitTextFillColor: 'rgba(255,255,255,0.92)' }}
+              >
                 Selezionate in tempo reale dal nostro canale Telegram.
               </p>
            </div>
@@ -1028,22 +1051,23 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
              href="https://t.me/tuttoxandroid"
              target="_blank"
              rel="noopener noreferrer"
-             className="shrink-0 bg-white text-black px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#24A1DE] hover:text-white transition-colors"
+             className="txa-deal-cta-light shrink-0 bg-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-[#24A1DE] transition-colors"
+             style={{ color: '#111111', WebkitTextFillColor: '#111111' }}
            >
               Vedi tutte su Telegram
            </a>
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
            {deals.slice(0, 4).map(deal => (
-              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group min-h-[180px]">
+              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group min-h-[180px]" style={{ color: '#ffffff' }}>
                  <div className="w-full h-20 bg-white rounded-lg p-2 flex items-center justify-center">
                     <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="max-w-full max-h-full object-contain" />
                  </div>
                  <div className="min-w-0 flex-1 flex flex-col justify-between">
-                    <p className="txa-deal-title text-xs font-bold text-white leading-snug line-clamp-3 mb-2 group-hover:text-yellow-400">{deal.product}</p>
+                    <p className="txa-deal-title text-xs font-bold leading-snug line-clamp-3 mb-2" style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}>{deal.product}</p>
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="txa-deal-price text-lg font-black text-yellow-400">{deal.newPrice}</span>
-                      {deal.oldPrice && <span className="txa-deal-old-price text-xs font-bold text-white/50 line-through">{deal.oldPrice}</span>}
+                      <span className="txa-deal-price text-lg font-black" style={{ color: '#fde047', WebkitTextFillColor: '#fde047' }}>{deal.newPrice}</span>
+                      {deal.oldPrice && <span className="txa-deal-old-price text-xs font-bold line-through" style={{ color: 'rgba(255,255,255,0.75)', WebkitTextFillColor: 'rgba(255,255,255,0.75)' }}>{deal.oldPrice}</span>}
                     </div>
                  </div>
               </a>
