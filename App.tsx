@@ -257,6 +257,8 @@ const App: React.FC = () => {
           sessionStorage.removeItem('txa_telegram_deals_time');
           sessionStorage.removeItem('txa_telegram_deals_v2');
           sessionStorage.removeItem('txa_telegram_deals_v2_time');
+          sessionStorage.removeItem('txa_telegram_deals_v3');
+          sessionStorage.removeItem('txa_telegram_deals_v3_time');
         } catch { /* private mode */ }
         const dealsData = await fetchBloggerDeals();
         if (dealsData.length > 0) setDeals(dealsData);

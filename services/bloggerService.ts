@@ -1245,22 +1245,116 @@ export const extractAmazonAsin = (link: string): string | null => {
 
 /**
  * Candidati immagine prodotto Amazon (in ordine).
- * Il vecchio images.amazon.com/P/ASIN spesso restituisce riquadro bianco vuoto.
+ * Nota: molti URL /images/P/ASIN rispondono 200 con GIF 1×1 (43 byte) → bianco in UI.
+ * Serve resolveAmazonProductImage / blank-detection in DealImage.
  */
 export const amazonImageCandidates = (link: string): string[] => {
   const asin = extractAmazonAsin(link);
   if (!asin) return [DEAL_IMG_FALLBACK];
   return [
-    // Widget ufficiale (EU) — più affidabile per anteprime
-    `https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=IT&ASIN=${asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=_SL300_`,
     `https://m.media-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX300_.jpg`,
+    `https://m.media-amazon.com/images/P/${asin}._AC_SL300_.jpg`,
     `https://images-eu.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`,
-    `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`,
+    `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SX300_SY300_QL70_ML2_.jpg`,
     DEAL_IMG_FALLBACK,
   ];
 };
 
 const amazonImageFromLink = (link: string): string => amazonImageCandidates(link)[0];
+
+const ASIN_IMG_CACHE_PREFIX = 'txa_asin_img_v3_';
+
+/** True se l'URL è un'immagine prodotto reale (/images/I/...) non il placeholder P/ASIN. */
+export const isResolvedAmazonImage = (url?: string): boolean =>
+  !!url && /m\.media-amazon\.com\/images\/I\//i.test(url);
+
+/**
+ * Risolve l'immagine prodotto reale (path /images/I/...) da ASIN.
+ * I path /images/P/ASIN spesso sono GIF bianchi da 43 byte.
+ */
+export const resolveAmazonProductImage = async (link: string): Promise<string | null> => {
+  const asin = extractAmazonAsin(link);
+  if (!asin) return null;
+
+  const cacheKey = `${ASIN_IMG_CACHE_PREFIX}${asin}`;
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached && isResolvedAmazonImage(cached)) return cached;
+  } catch { /* private mode */ }
+
+  const productUrl = `https://www.amazon.it/dp/${asin}`;
+  const extractFromText = (text: string): string | null => {
+    if (!text) return null;
+    const patterns = [
+      /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._AC_SL\d{3,4}_\.jpg/i,
+      /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._SL\d{3,4}_\.jpg/i,
+      /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._AC_SX\d{3,4}_\.jpg/i,
+      /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]{8,}?\.(?:jpg|jpeg|png)/i,
+    ];
+    for (const re of patterns) {
+      const m = text.match(re);
+      if (m?.[0] && !/US40|SS40|_AC_US\d/i.test(m[0])) return m[0];
+    }
+    return null;
+  };
+
+  // 1) microlink (OG image — affidabile)
+  try {
+    const r = await fetchWithTimeout(
+      `https://api.microlink.io/?url=${encodeURIComponent(productUrl)}`,
+      9000
+    );
+    if (r.ok) {
+      const j = await r.json();
+      const url = j?.data?.image?.url as string | undefined;
+      if (url && /media-amazon\.com|ssl-images-amazon/i.test(url)) {
+        try { sessionStorage.setItem(cacheKey, url); } catch { /* */ }
+        return url;
+      }
+    }
+  } catch { /* next */ }
+
+  // 2) jina reader sulla scheda prodotto
+  try {
+    const r = await fetchWithTimeout(`https://r.jina.ai/${productUrl}`, 12000);
+    if (r.ok) {
+      const text = await r.text();
+      const url = extractFromText(text);
+      if (url) {
+        try { sessionStorage.setItem(cacheKey, url); } catch { /* */ }
+        return url;
+      }
+    }
+  } catch { /* next */ }
+
+  return null;
+};
+
+/** Arricchisce le prime N offerte con immagini prodotto reali (parallelo limitato). */
+export const enrichDealImages = async (deals: Deal[], limit = 8): Promise<Deal[]> => {
+  if (!deals.length) return deals;
+  const out = deals.map((d) => ({ ...d }));
+  const slice = out.slice(0, limit);
+
+  const queue = slice.filter(
+    (d) => extractAmazonAsin(d.link) && !isResolvedAmazonImage(d.imageUrl)
+  );
+
+  const concurrency = 3;
+  let i = 0;
+  const worker = async () => {
+    while (i < queue.length) {
+      const idx = i++;
+      const deal = queue[idx];
+      try {
+        const resolved = await resolveAmazonProductImage(deal.link);
+        if (resolved) deal.imageUrl = resolved;
+      } catch { /* keep existing */ }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
+  return out;
+};
 
 /** Immagini da markdown jina / testo Telegram (telesco.pe, cdn). */
 const extractMediaUrlsFromText = (raw: string): string[] => {
@@ -1323,11 +1417,14 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) return false;
     seenLinks.add(link);
     const { newPrice, oldPrice } = extractPricesFromText(priceText);
-    // Preferisci copertina Telegram se presente, altrimenti ASIN Amazon (più robusto)
-    const tgImg = nextMedia();
-    const imageUrl = tgImg || amazonImageFromLink(link);
+    const asin = extractAmazonAsin(link);
+    // Con ASIN usa sempre immagine Amazon (le "foto" TG da jina sono spesso l'avatar del canale)
+    const tgImg = asin ? null : nextMedia();
+    const imageUrl = asin
+      ? amazonImageFromLink(link)
+      : (tgImg || amazonImageFromLink(link) || DEAL_IMG_FALLBACK);
     deals.push({
-      id: `tg-${deals.length}-${(extractAmazonAsin(link) || link).slice(-12)}`,
+      id: `tg-${deals.length}-${(asin || link).slice(-12)}`,
       product,
       oldPrice,
       newPrice,
@@ -1413,11 +1510,12 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
         if (seenLinks.has(deal.link)) continue;
         seenLinks.add(deal.link);
 
-        // 1 prodotto = 1 foto se disponibili; altrimenti mantieni ASIN Amazon
-        if (photoUrls.length > 0) {
+        // Foto TG solo se non abbiamo ASIN (altrimenti arricchimento ASIN → /images/I/)
+        const hasAsin = !!extractAmazonAsin(deal.link);
+        if (!hasAsin && photoUrls.length > 0) {
           deal.imageUrl = photoUrls[Math.min(photoIdx, photoUrls.length - 1)];
           photoIdx++;
-        } else if (!deal.imageUrl || /unsplash\.com/i.test(deal.imageUrl)) {
+        } else if (!deal.imageUrl || /unsplash\.com|telesco\.pe/i.test(deal.imageUrl)) {
           deal.imageUrl = amazonImageFromLink(deal.link);
         }
 
@@ -1433,9 +1531,9 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  // v2: immagini ASIN più robuste (invalida cache vecchia con riquadri bianchi)
-  const CACHE_KEY = 'txa_telegram_deals_v2';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v2_time';
+  // v3: immagini prodotto reali via microlink/jina (non GIF bianchi P/ASIN)
+  const CACHE_KEY = 'txa_telegram_deals_v3';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v3_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
 
   let cachedData: string | null = null;
@@ -1448,7 +1546,19 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
   if (cachedData && cachedTime && Date.now() - parseInt(cachedTime, 10) < CACHE_EXPIRY) {
     try {
       const cached = JSON.parse(cachedData) as Deal[];
-      if (Array.isArray(cached) && cached.length > 0) return cached;
+      if (Array.isArray(cached) && cached.length > 0) {
+        // Se la cache ha ancora placeholder bianchi, ri-arricchisci al volo
+        const needsImg = cached.slice(0, 4).some(
+          (d) => extractAmazonAsin(d.link) && !isResolvedAmazonImage(d.imageUrl)
+        );
+        if (!needsImg) return cached;
+        const fixed = await enrichDealImages(cached, 8);
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(fixed));
+          sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        } catch { /* */ }
+        return fixed;
+      }
     } catch { /* ignore */ }
   }
 
@@ -1469,8 +1579,9 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
       if (!response.ok) continue;
       const body = await response.text();
       if (!body || body.length < 200) continue;
-      const deals = parseDealsFromHtml(body);
+      let deals = parseDealsFromHtml(body);
       if (deals.length > 0) {
+        deals = await enrichDealImages(deals, 8);
         try {
           sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
           sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
