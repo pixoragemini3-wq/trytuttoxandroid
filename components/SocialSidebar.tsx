@@ -107,44 +107,47 @@ const SocialSidebar: React.FC<{
 
       {suggested.length > 0 && (
         <div className="mt-6 pt-6 border-t border-gray-200">
+          {/* CSS scoped: su Blogger Tailwind group-hover/width non è affidabile */}
+          <style>{`
+            .txa-leggi-card{position:relative;height:5.5rem;overflow:hidden;border-radius:0.75rem;border:1px solid #f3f4f6;background:#fff;cursor:pointer}
+            .txa-leggi-img{position:absolute;left:0;top:0;bottom:0;width:22%;overflow:hidden;z-index:1;transition:width .32s ease}
+            .txa-leggi-card:hover .txa-leggi-img{width:100%}
+            .txa-leggi-img img,.txa-leggi-img .txa-leggi-ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s ease,filter .5s ease}
+            .txa-leggi-card:hover .txa-leggi-img img,.txa-leggi-card:hover .txa-leggi-img .txa-leggi-ph{transform:scale(1.1);filter:blur(2.5px)}
+            .txa-leggi-scrim{position:absolute;inset:0;z-index:2;background:rgba(0,0,0,.52);opacity:0;pointer-events:none;transition:opacity .28s ease}
+            .txa-leggi-card:hover .txa-leggi-scrim{opacity:1}
+            .txa-leggi-rest{position:absolute;left:22%;right:0;top:0;bottom:0;z-index:3;display:flex;flex-direction:column;justify-content:center;padding:6px 10px 6px 10px;background:#fff;transition:opacity .2s ease}
+            .txa-leggi-card:hover .txa-leggi-rest{opacity:0}
+            .txa-leggi-rest .txa-leggi-cat{font-size:10px;font-weight:800;letter-spacing:.04em;color:#e31b23;line-height:1;margin-bottom:4px}
+            .txa-leggi-rest .txa-leggi-title{font-size:14px;font-weight:600;line-height:1.25;color:#111827;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+            .txa-leggi-hover{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px 14px;opacity:0;pointer-events:none;transition:opacity .28s ease;box-sizing:border-box;width:100%;height:100%}
+            .txa-leggi-card:hover .txa-leggi-hover{opacity:1}
+            .txa-leggi-hover .txa-leggi-cat{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.92);margin-bottom:6px;text-shadow:0 1px 2px rgba(0,0,0,.35);width:100%;text-align:center}
+            .txa-leggi-hover .txa-leggi-title{font-family:inherit;font-size:15px;font-weight:800;line-height:1.2;letter-spacing:-.01em;color:#ffffff;text-shadow:0 1px 3px rgba(0,0,0,.45);width:100%;max-width:100%;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:0}
+          `}</style>
           <h3 className="font-condensed text-xl font-black uppercase tracking-tight mb-3 text-gray-900 border-b-2 border-[#e31b23] pb-1 w-fit">LEGGI ANCHE</h3>
           <div className="space-y-1">
             {suggested.map((art) => (
               <div
                 key={art.id}
                 onClick={() => onArticleClick && onArticleClick(art)}
-                className="group relative h-[5.5rem] overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
+                className="txa-leggi-card"
               >
-                {/* Immagine assoluta: a riposo ~22% a sinistra; in hover 100% con zoom + blur */}
-                <div className="absolute inset-y-0 left-0 z-0 w-[22%] overflow-hidden transition-[width] duration-300 ease-out group-hover:w-full">
+                <div className="txa-leggi-img">
                   {art.imageUrl ? (
-                    <img
-                      src={art.imageUrl}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-110 group-hover:blur-[2.5px]"
-                    />
+                    <img src={art.imageUrl} alt="" loading="lazy" />
                   ) : (
-                    <div className="absolute inset-0 bg-gray-200 transition-transform duration-500 group-hover:scale-110" />
+                    <div className="txa-leggi-ph" style={{ background: '#e5e7eb' }} />
                   )}
-                  <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/50" />
                 </div>
-
-                {/* Stato normale: testo a destra della striscia immagine */}
-                <div className="relative z-[1] flex h-full flex-col justify-center py-1.5 pl-[calc(22%+10px)] pr-2.5 transition-opacity duration-200 group-hover:opacity-0">
-                  <span className="mb-0.5 text-[10px] font-extrabold leading-none tracking-wide text-[#e31b23]">{art.category}</span>
-                  <div className="line-clamp-2 pr-1 text-sm font-semibold leading-tight text-gray-900">
-                    {art.title}
-                  </div>
+                <div className="txa-leggi-scrim" aria-hidden />
+                <div className="txa-leggi-rest">
+                  <span className="txa-leggi-cat">{art.category}</span>
+                  <div className="txa-leggi-title">{art.title}</div>
                 </div>
-
-                {/* Hover: titolo più grande e centrato su tutto il blocco */}
-                <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-3 py-2 text-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:px-4">
-                  <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-white/90 drop-shadow-sm sm:text-[11px]">
-                    {art.category}
-                  </span>
-                  <div className="w-full max-w-full font-condensed text-[15px] font-black leading-tight tracking-tight text-white drop-shadow-md line-clamp-3 sm:text-[16px] sm:leading-snug">
-                    {art.title}
-                  </div>
+                <div className="txa-leggi-hover">
+                  <span className="txa-leggi-cat">{art.category}</span>
+                  <div className="txa-leggi-title">{art.title}</div>
                 </div>
               </div>
             ))}

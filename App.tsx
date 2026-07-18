@@ -169,14 +169,61 @@ const App: React.FC = () => {
 
   const currentArticle = getCurrentArticle();
 
-  // Genera articoli correlati mescolati per evitare ripetizioni
-  const getShuffledRelatedArticles = (current: Article | undefined) => {
+  /**
+   * LEGGI ANCHE: stessa categoria prevalente (~60%), ma mai esclusiva.
+   * Inserisce altre sezioni (diverse tra loro) così l'utente scopre il sito.
+   */
+  const getShuffledRelatedArticles = (current: Article | undefined, limit = 10) => {
     if (!current || articles.length === 0) return [];
-    const candidates = articles.filter(a => a.id !== current.id);
-    const sameCategory = candidates.filter(a => a.category === current.category);
-    const otherCategories = candidates.filter(a => a.category !== current.category);
-    const pool = [...shuffleArray(sameCategory), ...shuffleArray(otherCategories)];
-    return pool.slice(0, 12);
+    const candidates = articles.filter((a) => a.id !== current.id);
+    const same = shuffleArray(candidates.filter((a) => a.category === current.category));
+    const othersRaw = shuffleArray(candidates.filter((a) => a.category !== current.category));
+
+    // Altre categorie: round-robin per varietà (non 4 volte la stessa)
+    const byCat = new Map<string, Article[]>();
+    for (const a of othersRaw) {
+      const list = byCat.get(a.category) || [];
+      list.push(a);
+      byCat.set(a.category, list);
+    }
+    const queues = [...byCat.values()];
+    const diverseOthers: Article[] = [];
+    let qi = 0;
+    while (diverseOthers.length < othersRaw.length && queues.some((q) => q.length > 0)) {
+      const q = queues[qi % queues.length];
+      if (q.length) diverseOthers.push(q.shift()!);
+      qi++;
+    }
+
+    // ~60% stessa cat., almeno 2–3 altre sezioni se disponibili
+    const minOther = Math.min(diverseOthers.length, limit >= 8 ? 3 : 2);
+    let takeSame = Math.min(same.length, Math.ceil(limit * 0.6));
+    let takeOther = Math.min(diverseOthers.length, Math.max(minOther, limit - takeSame));
+    takeSame = Math.min(same.length, limit - takeOther);
+    if (takeSame + takeOther < limit) {
+      takeOther = Math.min(diverseOthers.length, limit - takeSame);
+      takeSame = Math.min(same.length, limit - takeOther);
+    }
+
+    const pickedSame = same.slice(0, takeSame);
+    const pickedOther = diverseOthers.slice(0, takeOther);
+
+    // Interleave 2 same + 1 other (maggioranza stessa cat., altre visibili in lista)
+    const result: Article[] = [];
+    let si = 0;
+    let oi = 0;
+    while (result.length < limit && (si < pickedSame.length || oi < pickedOther.length)) {
+      if (si < pickedSame.length) result.push(pickedSame[si++]);
+      if (result.length >= limit) break;
+      if (si < pickedSame.length) result.push(pickedSame[si++]);
+      if (result.length >= limit) break;
+      if (oi < pickedOther.length) result.push(pickedOther[oi++]);
+      else if (si < pickedSame.length) result.push(pickedSame[si++]);
+      else break;
+    }
+    while (result.length < limit && oi < pickedOther.length) result.push(pickedOther[oi++]);
+    while (result.length < limit && si < pickedSame.length) result.push(pickedSame[si++]);
+    return result;
   };
 
   const shuffledMoreArticles = useMemo(() => {
