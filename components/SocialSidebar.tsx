@@ -115,33 +115,33 @@ const SocialSidebar: React.FC<{
                 onClick={() => onArticleClick && onArticleClick(art)}
                 className="group relative flex h-20 overflow-hidden rounded-xl border border-gray-100 bg-white cursor-pointer"
               >
+                {/* Immagine: a riposo striscia laterale; in hover copre il box con leggero zoom + blur */}
                 <div className="relative w-[22%] flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out group-hover:w-full">
                   {art.imageUrl ? (
                     <img
                       src={art.imageUrl}
                       alt=""
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-110 group-hover:blur-[2.5px]"
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-gray-200" />
+                    <div className="absolute inset-0 bg-gray-200 transition-transform duration-500 group-hover:scale-110" />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent group-hover:from-black/55 group-hover:via-black/45 group-hover:to-black/55 transition-colors duration-300" />
                 </div>
 
-                <div className="flex-1 min-w-0 px-2.5 py-1.5 flex flex-col justify-center transition-opacity duration-150 group-hover:opacity-0">
+                {/* Stato normale: titolo a destra dell'immagine */}
+                <div className="flex-1 min-w-0 px-2.5 py-1.5 flex flex-col justify-center transition-opacity duration-200 group-hover:opacity-0">
                   <span className="text-[10px] font-extrabold text-[#e31b23] tracking-wide leading-none mb-0.5">{art.category}</span>
                   <div className="text-sm font-semibold leading-tight text-gray-900 line-clamp-2 pr-1">
                     {art.title}
                   </div>
                 </div>
 
-                <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                  <div className="w-[58%] h-full bg-gradient-to-l from-black/92 via-black/78 to-transparent p-3 flex flex-col justify-center">
-                    <span className="text-[10px] font-bold text-white/80 tracking-wide mb-0.5">{art.category}</span>
-                    <div className="text-white text-[13px] font-semibold leading-snug line-clamp-3">
-                      {art.title}
-                    </div>
+                {/* Hover: titolo occupa tutto il box sopra l'immagine */}
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-3 py-2 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <span className="text-[10px] font-bold text-white/85 tracking-wide mb-1 drop-shadow-sm">{art.category}</span>
+                  <div className="text-white text-[13px] sm:text-sm font-semibold leading-snug line-clamp-3 drop-shadow-md w-full">
+                    {art.title}
                   </div>
                 </div>
               </div>
