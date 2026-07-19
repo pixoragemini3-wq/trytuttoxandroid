@@ -590,6 +590,11 @@ h3.font-condensed:not(.txa-deals-banner-title) {
 .txa-deals-banner h3.txa-deals-banner-title {
   color: #e8ff00 !important;
   -webkit-text-fill-color: #e8ff00 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  padding-right: 0.2em;
+  max-width: 100%;
   text-shadow: 0 0 14px rgba(232, 255, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 

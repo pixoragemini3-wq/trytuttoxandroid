@@ -859,7 +859,7 @@ const App: React.FC = () => {
 
     return (
     <section
-      className="txa-deals-banner py-3 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-hidden lg:overflow-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
+      className="txa-deals-banner py-3 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-x-clip overflow-y-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
       style={{ color: '#ffffff' }}
     >
       <style>{`
@@ -871,6 +871,8 @@ const App: React.FC = () => {
         .txa-deals-banner .txa-deals-banner-title{
           color:#e8ff00!important;-webkit-text-fill-color:#e8ff00!important;
           text-shadow:0 0 14px rgba(232,255,0,.45),0 1px 3px rgba(0,0,0,.4)!important;
+          overflow:visible!important;text-overflow:clip!important;white-space:normal!important;
+          max-width:100%;padding-right:0.2em;
         }
         .txa-deals-banner .txa-deal-price{color:#fde047!important;-webkit-text-fill-color:#fde047!important;}
         .txa-deals-banner .txa-deal-old-price{color:rgba(255,255,255,.75)!important;-webkit-text-fill-color:rgba(255,255,255,.75)!important;}
@@ -882,12 +884,19 @@ const App: React.FC = () => {
       <div className="absolute top-0 right-0 w-40 h-40 lg:w-64 lg:h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-10 -mt-10 pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-3 lg:px-6 relative z-10">
-        {/* Header: una riga su mobile, layout ampio su desktop */}
-        <div className="flex items-center justify-between gap-2 mb-2.5 lg:mb-6">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+        {/* Header: titolo sempre intero (niente truncate che taglia la “o”); TG a destra */}
+        <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2.5 lg:mb-6">
+          <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
              <h2
-               className="txa-deals-banner-title font-condensed text-xl sm:text-2xl lg:text-6xl font-black uppercase tracking-tight italic leading-none truncate"
-               style={{ color: '#e8ff00', WebkitTextFillColor: '#e8ff00', textShadow: '0 0 14px rgba(232,255,0,0.45), 0 1px 3px rgba(0,0,0,0.4)' }}
+               className="txa-deals-banner-title font-condensed text-[1.15rem] xs:text-xl sm:text-2xl lg:text-6xl font-black uppercase tracking-[-0.02em] italic leading-[1.05] break-words"
+               style={{
+                 color: '#e8ff00',
+                 WebkitTextFillColor: '#e8ff00',
+                 textShadow: '0 0 14px rgba(232,255,0,0.45), 0 1px 3px rgba(0,0,0,0.4)',
+                 /* italic condensa l’ultima lettera: padding destro evita il taglio */
+                 paddingRight: '0.2em',
+                 overflow: 'visible',
+               }}
              >
                Offerte del Giorno
              </h2>
@@ -898,7 +907,8 @@ const App: React.FC = () => {
             href="https://t.me/tuttoxandroid"
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-1.5 lg:gap-3 bg-[#24A1DE] hover:bg-white pl-1.5 pr-2.5 lg:pl-2 lg:pr-6 py-1 lg:py-2 rounded-full transition-all group shadow-lg border border-white/20 hover:scale-105 cursor-pointer"
+            className="shrink-0 flex items-center gap-1.5 lg:gap-3 bg-[#24A1DE] hover:bg-white pl-1.5 pr-2.5 lg:pl-2 lg:pr-6 py-1 lg:py-2 rounded-full transition-all group shadow-lg border border-white/20 hover:scale-105 cursor-pointer mt-0.5"
+            aria-label="Canale Telegram offerte"
           >
             <div className="w-7 h-7 lg:w-10 lg:h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md shrink-0">
               <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="" />
