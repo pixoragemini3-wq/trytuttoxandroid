@@ -1026,14 +1026,38 @@ const App: React.FC = () => {
       );
     }
 
-    /** Unisce liste in ordine, senza duplicati, fino a limit. */
-    const takeUnique = (lists: Article[][], limit: number): Article[] => {
+    /** Chiave stabile: id + titolo normalizzato (stesso pezzo con id diversi non raddoppia). */
+    const normTitle = (t?: string) =>
+      (t || '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/[^\wàèéìòùáéíóúäöüß]+/gi, '')
+        .trim()
+        .slice(0, 96);
+    const articleKeys = (a: Article): string[] => {
+      const keys: string[] = [];
+      const id = String(a?.id ?? '').trim();
+      if (id) keys.push(`id:${id}`);
+      const t = normTitle(a?.title);
+      if (t) keys.push(`t:${t}`);
+      return keys;
+    };
+    const markUsed = (seen: Set<string>, a: Article) => {
+      for (const k of articleKeys(a)) seen.add(k);
+    };
+    const isUsed = (seen: Set<string>, a: Article) =>
+      articleKeys(a).some((k) => seen.has(k));
+
+    /** Unisce liste in ordine, senza duplicati (id o titolo), fino a limit. */
+    const takeUnique = (lists: Article[][], limit: number, exclude?: Set<string>): Article[] => {
       const out: Article[] = [];
-      const seen = new Set<string>();
+      const seen = new Set<string>(exclude ? [...exclude] : []);
       for (const list of lists) {
         for (const a of list) {
-          if (!a?.id || seen.has(a.id)) continue;
-          seen.add(a.id);
+          if (!a || isUsed(seen, a)) continue;
+          // Serve almeno id o titolo
+          if (articleKeys(a).length === 0) continue;
+          markUsed(seen, a);
           out.push(a);
           if (out.length >= limit) return out;
         }
@@ -1043,25 +1067,46 @@ const App: React.FC = () => {
 
     /** Sempre almeno 3 pezzi per card: preferiti → pool → resto feed. */
     const PREVIEW_COUNT = 3;
-    /** Col1 e Col2 mai con gli stessi articoli (niente fallback che reintroduce i già usati). */
+    /**
+     * Col1 e Col2 sempre disgiunte.
+     * 1) riempie col1 da primaryA (+ fill)
+     * 2) riempie col2 da primaryB escludendo TUTTO ciò che è in col1 (anche per titolo)
+     * 3) se col2 resta corta, prende i pezzi successivi del pool/allSource mai usati in col1
+     */
     const takePreviewPair = (primaryA: Article[], primaryB: Article[], shared: Article[]) => {
       const col1 = takeUnique([primaryA, shared, pool, allSource], PREVIEW_COUNT);
-      const used = new Set(col1.map((a) => a.id));
-      const notUsed = (list: Article[]) => list.filter((a) => a?.id && !used.has(a.id));
-      const col2 = takeUnique(
+      const used = new Set<string>();
+      for (const a of col1) markUsed(used, a);
+
+      const notUsed = (list: Article[]) => list.filter((a) => a && !isUsed(used, a));
+      let col2 = takeUnique(
         [notUsed(primaryB), notUsed(shared), notUsed(pool), notUsed(allSource)],
-        PREVIEW_COUNT
+        PREVIEW_COUNT,
+        used
       );
+
+      // Safety net: se per qualche motivo c’è ancora overlap titolo/id, forza slice sequenziale
+      const col2StillOverlap = col2.some((a) => isUsed(used, a));
+      if (col2StillOverlap || col2.length < PREVIEW_COUNT) {
+        const sequential = takeUnique([pool, allSource], PREVIEW_COUNT * 4);
+        const rest = sequential.filter((a) => !isUsed(used, a));
+        col2 = takeUnique([col2.filter((a) => !isUsed(used, a)), rest], PREVIEW_COUNT, used);
+      }
+
+      // Ultima garanzia: nessuna intersezione
+      col2 = col2.filter((a) => !isUsed(used, a)).slice(0, PREVIEW_COUNT);
+      if (col2.length < PREVIEW_COUNT) {
+        col2 = takeUnique([col2, pool, allSource], PREVIEW_COUNT, used);
+      }
+
       return { col1, col2 };
     };
 
-    /** Cascata “Vedi tutti”: preferiti prima, poi fill dal feed (opz. esclude id già in altra colonna). */
-    const fillCascadePool = (primary: Article[], limit = 48, excludeIds?: Set<string>): Article[] => {
-      const ok = (list: Article[]) =>
-        excludeIds?.size
-          ? list.filter((a) => a?.id && !excludeIds.has(a.id))
-          : list;
-      return takeUnique([ok(primary), ok(pool), ok(allSource)], limit);
+    /** Cascata “Vedi tutti”: preferiti prima, poi fill dal feed (opz. esclude già usati). */
+    const fillCascadePool = (primary: Article[], limit = 48, excludeArticles?: Article[]): Article[] => {
+      const exclude = new Set<string>();
+      for (const a of excludeArticles || []) markUsed(exclude, a);
+      return takeUnique([primary, pool, allSource], limit, exclude);
     };
 
     type SpotlightIconKind = 'tag' | 'star' | 'phone' | 'flame' | 'book' | 'bulb' | 'layers' | 'gamepad' | 'news' | 'note' | 'grid';
@@ -1077,11 +1122,7 @@ const App: React.FC = () => {
       pool
     );
     let col1All: Article[] = fillCascadePool(pool, 48);
-    let col2All: Article[] = fillCascadePool(
-      pool.slice(PREVIEW_COUNT),
-      48,
-      new Set(col1All.map((a) => a.id))
-    );
+    let col2All: Article[] = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, col1All);
     let viewAllCat = spotlightCat;
 
     if (spotlightCat === 'App & Giochi') {
@@ -1101,7 +1142,7 @@ const App: React.FC = () => {
       col2All = fillCascadePool(
         gameItems.length > 0 ? gameItems : pool.slice(PREVIEW_COUNT),
         48,
-        new Set(col1All.map((a) => a.id))
+        col1All
       );
     } else if (spotlightCat === 'Offerte') {
       col1Title = 'ULTIME OFFERTE';
@@ -1111,7 +1152,7 @@ const App: React.FC = () => {
       // col2: pezzi successivi del pool, mai quelli già in col1
       ({ col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool));
       col1All = fillCascadePool(pool, 48);
-      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, new Set(col1All.map((a) => a.id)));
+      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, col1All);
     } else if (spotlightCat === 'Smartphone') {
       col1Title = 'ULTIMI SMARTPHONE';
       col2Title = 'TOP DEVICE';
@@ -1119,7 +1160,7 @@ const App: React.FC = () => {
       col2Icon = 'flame';
       ({ col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool));
       col1All = fillCascadePool(pool, 48);
-      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, new Set(col1All.map((a) => a.id)));
+      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, col1All);
     } else if (spotlightCat === 'Guide') {
       col1Title = 'ULTIME GUIDE';
       col2Title = 'TUTORIAL UTILI';
@@ -1131,9 +1172,9 @@ const App: React.FC = () => {
         || (a.tags || []).some((t) => /tutorial/i.test(t));
       const tutorialItems = pool.filter(isTutorialLike);
       const guideItems = pool.filter((a: Article) => !isTutorialLike(a));
-      // Preferisci guide “pure” vs tutorial; se un lato è scarso, usa il resto del pool SENZA overlap
+      // Guide pure in col1; tutorial in col2; fill senza mai riprendere i pezzi di col1
       ({ col1: col1Items, col2: col2Items } = takePreviewPair(
-        guideItems.length >= PREVIEW_COUNT ? guideItems : pool,
+        guideItems.length > 0 ? guideItems : pool,
         tutorialItems.length > 0 ? tutorialItems : pool.slice(PREVIEW_COUNT),
         pool
       ));
@@ -1141,7 +1182,7 @@ const App: React.FC = () => {
       col2All = fillCascadePool(
         tutorialItems.length > 0 ? tutorialItems : pool.slice(PREVIEW_COUNT),
         48,
-        new Set(col1All.map((a) => a.id))
+        [...col1All, ...col1Items]
       );
     } else if (spotlightCat === 'Recensioni') {
       col1Title = 'ULTIME RECENSIONI';
@@ -1150,7 +1191,17 @@ const App: React.FC = () => {
       col2Icon = 'note';
       ({ col1: col1Items, col2: col2Items } = takePreviewPair(pool, pool.slice(PREVIEW_COUNT), pool));
       col1All = fillCascadePool(pool, 48);
-      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, new Set(col1All.map((a) => a.id)));
+      col2All = fillCascadePool(pool.slice(PREVIEW_COUNT), 48, col1All);
+    }
+
+    // Garanzia globale: le due anteprime non condividono mai articoli (id o titolo)
+    {
+      const usedPreview = new Set<string>();
+      for (const a of col1Items) markUsed(usedPreview, a);
+      col2Items = col2Items.filter((a) => !isUsed(usedPreview, a));
+      if (col2Items.length < PREVIEW_COUNT) {
+        col2Items = takeUnique([col2Items, pool, allSource], PREVIEW_COUNT, usedPreview);
+      }
     }
 
     const SpotlightIcon: React.FC<{ kind: SpotlightIconKind; className?: string }> = ({ kind, className = 'w-5 h-5' }) => {
