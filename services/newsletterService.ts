@@ -21,6 +21,7 @@ export type NewsletterSource =
   | 'home_sidebar'
   | 'article_sidebar'
   | 'article_prompt'
+  | 'mobile_menu'
   | 'other';
 
 export type NewsletterPayload = {

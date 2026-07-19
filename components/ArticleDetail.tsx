@@ -98,12 +98,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   const [hasToc, setHasToc] = useState(false);
 
   /**
-   * Banner newsletter SOLO in mezzo all'articolo (non overlay fisso).
-   * - Appare ogni 3 articoli letti in sessione
-   * - Non auto-hide: resta finché X o iscrizione ok
+   * Mid-articolo: ogni 3 visite (solo se non c’è già il banner fisso di questa visita).
+   * Mobile floating: ogni 2 visite, alterna newsletter ↔ Telegram, 15s (pausa se digita).
    */
   const [showNlInline, setShowNlInline] = useState(false);
   const [nlInlineDismissed, setNlInlineDismissed] = useState(false);
+  const [mobilePromo, setMobilePromo] = useState<'newsletter' | 'telegram' | null>(null);
+  const [mobilePromoDismissed, setMobilePromoDismissed] = useState(false);
+  const [mobilePromoTyping, setMobilePromoTyping] = useState(false);
 
   const isSubscribed = (): boolean => {
     try {
@@ -113,13 +115,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     }
   };
 
+  const isTelegramJoined = (): boolean => {
+    try {
+      return localStorage.getItem('txa_telegram_joined') === '1';
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (!article?.id) return;
-    if (isSubscribed()) {
-      setShowNlInline(false);
-      setNlInlineDismissed(true);
-      return;
-    }
+    setMobilePromo(null);
+    setMobilePromoDismissed(false);
+    setMobilePromoTyping(false);
+
     try {
       const KEY = 'txa_article_views';
       const prev = parseInt(sessionStorage.getItem(KEY) || '0', 10) || 0;
@@ -130,15 +139,44 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         sessionStorage.setItem(KEY, String(next));
         sessionStorage.setItem('txa_last_article_id', article.id);
       }
-      // Solo chiusura manuale: non resettare dismissed se l'utente ha già chiuso su QUESTO articolo
-      const dismissKey = `txa_nl_inline_dismissed_${article.id}`;
-      const alreadyDismissed = sessionStorage.getItem(dismissKey) === '1';
-      setNlInlineDismissed(alreadyDismissed);
-      setShowNlInline(next > 0 && next % 3 === 0);
+
+      // Floating mobile ogni ~2 visite, alterna NL / Telegram
+      const wantFloating = next > 0 && next % 2 === 0;
+      if (wantFloating) {
+        const altKey = 'txa_promo_alt';
+        const alt = parseInt(sessionStorage.getItem(altKey) || '0', 10) || 0;
+        let kind: 'newsletter' | 'telegram' = alt % 2 === 0 ? 'newsletter' : 'telegram';
+        if (kind === 'newsletter' && isSubscribed()) kind = 'telegram';
+        if (kind === 'telegram' && isTelegramJoined()) kind = 'newsletter';
+        if ((kind === 'newsletter' && isSubscribed()) || (kind === 'telegram' && isTelegramJoined())) {
+          setMobilePromo(null);
+        } else {
+          setMobilePromo(kind);
+          sessionStorage.setItem(altKey, String(alt + 1));
+        }
+        // Mid-articolo non in concorrenza con floating
+        setShowNlInline(false);
+        setNlInlineDismissed(true);
+      } else {
+        setMobilePromo(null);
+        // Banner mid-articolo ogni 3 visite (solo se non iscritto)
+        const dismissKey = `txa_nl_inline_dismissed_${article.id}`;
+        const alreadyDismissed = sessionStorage.getItem(dismissKey) === '1';
+        setNlInlineDismissed(alreadyDismissed || isSubscribed());
+        setShowNlInline(!isSubscribed() && !alreadyDismissed && next > 0 && next % 3 === 0);
+      }
     } catch {
       setShowNlInline(false);
+      setMobilePromo(null);
     }
   }, [article?.id]);
+
+  // Auto-hide floating 15s; non se l’utente sta digitando nel form newsletter
+  useEffect(() => {
+    if (!mobilePromo || mobilePromoDismissed || mobilePromoTyping) return;
+    const t = window.setTimeout(() => setMobilePromoDismissed(true), 15000);
+    return () => window.clearTimeout(t);
+  }, [mobilePromo, mobilePromoDismissed, mobilePromoTyping, article?.id]);
 
   const dismissInlineNl = () => {
     setNlInlineDismissed(true);
@@ -146,6 +184,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       if (article?.id) sessionStorage.setItem(`txa_nl_inline_dismissed_${article.id}`, '1');
     } catch { /* ignore */ }
   };
+
+  const dismissMobilePromo = () => {
+    setMobilePromoDismissed(true);
+    setMobilePromoTyping(false);
+  };
+
+  const showMobilePromo = !!(mobilePromo && !mobilePromoDismissed);
+  const hideMobileNav = showMobilePromo || (showNlInline && !nlInlineDismissed);
 
   // SEO dinamico per articolo (senza Helmet — evita crash se manca HelmetProvider)
   useEffect(() => {
@@ -1470,8 +1516,84 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         </div>
       </div>
 
-      {/* Nav mobile: nascosta se c'è la newsletter mid-articolo (niente sovrapposizione) */}
-      {!(showNlInline && !nlInlineDismissed) && (
+      {/* Floating mobile: newsletter ↔ Telegram ogni 2 visite; nav nascosta (no sovrapposizione) */}
+      {showMobilePromo && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-[9985] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pointer-events-none">
+          <div
+            className="max-w-lg mx-auto pointer-events-auto rounded-2xl shadow-2xl border border-white/10 p-4 relative animate-in slide-in-from-bottom duration-300"
+            style={{
+              background: mobilePromo === 'telegram'
+                ? 'linear-gradient(145deg, #0ea5e9 0%, #0284c7 45%, #0369a1 100%)'
+                : 'linear-gradient(145deg, #171717 0%, #0a0a0a 100%)',
+            }}
+            onFocusCapture={() => {
+              if (mobilePromo === 'newsletter') setMobilePromoTyping(true);
+            }}
+            onBlurCapture={(e) => {
+              if (mobilePromo !== 'newsletter') return;
+              const next = e.relatedTarget as Node | null;
+              if (!e.currentTarget.contains(next)) setMobilePromoTyping(false);
+            }}
+          >
+            <button
+              type="button"
+              onClick={dismissMobilePromo}
+              className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/15 hover:bg-white hover:text-black text-white text-sm font-black"
+              aria-label="Chiudi"
+            >
+              ×
+            </button>
+
+            {mobilePromo === 'newsletter' ? (
+              <div className="text-white pr-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#e31b23] mb-1">
+                  Newsletter
+                </p>
+                <NewsletterForm
+                  source="article_prompt"
+                  variant="dark"
+                  title="Non perdere le news"
+                  subtitle="News e guide tech, gratis. Zero spam."
+                  buttonLabel="Iscriviti gratis"
+                  compactLegal
+                  onSuccess={() => {
+                    dismissMobilePromo();
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="text-white pr-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                  </svg>
+                </div>
+                <p className="font-condensed text-xl font-black uppercase tracking-tight mb-1">
+                  Canale Telegram
+                </p>
+                <p className="text-[12px] text-white/85 mb-4 leading-snug">
+                  Offerte e errori di prezzo in tempo reale. Unisciti gratis.
+                </p>
+                <a
+                  href="https://t.me/tuttoxandroid"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    try { localStorage.setItem('txa_telegram_joined', '1'); } catch { /* ignore */ }
+                    dismissMobilePromo();
+                  }}
+                  className="flex items-center justify-center w-full bg-white text-[#0284c7] py-3 rounded-xl font-black text-xs uppercase tracking-widest no-underline"
+                >
+                  Iscriviti al canale
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Nav mobile: nascosta con promo floating o newsletter mid-articolo */}
+      {!hideMobileNav && (
         <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all">
           <a
             href="/"

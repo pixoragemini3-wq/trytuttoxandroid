@@ -6,6 +6,7 @@ import MegaMenu from './MegaMenu';
 import CookieConsent from './CookieConsent';
 import TelegramPopup from './TelegramPopup';
 import TopStoriesMobile from './TopStoriesMobile';
+import NewsletterForm from './NewsletterForm';
 import { LOGO_URL, NAV_CATEGORIES, CATEGORY_COLORS } from '../constants';
 
 interface LayoutProps {
@@ -291,9 +292,15 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Mobile menu overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-[#111111] z-[9999] flex flex-col">
-          <div className="flex items-center justify-between px-5 h-14 border-b border-white/[0.07]">
-            <img src={LOGO_URL} className="h-7 w-auto object-contain opacity-80" alt="Logo" />
-            <button onClick={() => setIsMobileMenuOpen(false)} className="w-9 h-9 flex items-center justify-center text-white/40 hover:text-white">
+          <div className="flex items-center justify-between px-5 min-h-[4.5rem] py-3 border-b border-white/[0.07]">
+            {/* Logo ≥150% vs h-7 (28px) → ~42px+ ; usiamo h-11 (44px) */}
+            <img
+              src={LOGO_URL}
+              className="h-11 w-auto max-h-[48px] object-contain opacity-95"
+              alt="TuttoXAndroid"
+              onClick={() => { goToHome(); setIsMobileMenuOpen(false); }}
+            />
+            <button onClick={() => setIsMobileMenuOpen(false)} className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white" aria-label="Chiudi menu">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -319,10 +326,25 @@ const Layout: React.FC<LayoutProps> = ({
               <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Chi Siamo</button>
               <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Collabora</button>
             </div>
+
+            {/* Newsletter sotto Collabora */}
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#e31b23] mb-1">Newsletter</p>
+              <NewsletterForm
+                source="mobile_menu"
+                variant="dark"
+                title="Resta aggiornato"
+                subtitle="News e guide tech, gratis. Zero spam."
+                buttonLabel="Iscriviti gratis"
+                compactLegal
+              />
+            </div>
           </div>
           <div className="px-5 py-5 border-t border-white/[0.07]">
             <a
               href="https://t.me/tuttoxandroid"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full bg-[#e31b23] text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest"
             >
               Unisciti su Telegram

@@ -1,31 +1,54 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
+/**
+ * Popup Telegram solo fuori dalle pagine articolo
+ * (in articolo c’è già il banner mobile alternato newsletter/Telegram).
+ */
 const TelegramPopup: React.FC = () => {
+  const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
 
-  useEffect(() => {
-    const hasDismissed = localStorage.getItem('telegramPopupDismissed');
-    if (hasDismissed) return;
+  const isArticlePath =
+    location.pathname.includes('.html') ||
+    location.pathname.startsWith('/article/') ||
+    /\/\d{4}\//.test(location.pathname);
 
-    // Show only after the user has read at least 2 articles
+  useEffect(() => {
+    if (isArticlePath) {
+      setIsVisible(false);
+      return;
+    }
+    try {
+      if (localStorage.getItem('txa_telegram_joined') === '1') return;
+      if (localStorage.getItem('telegramPopupDismissed') === 'true') return;
+    } catch {
+      return;
+    }
+
     const viewCount = parseInt(localStorage.getItem('articleViewCount') || '0', 10);
     if (viewCount < 2) return;
 
     const timer = setTimeout(() => setIsVisible(true), 2500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isArticlePath, location.pathname]);
 
   const dismiss = () => {
     setIsVisible(false);
-    localStorage.setItem('telegramPopupDismissed', 'true');
+    try {
+      localStorage.setItem('telegramPopupDismissed', 'true');
+    } catch { /* ignore */ }
   };
 
   const join = () => {
+    try {
+      localStorage.setItem('txa_telegram_joined', '1');
+    } catch { /* ignore */ }
     dismiss();
     window.open('https://t.me/tuttoxandroid', '_blank');
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || isArticlePath) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
