@@ -1306,19 +1306,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                         portalNodes.inArticleAd
                     )}
 
-                    {/* Banner mid-articolo: resta visibile (niente timer); solo ogni 3 articoli */}
+                    {/* Banner mid-articolo in-flow (mai fixed): resta finché X/iscrizione; solo ogni 3 articoli.
+                        Su mobile la barra HOME/NEWS/INDICE è nascosta finché questo banner è aperto. */}
                     {portalNodes.newsletter && showNlInline && !nlInlineDismissed && createPortal(
-                        <div className="rounded-2xl border-2 border-[#e31b23]/30 bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 shadow-md relative overflow-hidden">
+                        <div className="not-prose relative z-10 my-8 rounded-2xl border-2 border-[#e31b23]/40 bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 shadow-md overflow-hidden">
                           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#e31b23] to-[#ff6b6b]" />
                           <button
                             type="button"
                             onClick={dismissInlineNl}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-black hover:text-white text-sm font-black"
+                            className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-black hover:text-white text-sm font-black"
                             aria-label="Chiudi"
                           >
                             ×
                           </button>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-[#e31b23] mb-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#e31b23] mb-1 pr-10">
                             Ti piace TuttoXAndroid?
                           </p>
                           <NewsletterForm
@@ -1469,32 +1470,34 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         </div>
       </div>
 
-      {/* Navigazione mobile rapida: Home + categoria + Indice (niente overlay newsletter fisso) */}
-      <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all">
-        <a
-          href="/"
-          onClick={goHome}
-          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10 text-white no-underline"
-        >
-          Home
-        </a>
-        <button
-          type="button"
-          onClick={() => goCategory(article.category)}
-          className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-[#e31b23] hover:bg-[#c41820]"
-        >
-          {article.category || 'News'}
-        </button>
-        {hasToc && (
+      {/* Nav mobile: nascosta se c'è la newsletter mid-articolo (niente sovrapposizione) */}
+      {!(showNlInline && !nlInlineDismissed) && (
+        <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-2 bg-[#111]/95 text-white px-3 py-2 rounded-full shadow-2xl border border-white/10 backdrop-blur-sm transition-all">
+          <a
+            href="/"
+            onClick={goHome}
+            className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full hover:bg-white/10 text-white no-underline"
+          >
+            Home
+          </a>
           <button
             type="button"
-            onClick={scrollToIndice}
+            onClick={() => goCategory(article.category)}
             className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-[#e31b23] hover:bg-[#c41820]"
           >
-            Indice
+            {article.category || 'News'}
           </button>
-        )}
-      </div>
+          {hasToc && (
+            <button
+              type="button"
+              onClick={scrollToIndice}
+              className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-[#e31b23] hover:bg-[#c41820]"
+            >
+              Indice
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
