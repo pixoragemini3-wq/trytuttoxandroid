@@ -133,34 +133,34 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
   }
 
   /* ── STANDARD ─────────────────────────────────────────────────── */
-  /* Desktop: layout orizzontale compatto (~1.5–2 anteprime in viewport 15.6") */
+  /* Orizzontale compatto: altezza minima (non fissa) così il 2° rigo del titolo non viene tagliato a metà */
   return (
     <div
       ref={cardRef}
       onClick={onClick}
-      className={`group cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:h-[168px] lg:h-[176px] ${className}`}
+      className={`group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex flex-row items-stretch min-h-[132px] sm:min-h-[148px] md:min-h-[160px] ${className}`}
     >
-      <div className="relative w-full md:w-[38%] lg:w-[36%] h-[168px] sm:h-[180px] md:h-full shrink-0 overflow-hidden bg-gray-100">
+      <div className="relative w-[38%] sm:w-[36%] md:w-[34%] min-h-[132px] sm:min-h-[148px] md:min-h-[160px] shrink-0 overflow-hidden rounded-l-xl bg-gray-100 self-stretch">
         {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
         <img
           src={article.imageUrl}
           alt={article.title}
           onError={e => { e.currentTarget.src = FALLBACK; }}
           onLoad={() => setImgLoaded(true)}
-          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
         />
       </div>
-      <div className="flex flex-col flex-1 justify-center p-3.5 md:p-4 min-w-0">
+      <div className="flex flex-col flex-1 justify-center py-3 px-3 sm:p-3.5 md:p-4 min-w-0 overflow-visible">
         <span
-          className="text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5 block"
+          className="text-[10px] font-bold uppercase tracking-[0.12em] mb-1 block leading-none"
           style={{ color }}
         >
           {badge.label}
         </span>
-        <h3 className="font-condensed text-[20px] md:text-[22px] lg:text-[23px] font-black leading-[1.08] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-2 md:line-clamp-3 mb-1.5">
+        <h3 className="font-condensed text-[17px] sm:text-[19px] md:text-[21px] lg:text-[22px] font-black leading-[1.15] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-2 mb-1 break-words">
           {article.title}
         </h3>
-        <p className="text-[12px] md:text-[13px] text-gray-400 leading-relaxed line-clamp-1 lg:line-clamp-2 mb-2 hidden sm:block">
+        <p className="text-[11px] sm:text-[12px] md:text-[13px] text-gray-400 leading-snug line-clamp-1 mb-1.5 hidden sm:block">
           {article.excerpt}
         </p>
         <Meta author={article.author} date={article.date} />

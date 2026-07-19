@@ -71,17 +71,17 @@ const ArticleSkeleton: React.FC<ArticleSkeletonProps> = ({ type = 'standard', cl
     );
   }
 
-  // STANDARD SKELETON (compatto come le card live)
+  // STANDARD SKELETON (allineato alle card live: riga orizzontale, min-height)
   return (
-    <div className={`flex flex-col md:flex-row md:h-[168px] lg:h-[176px] overflow-hidden rounded-xl border border-gray-100 bg-white animate-pulse ${className}`}>
-      <div className="w-full md:w-[38%] h-[168px] md:h-full bg-gray-200 shrink-0"></div>
-      <div className="flex-1 flex flex-col justify-center p-3.5 md:p-4 space-y-2">
+    <div className={`flex flex-row items-stretch min-h-[132px] sm:min-h-[148px] md:min-h-[160px] rounded-xl border border-gray-100 bg-white animate-pulse ${className}`}>
+      <div className="w-[38%] sm:w-[36%] md:w-[34%] min-h-[132px] bg-gray-200 shrink-0 rounded-l-xl"></div>
+      <div className="flex-1 flex flex-col justify-center py-3 px-3 sm:p-3.5 md:p-4 space-y-2 min-w-0">
         <div className="h-3 bg-gray-200 rounded w-16"></div>
         <div className="space-y-1.5">
-            <div className="h-5 bg-gray-200 rounded w-full"></div>
-            <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
         </div>
-        <div className="hidden md:block h-3 bg-gray-200 rounded w-5/6"></div>
+        <div className="hidden sm:block h-3 bg-gray-200 rounded w-5/6"></div>
         <div className="flex items-center gap-2 pt-1">
            <div className="w-5 h-5 rounded-full bg-gray-200"></div>
            <div className="h-2 w-16 bg-gray-200 rounded"></div>

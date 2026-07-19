@@ -1989,7 +1989,7 @@ const App: React.FC = () => {
                 )}
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                  <div className="lg:col-span-2 overflow-hidden">
+                  <div className="lg:col-span-2 min-w-0">
                     {/* ANIMATED GRID CONTAINER - Key ensures re-render and animation triggers on swipe */}
                     {isSearching && visibleNewsCount === 6 ? (
                         <div className="space-y-6">
