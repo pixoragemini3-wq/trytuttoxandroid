@@ -8,7 +8,8 @@ interface DesktopSidebarProps {
   isLoading?: boolean;
 }
 
-const PAGE_SIZE = 4;
+/** Meno notizie per pagina = titoli leggibili senza tagli */
+const PAGE_SIZE = 3;
 const MAX_ITEMS = 120;
 const ROTATE_MS = 5000;
 
@@ -33,13 +34,11 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   const [page, setPage] = useState(0);
   const [animKey, setAnimKey] = useState(0);
 
-  // Reset se cambia il pool
   useEffect(() => {
     setPage(0);
     setAnimKey((k) => k + 1);
   }, [pool.length, pool[0]?.id]);
 
-  // Rotazione automatica ogni 5s tra blocchi da 4
   useEffect(() => {
     if (isLoading || pool.length <= PAGE_SIZE) return;
     const t = window.setInterval(() => {
@@ -54,51 +53,39 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 
   const pageItems = pool.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
   const startNum = page * PAGE_SIZE;
-
   const formatNum = (n: number) => String(n).padStart(2, '0');
 
   return (
-    <div className="hidden lg:flex flex-col w-[280px] shrink-0 bg-[#fff200] h-full min-h-0 py-4 px-4 rounded-[2rem] relative z-10 shadow-xl justify-between overflow-hidden">
-      {/* Watermark leggero, non deve uscire dal box */}
-      <span
-        className="absolute top-1 right-1 text-[4.5rem] font-black text-black/[0.06] select-none pointer-events-none font-condensed leading-none max-w-[55%] overflow-hidden"
-        aria-hidden
-      >
-        TOP
-      </span>
-
-      {/* Header compatto — niente testo che sborda sul hero */}
-      <div className="relative z-10 shrink-0 pr-1">
-        <div className="flex items-center gap-2 mb-1">
+    <div className="hidden lg:flex flex-col w-[300px] xl:w-[320px] shrink-0 bg-[#fff200] h-full min-h-0 py-5 px-5 rounded-[1.75rem] relative z-20 shadow-xl isolate overflow-hidden">
+      {/* Header — titolo contenuto, niente watermark che copre i pezzi */}
+      <div className="relative z-10 shrink-0 mb-3">
+        <div className="flex items-center gap-2 mb-1.5">
           <span className="w-1.5 h-1.5 bg-black rounded-full shrink-0" />
-          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-black/70">
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-black/65">
             La Selezione
           </span>
         </div>
         <h3
-          className="font-condensed text-[2.15rem] xl:text-[2.35rem] font-black uppercase leading-[0.9] tracking-tight text-black break-words"
+          className="font-condensed text-[1.85rem] xl:text-[2rem] font-black uppercase leading-[0.95] tracking-tight text-black"
           style={{
             fontFamily:
-              "'Saira Extra Condensed', 'Impact', 'Arial Narrow', 'Arial Black', system-ui, sans-serif",
+              "'Saira Extra Condensed', 'Impact', 'Arial Narrow', system-ui, sans-serif",
             fontWeight: 900,
           }}
         >
-          Best of
-          <br />
-          The Best
+          Best of the Best
         </h3>
-        <div className="w-8 h-1 bg-black mt-2 mb-3" />
+        <div className="w-10 h-[3px] bg-black mt-2.5 rounded-full" />
       </div>
 
-      {/* Lista a blocchi da 4, scorrimento verticale */}
+      {/* Lista: 3 pezzi, spazio e line-height leggibili */}
       <div className="relative z-10 flex-1 min-h-0 flex flex-col">
         <div
           key={animKey}
-          className="flex flex-col gap-3 justify-center flex-1 min-h-0 animate-in slide-in-from-bottom-3 fade-in duration-500"
+          className="flex flex-col gap-3.5 flex-1 min-h-0 justify-start animate-in fade-in slide-in-from-bottom-2 duration-400"
         >
           {isLoading ? (
             <>
-              <ArticleSkeleton type="sidebar" />
               <ArticleSkeleton type="sidebar" />
               <ArticleSkeleton type="sidebar" />
               <ArticleSkeleton type="sidebar" />
@@ -109,45 +96,43 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
                 key={`${article.id}-${page}`}
                 type="button"
                 onClick={() => onArticleClick(article)}
-                className="group cursor-pointer flex gap-2.5 items-start shrink-0 w-full text-left bg-transparent border-0 p-0"
+                className="group cursor-pointer flex gap-3 items-start w-full text-left bg-transparent border-0 p-0 shrink-0"
               >
-                <span className="font-condensed text-xl font-black text-black/25 group-hover:text-black transition-colors leading-none w-7 shrink-0 pt-0.5 tabular-nums">
+                <span className="font-condensed text-[1.35rem] font-black text-black/30 group-hover:text-black transition-colors leading-none w-8 shrink-0 pt-0.5 tabular-nums">
                   {formatNum(startNum + idx + 1)}
                 </span>
-                <div className="pt-0.5 border-t border-black/10 w-full min-w-0">
-                  <h4 className="font-condensed text-[13px] leading-snug font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all line-clamp-2 break-words">
+                <div className="min-w-0 flex-1 border-t border-black/15 pt-1.5">
+                  <h4 className="font-condensed text-[14px] xl:text-[15px] leading-[1.25] font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all line-clamp-2 break-words">
                     {article.title}
                   </h4>
                 </div>
               </button>
             ))
           ) : (
-            <p className="text-[11px] text-black/50 font-medium">Contenuti in aggiornamento…</p>
+            <p className="text-[12px] text-black/50 font-medium">Contenuti in aggiornamento…</p>
           )}
         </div>
 
-        {/* Indicatori pagina (solo se più blocchi) */}
         {!isLoading && pageCount > 1 && (
-          <div className="flex items-center justify-center gap-1.5 mt-3 shrink-0">
-            {Array.from({ length: Math.min(pageCount, 12) }).map((_, i) => {
-              // se >12 pagine, mappa su 12 dots proporzionali
-              const activeDot =
-                pageCount <= 12
+          <div className="flex items-center justify-center gap-1.5 mt-auto pt-3 shrink-0">
+            {Array.from({ length: Math.min(pageCount, 10) }).map((_, i) => {
+              const active =
+                pageCount <= 10
                   ? i === page
-                  : Math.floor((page / pageCount) * 12) === i;
+                  : Math.floor((page / pageCount) * 10) === i;
               return (
                 <button
                   key={i}
                   type="button"
                   aria-label={`Blocco ${i + 1}`}
                   onClick={() => {
-                    if (pageCount <= 12) {
+                    if (pageCount <= 10) {
                       setPage(i);
                       setAnimKey((k) => k + 1);
                     }
                   }}
-                  className={`h-1 rounded-full transition-all ${
-                    activeDot ? 'w-4 bg-black' : 'w-1.5 bg-black/25'
+                  className={`h-1.5 rounded-full transition-all ${
+                    active ? 'w-5 bg-black' : 'w-1.5 bg-black/30 hover:bg-black/50'
                   }`}
                 />
               );
@@ -156,12 +141,12 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         )}
       </div>
 
-      <div className="mt-2 shrink-0 flex items-center justify-between opacity-50 border-t border-black/10 pt-2 relative z-10">
-        <span className="text-[7px] font-medium uppercase tracking-[0.15em] text-black font-sans">
-          TuttoXAndroid Select
+      <div className="mt-3 shrink-0 flex items-center justify-between border-t border-black/10 pt-2.5 relative z-10">
+        <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-black/55">
+          TuttoXAndroid
         </span>
         {!isLoading && pool.length > 0 && (
-          <span className="text-[7px] font-black uppercase tracking-wider text-black/70 tabular-nums">
+          <span className="text-[8px] font-black uppercase tracking-wider text-black/60 tabular-nums">
             {page + 1}/{pageCount}
           </span>
         )}

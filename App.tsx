@@ -1853,7 +1853,7 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto">
                 {/* HERO SECTION - STATIC (Visible on Home) */}
                 {isHome && activeCategory === 'Tutti' && (
-                  <div className="w-full md:h-[260px] lg:h-[280px] flex gap-3 items-stretch px-2 md:px-0 mt-3 md:mt-1">
+                  <div className="w-full md:h-[320px] lg:h-[360px] xl:h-[380px] flex gap-4 items-stretch px-2 md:px-0 mt-3 md:mt-1">
                     {layoutConfig.fixedSidebar && (
                       <DesktopSidebar
                           articles={
@@ -1866,7 +1866,7 @@ const App: React.FC = () => {
                       />
                     )}
                     
-                    <div className="flex-1 h-full w-full">
+                    <div className="flex-1 h-full w-full min-w-0">
                         {isArticlesLoading ? (
                            <ArticleCard isLoading type="hero" />
                         ) : heroArticle && (

@@ -82,11 +82,11 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             {badge.label}
           </span>
         </div>
-        <div className="flex flex-col justify-center p-4 md:p-5 lg:p-6 md:w-[42%]">
-          <h2 className="font-condensed text-[22px] md:text-[24px] lg:text-[27px] font-black leading-[1.05] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
+        <div className="flex flex-col justify-center p-4 md:p-5 lg:p-6 xl:p-7 md:w-[42%] min-w-0">
+          <h2 className="font-condensed text-[22px] md:text-[25px] lg:text-[28px] xl:text-[30px] font-black leading-[1.08] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 line-clamp-3 mb-2">
             {article.title}
           </h2>
-          <p className="hidden md:block text-[12px] lg:text-[13px] leading-relaxed text-gray-500 line-clamp-2 mb-2">
+          <p className="hidden md:block text-[12px] lg:text-[13.5px] leading-relaxed text-gray-500 line-clamp-3 mb-3">
             {article.excerpt}
           </p>
           <Meta author={article.author} date={article.date} />
