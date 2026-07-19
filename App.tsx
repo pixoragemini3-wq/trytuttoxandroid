@@ -1855,9 +1855,13 @@ const App: React.FC = () => {
                 {isHome && activeCategory === 'Tutti' && (
                   <div className="w-full md:h-[260px] lg:h-[280px] flex gap-3 items-stretch px-2 md:px-0 mt-3 md:mt-1">
                     {layoutConfig.fixedSidebar && (
-                      <DesktopSidebar 
-                          articles={topStories.length > 1 ? topStories.slice(1, 10) : MOCK_ARTICLES.slice(1,5)} 
-                          onArticleClick={handleArticleClick} 
+                      <DesktopSidebar
+                          articles={
+                            (articles.length > 0 ? articles : MOCK_ARTICLES)
+                              .filter((a) => a.id !== heroArticle?.id)
+                              .slice(0, 120)
+                          }
+                          onArticleClick={handleArticleClick}
                           isLoading={isArticlesLoading}
                       />
                     )}
