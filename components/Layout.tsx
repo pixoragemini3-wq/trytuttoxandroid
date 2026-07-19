@@ -1,5 +1,5 @@
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Article } from '../types';
 import MegaMenu from './MegaMenu';
@@ -70,6 +70,40 @@ const Layout: React.FC<LayoutProps> = ({
       }),
     []
   );
+
+  // Blocca scroll della pagina sotto il menù (evita “buco” in basso al primo scroll mobile)
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+    };
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.left = prev.bodyLeft;
+      body.style.right = prev.bodyRight;
+      body.style.width = prev.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <div className={`min-h-screen flex flex-col bg-[#f4f4f4] ${boxedLayout ? 'max-w-[1440px] mx-auto shadow-xl' : ''}`}>
@@ -276,8 +310,8 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
       </footer>
 
-      {/* Scroll to top */}
-      {showScrollTop && (
+      {/* Scroll to top — nascosto se menù aperto */}
+      {showScrollTop && !isMobileMenuOpen && (
         <button
           onClick={scrollToTop}
           className="fixed bottom-6 right-6 z-50 w-10 h-10 bg-[#111] text-white rounded-full flex items-center justify-center shadow-lg hover:bg-[#e31b23] transition-colors border border-white/10"
@@ -289,24 +323,41 @@ const Layout: React.FC<LayoutProps> = ({
         </button>
       )}
 
-      {/* Mobile menu overlay */}
+      {/* Mobile menu overlay: copre tutto lo schermo (dvh + safe-area), niente bleed del sito sotto */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-[#111111] z-[9999] flex flex-col">
-          <div className="flex items-center justify-between px-5 min-h-[5.25rem] py-3 border-b border-white/[0.07]">
-            {/* Logo menù: più grande e leggibile */}
+        <div
+          className="txa-mobile-menu fixed inset-0 z-[100000] flex flex-col bg-[#111111]"
+          style={{
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            minHeight: '100dvh',
+            height: '100dvh',
+            maxHeight: '100dvh',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            backgroundColor: '#111111',
+            isolation: 'isolate',
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu di navigazione"
+        >
+          <div className="flex items-center justify-between px-5 min-h-[5.75rem] py-3 border-b border-white/[0.07] shrink-0 bg-[#111111]">
             <img
               src={LOGO_URL}
-              className="h-16 w-auto max-h-[72px] object-contain opacity-100"
+              className="h-[88px] w-auto max-h-[96px] object-contain opacity-100"
               alt="TuttoXAndroid"
               onClick={() => { goToHome(); setIsMobileMenuOpen(false); }}
             />
-            <button onClick={() => setIsMobileMenuOpen(false)} className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white" aria-label="Chiudi menu">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onClick={() => setIsMobileMenuOpen(false)} className="w-11 h-11 flex items-center justify-center text-white/40 hover:text-white" aria-label="Chiudi menu">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-3">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-3 bg-[#111111] [-webkit-overflow-scrolling:touch]">
             {NAV_CATEGORIES.map(cat => {
               const catColor = CATEGORY_COLORS[cat] || '#e31b23';
               return (
@@ -327,7 +378,6 @@ const Layout: React.FC<LayoutProps> = ({
               <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Collabora</button>
             </div>
 
-            {/* Newsletter essenziale sotto Collabora */}
             <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
               <NewsletterForm
                 source="mobile_menu"
@@ -340,7 +390,7 @@ const Layout: React.FC<LayoutProps> = ({
               />
             </div>
           </div>
-          <div className="px-5 py-4 border-t border-white/[0.07]">
+          <div className="px-5 py-4 border-t border-white/[0.07] shrink-0 bg-[#111111]">
             <a
               href="https://t.me/tuttoxandroid"
               target="_blank"
