@@ -292,11 +292,11 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Mobile menu overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-[#111111] z-[9999] flex flex-col">
-          <div className="flex items-center justify-between px-5 min-h-[4.5rem] py-3 border-b border-white/[0.07]">
-            {/* Logo ≥150% vs h-7 (28px) → ~42px+ ; usiamo h-11 (44px) */}
+          <div className="flex items-center justify-between px-5 min-h-[5.25rem] py-3 border-b border-white/[0.07]">
+            {/* Logo menù: più grande e leggibile */}
             <img
               src={LOGO_URL}
-              className="h-11 w-auto max-h-[48px] object-contain opacity-95"
+              className="h-16 w-auto max-h-[72px] object-contain opacity-100"
               alt="TuttoXAndroid"
               onClick={() => { goToHome(); setIsMobileMenuOpen(false); }}
             />
@@ -306,7 +306,7 @@ const Layout: React.FC<LayoutProps> = ({
               </svg>
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex-1 overflow-y-auto px-5 py-3">
             {NAV_CATEGORIES.map(cat => {
               const catColor = CATEGORY_COLORS[cat] || '#e31b23';
               return (
@@ -322,25 +322,25 @@ const Layout: React.FC<LayoutProps> = ({
                 </button>
               );
             })}
-            <div className="pt-6 flex flex-col gap-3">
+            <div className="pt-5 flex flex-col gap-2.5">
               <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Chi Siamo</button>
               <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Collabora</button>
             </div>
 
-            {/* Newsletter sotto Collabora */}
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#e31b23] mb-1">Newsletter</p>
+            {/* Newsletter essenziale sotto Collabora */}
+            <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
               <NewsletterForm
                 source="mobile_menu"
                 variant="dark"
-                title="Resta aggiornato"
-                subtitle="News e guide tech, gratis. Zero spam."
-                buttonLabel="Iscriviti gratis"
+                dense
                 compactLegal
+                title="Newsletter"
+                subtitle="News tech gratis, zero spam."
+                buttonLabel="Ok"
               />
             </div>
           </div>
-          <div className="px-5 py-5 border-t border-white/[0.07]">
+          <div className="px-5 py-4 border-t border-white/[0.07]">
             <a
               href="https://t.me/tuttoxandroid"
               target="_blank"
