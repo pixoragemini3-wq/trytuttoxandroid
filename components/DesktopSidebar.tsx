@@ -57,7 +57,20 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 
   return (
     <div className="hidden lg:flex flex-col w-[300px] xl:w-[320px] shrink-0 bg-[#fff200] h-full min-h-0 py-5 px-5 rounded-[1.75rem] relative z-20 shadow-xl isolate overflow-hidden">
-      {/* Header — titolo contenuto, niente watermark che copre i pezzi */}
+      {/* Watermark TOP: solo sfondo, sotto i pezzi (z-0) */}
+      <span
+        className="absolute -right-1 top-0 z-0 text-[5.5rem] xl:text-[6.25rem] font-black text-black/[0.07] select-none pointer-events-none font-condensed leading-none tracking-tighter"
+        style={{
+          fontFamily:
+            "'Saira Extra Condensed', 'Impact', 'Arial Narrow', system-ui, sans-serif",
+          fontWeight: 900,
+        }}
+        aria-hidden
+      >
+        TOP
+      </span>
+
+      {/* Header */}
       <div className="relative z-10 shrink-0 mb-3">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="w-1.5 h-1.5 bg-black rounded-full shrink-0" />
