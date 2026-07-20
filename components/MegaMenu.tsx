@@ -163,9 +163,9 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
   const theme = getCategoryTheme(category);
 
   const megaCard =
-    'mega-card rounded-2xl bg-white/90 border border-violet-100/80 shadow-[0_8px_28px_rgba(15,23,42,0.06)] p-5 h-full';
+    'mega-card rounded-2xl bg-white border border-violet-100 shadow-[0_8px_28px_rgba(15,23,42,0.06)] p-5 h-full';
   const megaLink =
-    'block text-[13px] font-semibold text-slate-600 hover:text-violet-700 cursor-pointer transition-colors leading-snug py-1';
+    'block text-[13px] font-semibold text-slate-700 hover:text-violet-700 cursor-pointer transition-colors leading-snug py-1';
 
   // Helper function for Price Slider
   const getPriceLabel = (val: number) => {
@@ -997,12 +997,13 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
 
   return (
     <div
-      className="mega-menu absolute left-0 top-full w-full z-40 animate-in fade-in slide-in-from-top-1 duration-200"
+      className="mega-menu absolute left-0 top-full w-full z-[80] animate-in fade-in slide-in-from-top-1 duration-200 bg-white"
       onMouseLeave={onClose}
     >
       {/* barra accento sottile (stile sito) */}
-      <div className={`h-[3px] w-full ${theme.bar}`} />
-      <div className="mega-menu-panel border-b border-violet-100/80 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+      <div className={`h-[3px] w-full ${theme.bar} shrink-0`} />
+      {/* Blocco pieno opaco: non lascia trasparire hero / BEST OF */}
+      <div className="mega-menu-panel border-b border-violet-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="grid grid-cols-4 gap-4 xl:gap-5">
             {renderColumns()}
