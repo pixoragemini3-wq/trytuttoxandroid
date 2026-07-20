@@ -20,6 +20,21 @@ const PRICE_SIGNAL_RE =
   /(?:€\s*\d|\d+[.,]\d{2}\s*€|\d+\s*€|\b\d{2,4}\s*(?:euro|eur)\b|\ba\s+\d+[.,]?\d*\s*€|\bsotto\s+(?:i\s+)?\d+)/i;
 const AMAZON_LINK_RE = /amazon\.|amzn\.|amz-safe|\/dp\/|\/gp\/product\//i;
 
+/** Prodotto tech (smartphone, wearable, gadget Android-related). */
+const TECH_PRODUCT_RE =
+  /\b(?:smartphone|cellulare|telefon(?:o|i)|phablet|tablet|ipad|smartwatch|smart\s*band|smartband|earbuds?|cuffie|auricolari|tws|power\s*bank|powerbank|caricabatter(?:ia|ie)|gadget|notebook|laptop|chromebook|monitor|smart\s*tv|console|controller|router|mesh\s*wifi|ssd|hard\s*disk|pendrive|usb[- ]?c|micro\s*sd|cover|custodia|pellicola|tempered\s*glass|kindle|echo\b|fire\s*tv|chromecast|tv\s*stick|webcam|action\s*cam|drone|steam\s*deck|nintendo|playstation|xbox|dock|hub\s*usb|speaker|soundbar|webcam)\b/i;
+
+/** Brand / modelli telefono (e tablet brand-phone). */
+const SMARTPHONE_RE =
+  /\b(?:smartphone|cellulare|telefon(?:o|i)\s+android|galaxy\s*[szafm]?\s*\d*|galaxy\s*a\d+|galaxy\s*m\d+|pixel\s*\d*[a]?|iphone\s*\d*|xiaomi|redmi(?:\s*note)?|poco\s*[xfcm]?\s*\d*|oneplus|honor|realme|motorola|moto\s*[geg]\d*|nothing\s*phone|oppo|vivo|huawei|asus\s*rog\s*phone|zte|nokia|fairphone|iqoo|tecno|infinix|blackview|ulefone|cubot)\b/i;
+
+/**
+ * Rumore non-tech: prezzi sì, ma non deal tech (auto, tasse, moda, bollette…).
+ * Usato per escludere da Offerte / budget anche se c’è un € nel testo.
+ */
+const NON_TECH_NOISE_RE =
+  /\b(?:lavaggio\s+auto|auto\s+in\s+strada|tassa\s+(?:sui\s+)?conti|conto\s+corrente|conti\s+correnti|multe?(?:\s|$)|bollett[ae]|mutuo|assicurazion|abbigliamento|magliett[ae]|calzini|pampling|pamplona|caff[eè]|lavatrice|frigorifer|forno\b|autostrada|carburant|pensione|invalidit|bici\s+elettrica|sachsenrad|finom|engie|puntofisso|bollette|rimborso\s+fiscale|cashback\s+oral|oral-?b|trasporto\s+oggetti|videogiochi\s+da\s+collezione|asta\s+record)\b/i;
+
 type OfferSignalInput = {
   title?: string;
   excerpt?: string;
@@ -29,7 +44,33 @@ type OfferSignalInput = {
   dealData?: DealData | null;
 };
 
-/** Score ≥ 3 → trattalo come offerta (etichetta + badge). */
+const offerHay = (input: OfferSignalInput, bodyLimit = 2000): string => {
+  const tags = (input.tags || []).join(' ');
+  const body = `${input.content || ''}`.slice(0, bodyLimit);
+  return `${input.title || ''} ${input.excerpt || ''} ${tags} ${input.category || ''} ${body}`.toLowerCase();
+};
+
+/** Argomenti fuori dal perimetro tech del sito (non sono offerte prodotto). */
+export const isNonTechOfferNoise = (input: OfferSignalInput): boolean => {
+  const head = `${input.title || ''} ${input.excerpt || ''} ${(input.tags || []).join(' ')}`.toLowerCase();
+  return NON_TECH_NOISE_RE.test(head);
+};
+
+/** Contesto prodotto tech (telefono, wearable, gadget…). */
+export const isTechProductContext = (input: OfferSignalInput): boolean => {
+  if (isNonTechOfferNoise(input)) return false;
+  const hay = offerHay(input, 1800);
+  return TECH_PRODUCT_RE.test(hay) || SMARTPHONE_RE.test(hay);
+};
+
+/** Contesto smartphone / telefono. */
+export const isSmartphoneContext = (input: OfferSignalInput): boolean => {
+  if (isNonTechOfferNoise(input)) return false;
+  const hay = offerHay(input, 1800);
+  return SMARTPHONE_RE.test(hay);
+};
+
+/** Score grezzo segnali offerta (senza gate tech). */
 export const scoreOfferSignals = (input: OfferSignalInput): number => {
   const tags = (input.tags || []).map((t) => t.toLowerCase().trim());
   const title = (input.title || '').toLowerCase();
@@ -49,10 +90,43 @@ export const scoreOfferSignals = (input: OfferSignalInput): number => {
   else if (PRICE_SIGNAL_RE.test(excerpt) || PRICE_SIGNAL_RE.test(body)) score += 2;
   // Prezzo + Amazon insieme = offerta quasi certa
   if (AMAZON_LINK_RE.test(hay) && PRICE_SIGNAL_RE.test(hay)) score += 2;
+  // Boost se è davvero un prodotto tech
+  if (isTechProductContext(input)) score += 2;
+  if (isSmartphoneContext(input)) score += 1;
   return score;
 };
 
-export const isOfferArticle = (input: OfferSignalInput): boolean => scoreOfferSignals(input) >= 3;
+/**
+ * Offerta “vera” per il sito: segnali deal + prodotto tech.
+ * Esclude lavaggi auto, tasse, moda, ecc. anche se c’è un prezzo.
+ */
+export const isOfferArticle = (input: OfferSignalInput): boolean => {
+  if (isNonTechOfferNoise(input)) return false;
+  if (!isTechProductContext(input)) return false;
+  return scoreOfferSignals(input) >= 4;
+};
+
+/** Offerta tech da mostrare in lista Offerte (deal o etichetta + tech). */
+export const isTechDealArticle = (input: OfferSignalInput): boolean => {
+  if (isNonTechOfferNoise(input)) return false;
+  if (!isTechProductContext(input)) return false;
+  if (input.dealData?.link || input.dealData?.newPrice) return true;
+  if (isOfferArticle(input)) return true;
+  const tags = (input.tags || []).map((t) => t.toLowerCase().trim());
+  const cat = (input.category || '').toLowerCase();
+  if (cat === 'offerte' || tags.some((t) => t === 'offerte' || t === 'offerteimperdibili')) {
+    return true;
+  }
+  // Titolo deal tipico tech: "Galaxy A… a 199€", "sotto i 300€"
+  const title = (input.title || '').toLowerCase();
+  if (
+    (SMARTPHONE_RE.test(title) || TECH_PRODUCT_RE.test(title)) &&
+    (PRICE_SIGNAL_RE.test(title) || OFFER_WORD_RE.test(title))
+  ) {
+    return true;
+  }
+  return false;
+};
 
 const YEAR_LIKE = (n: number) => n >= 2010 && n <= 2030;
 /** Contesto prima del prezzo: non è il prezzo di vendita del prodotto. */
@@ -190,8 +264,8 @@ export const extractArticlePriceEuro = (
   const excerptPrices = collectPrices(excerpt);
   if (excerptPrices.length) return Math.min(...excerptPrices);
 
-  // Body solo se sembra un'offerta (evita carburanti, multe, specifiche)
-  if (isOfferArticle(article) || (article.category || '').toLowerCase() === 'offerte') {
+  // Body solo per deal tech (evita prezzi in news generiche / non-tech)
+  if (isTechDealArticle(article) || isSmartphoneContext(article)) {
     const bodyPrices = collectPrices(body);
     if (bodyPrices.length) return Math.min(...bodyPrices);
   }
@@ -215,6 +289,34 @@ export const filterArticlesUnderMaxEuro = (articles: Article[], maxEuro: number)
 };
 
 /**
+ * Budget Offerte: solo deal tech con prezzo ≤ maxEuro.
+ * Preferisce smartphone; se ne trova meno di 2, allarga ad altri gadget tech.
+ */
+export const filterBudgetTechOffers = (
+  articles: Article[],
+  maxEuro: number,
+  opts?: { smartphoneOnly?: boolean }
+): Article[] => {
+  if (!maxEuro || maxEuro <= 0) return [];
+
+  const pricedTech = articles.filter((a) => {
+    if (!isTechDealArticle(a) && !isSmartphoneContext(a)) return false;
+    if (isNonTechOfferNoise(a)) return false;
+    const p = a.priceEuro != null ? a.priceEuro : extractArticlePriceEuro(a);
+    return p != null && p > 0 && p <= maxEuro;
+  });
+
+  const phones = pricedTech.filter((a) => isSmartphoneContext(a));
+  if (opts?.smartphoneOnly) return phones;
+  // Preferenza smartphone; fallback gadget tech se il feed ha poche phone-deal
+  if (phones.length >= 2) return phones;
+  if (phones.length === 1 && pricedTech.length > 1) {
+    return [...phones, ...pricedTech.filter((a) => a.id !== phones[0].id)];
+  }
+  return pricedTech;
+};
+
+/**
  * Ricalibra la categoria navigazione: se è soprattutto un'offerta
  * (anche con etichetta news/brand), vince Offerte. Non sovrascrive
  * recensioni/guide esplicite.
@@ -233,7 +335,8 @@ export const refineMainCategory = (
     t === 'offerte' || t === 'offerteimperdibili' || t === 'amazon' || OFFER_TAG_RE.test(t)
   );
 
-  if (hasExplicitOffer || isOfferArticle(input)) {
+  // Solo offerte tech (no auto/tasse/moda con un € nel testo)
+  if (isTechDealArticle(input) || (hasExplicitOffer && isTechProductContext(input))) {
     // Recensione/guida con prezzo citato restano tali; dealData o tag offerte forzano Offerte
     if (hasExplicitReview && !hasExplicitOffer && !input.dealData?.link) return 'Recensioni';
     if (hasExplicitGuide && !hasExplicitOffer && !input.dealData?.link) return 'Guide';
@@ -987,8 +1090,8 @@ const articleMatchesNavCategory = (article: Article, category: Category): boolea
   // Guide e Tutorial sono la stessa sezione nel sito
   if (target === 'guide' && (articleCategory === 'tutorial' || articleTags.includes('tutorial'))) return true;
   if (target === 'tutorial' && (articleCategory === 'guide' || articleTags.includes('guide') || articleTags.includes('guida'))) return true;
-  // Offerte: include post classificati via contenuto (prezzo/Amazon) anche senza etichetta Blogger
-  if (target === 'offerte' && isOfferArticle(article)) return true;
+  // Offerte: solo deal tech (no rumore non-tech con un €)
+  if (target === 'offerte' && isTechDealArticle(article)) return true;
   const feedLabels = getFeedLabelsForCategory(category).map((l) => l.toLowerCase());
   if (feedLabels.some((l) => articleTags.includes(l) || articleCategory === l)) return true;
   return false;

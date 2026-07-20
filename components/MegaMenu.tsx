@@ -8,8 +8,8 @@ import {
   fetchArchiveMonthCounts,
   fetchArchiveYearCounts,
   fetchPostsByDateRange,
-  filterArticlesUnderMaxEuro,
-  isOfferArticle,
+  filterBudgetTechOffers,
+  isTechDealArticle,
 } from '../services/bloggerService';
 import NewsletterForm from './NewsletterForm';
 import { CATEGORY_COLORS, MOCK_ARTICLES } from '../constants';
@@ -118,17 +118,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
     return sourceArticles.filter(a => a.id !== featuredArticle?.id).slice(0, 2);
   }, [sourceArticles, category, featuredArticle]);
 
-  // Offerte: ultime sotto il budget dello slider (prezzo estratto da titolo/body/DEAL)
+  // Offerte mega-menu: solo deal tech; con budget preferisci smartphone sotto soglia
   const offerArticles = useMemo(() => {
     if (category !== 'Offerte') return [];
-    const pool = sourceArticles.filter(
-      (a) =>
-        a.category === 'Offerte' ||
-        isOfferArticle(a) ||
-        /offerta|sconto|coupon|amazon|€|\beuro\b/i.test(articleHay(a))
-    );
-    const under = filterArticlesUnderMaxEuro(pool, maxBudgetEuro);
-    // Se nessun prezzo sotto soglia, mostra comunque le ultime offerte (senza filtro)
+    const pool = sourceArticles.filter((a) => isTechDealArticle(a));
+    const under = filterBudgetTechOffers(pool, maxBudgetEuro);
+    // Se nessun prezzo sotto soglia, ultime offerte tech (senza filler non-tech)
     const list = under.length > 0 ? under : pool;
     return list.slice(0, 6);
   }, [sourceArticles, category, maxBudgetEuro]);
@@ -672,7 +667,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
                       {getPriceLabel(priceRange)}
                     </button>
                     <p className="mt-3 text-[10px] text-gray-400 leading-snug">
-                      Prezzi letti da titolo e post (es. 199€, sotto i 300€).
+                      Solo smartphone e gadget tech (prezzo da titolo/post).
                     </p>
                  </div>
               </div>

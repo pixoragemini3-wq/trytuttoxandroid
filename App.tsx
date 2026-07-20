@@ -10,7 +10,9 @@ import {
   fetchArticleByUrl,
   resolveAuthorImageUrl,
   hydrateArticle,
-  filterArticlesUnderMaxEuro,
+  filterBudgetTechOffers,
+  isTechDealArticle,
+  isNonTechOfferNoise,
 } from './services/bloggerService';
 import { isInAppBrowser } from './utils/browser';
 import SocialSidebar from './components/SocialSidebar';
@@ -742,7 +744,7 @@ const App: React.FC = () => {
         // Solo etichette forti: "test"/"analisi" nel titolo matchano news tipo "Apple testa…"
         'recensioni': ['recensioni', 'recensione', 'review'],
         'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips', 'impostare', 'nascondere'],
-        'offerte': ['offerte', 'offerta', 'offerteimperdibili', 'sconto', 'promo', 'prezzo', 'amazon', 'ebay', 'coupon', 'black friday', 'prime day', 'volantino', 'deal'],
+        'offerte': ['offerte', 'offerta', 'offerteimperdibili'],
         'app & giochi': ['app', 'applicazione', 'giochi', 'game', 'play store', 'apk', 'whatsapp', 'instagram', 'telegram', 'facebook', 'tiktok'],
         'modding': ['modding', 'root', 'rom', 'custom rom', 'bootloader', 'recovery', 'magisk', 'adb', 'fastboot', 'kernel'],
         'wearable': ['wearable', 'smartwatch', 'smartband', 'cuffie', 'auricolari', 'tws', 'watch', 'fitbit', 'garmin', 'amazfit', 'galaxy watch', 'pixel watch', 'apple watch']
@@ -751,6 +753,21 @@ const App: React.FC = () => {
       list = list.filter(a => {
         const articleTags = (a.tags || []).map(t => t.toLowerCase().trim());
         const articleCategory = (a.category || '').toLowerCase().trim();
+
+        // Offerte: solo deal tech (smartphone/gadget). Niente auto, tasse, moda con un €.
+        if (target === 'offerte') {
+          if (isNonTechOfferNoise(a)) return false;
+          if (isTechDealArticle(a)) return true;
+          if (
+            (articleCategory === 'offerte' ||
+              articleTags.some((t) => t === 'offerte' || t === 'offerteimperdibili')) &&
+            !isNonTechOfferNoise(a)
+          ) {
+            // Etichetta Blogger Offerte: tieni solo se c’è contesto tech
+            return isTechDealArticle({ ...a, category: 'Offerte' });
+          }
+          return false;
+        }
         
         if (articleCategory === target) return true;
         if (articleTags.includes(target)) return true;
@@ -758,7 +775,6 @@ const App: React.FC = () => {
         const labelAliases: Record<string, string[]> = {
           'recensioni': ['recensioni', 'recensione', 'review'],
           'guide': ['guide', 'guida', 'tutorial'],
-          'offerte': ['offerte', 'offerteimperdibili', 'amazon', 'sconto', 'coupon', 'promo'],
           'app & giochi': ['app', 'giochi'],
         };
         const aliases = labelAliases[target];
@@ -767,13 +783,6 @@ const App: React.FC = () => {
         if (target === 'app & giochi') {
              if (articleTags.some(t => t.includes('app') || t.includes('giochi') || t.includes('game'))) return true;
              if (articleCategory.includes('app') || articleCategory.includes('giochi')) return true;
-        }
-
-        // Offerte: match anche su titolo/excerpt (prezzo, Amazon) se categoria non era etichettata
-        if (target === 'offerte') {
-          const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
-          if (a.dealData?.link) return true;
-          if (/(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli|amzn\.|amazon\.)/i.test(hay)) return true;
         }
 
         // Smartphone: match su titolo (Galaxy, Pixel…) oltre a tag/categoria
@@ -813,17 +822,9 @@ const App: React.FC = () => {
         return false;
       });
 
-      // Budget Offerte: solo post con prezzo estratto ≤ maxBudgetEuro
+      // Budget: solo smartphone/gadget tech con prezzo ≤ soglia (no filler non-tech)
       if (target === 'offerte' && maxBudgetEuro != null) {
-        const priced = filterArticlesUnderMaxEuro(list, maxBudgetEuro);
-        // Se troppo pochi, tieni anche offerte senza prezzo leggibile in coda
-        if (priced.length >= 3) {
-          list = priced;
-        } else {
-          const pricedIds = new Set(priced.map((a) => a.id));
-          const rest = list.filter((a) => !pricedIds.has(a.id));
-          list = [...priced, ...rest];
-        }
+        list = filterBudgetTechOffers(list, maxBudgetEuro);
       }
     }
     return list;
@@ -2023,7 +2024,7 @@ const App: React.FC = () => {
                     {!isSearch && activeCategory === 'Offerte' && maxBudgetEuro != null && (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-[11px] font-black uppercase tracking-wide px-3 py-1">
-                          Budget ≤ {maxBudgetEuro}€
+                          Smartphone/tech ≤ {maxBudgetEuro}€
                         </span>
                         <button
                           type="button"
@@ -2099,10 +2100,28 @@ const App: React.FC = () => {
                     ) : (
                       <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200">
                         <p className="text-gray-400 font-bold uppercase tracking-widest">
-                          {isSearch ? `Nessun risultato trovato per "${searchQuery}".` : 'Nessun articolo trovato in questa categoria.'}
+                          {isSearch
+                            ? `Nessun risultato trovato per "${searchQuery}".`
+                            : activeCategory === 'Offerte' && maxBudgetEuro != null
+                              ? `Nessuna offerta smartphone/tech sotto i ${maxBudgetEuro}€ nel feed recente.`
+                              : 'Nessun articolo trovato in questa categoria.'}
                         </p>
-                        <p className="text-xs text-gray-300 mt-2">Prova a cercare un altro termine o torna alla home.</p>
-                        <button onClick={goToHome} className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors">Torna alla Home</button>
+                        <p className="text-xs text-gray-300 mt-2">
+                          {activeCategory === 'Offerte' && maxBudgetEuro != null
+                            ? 'Prova un budget più alto o rimuovi il filtro.'
+                            : 'Prova a cercare un altro termine o torna alla home.'}
+                        </p>
+                        {activeCategory === 'Offerte' && maxBudgetEuro != null ? (
+                          <button
+                            type="button"
+                            onClick={() => setMaxBudgetEuro(null)}
+                            className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors"
+                          >
+                            Rimuovi filtro budget
+                          </button>
+                        ) : (
+                          <button onClick={goToHome} className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors">Torna alla Home</button>
+                        )}
                       </div>
                     )}
                     
