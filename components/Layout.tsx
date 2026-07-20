@@ -132,10 +132,10 @@ const Layout: React.FC<LayoutProps> = ({
             min-height: 0 !important;
             overflow: visible !important;
           }
-          /* Logo: 132 → +20% (158) → +15% (182); banda resta 180px */
+          /* Logo: … → 182 → +15% (209); banda resta 180px */
           .txa-header-logo {
-            height: 182px !important;
-            max-height: 182px !important;
+            height: 209px !important;
+            max-height: 209px !important;
             width: auto !important;
             object-fit: contain !important;
             transform-origin: left center;
@@ -176,7 +176,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="txa-header-logo h-[171px] w-auto object-contain origin-left"
+                className="txa-header-logo h-[197px] w-auto object-contain origin-left"
               />
             </div>
 
