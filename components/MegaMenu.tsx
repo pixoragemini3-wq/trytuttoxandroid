@@ -8,6 +8,7 @@ import {
   fetchPostsByDateRange,
 } from '../services/bloggerService';
 import NewsletterForm from './NewsletterForm';
+import { CATEGORY_COLORS } from '../constants';
 
 interface MegaMenuProps {
   category: string;
@@ -138,34 +139,19 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
     ];
   }, [category]);
 
-  // Accenti leggeri per categoria (il pannello resta stile “spotlight” del sito)
-  const getCategoryTheme = (cat: string) => {
-    switch (cat) {
-      case 'Smartphone':
-        return { accent: 'text-blue-600', accentBg: 'bg-blue-50', ring: 'ring-blue-100', bar: 'bg-blue-500' };
-      case 'Modding':
-        return { accent: 'text-orange-600', accentBg: 'bg-orange-50', ring: 'ring-orange-100', bar: 'bg-orange-500' };
-      case 'App & Giochi':
-        return { accent: 'text-emerald-600', accentBg: 'bg-emerald-50', ring: 'ring-emerald-100', bar: 'bg-emerald-500' };
-      case 'Recensioni':
-        return { accent: 'text-violet-600', accentBg: 'bg-violet-50', ring: 'ring-violet-100', bar: 'bg-violet-500' };
-      case 'Guide':
-        return { accent: 'text-violet-600', accentBg: 'bg-violet-50', ring: 'ring-violet-100', bar: 'bg-violet-500' };
-      case 'Offerte':
-        return { accent: 'text-amber-600', accentBg: 'bg-amber-50', ring: 'ring-amber-100', bar: 'bg-amber-400' };
-      case 'Wearable':
-        return { accent: 'text-pink-600', accentBg: 'bg-pink-50', ring: 'ring-pink-100', bar: 'bg-pink-500' };
-      default:
-        return { accent: 'text-violet-600', accentBg: 'bg-violet-50', ring: 'ring-violet-100', bar: 'bg-violet-500' };
-    }
-  };
-
-  const theme = getCategoryTheme(category);
+  /** Colore ufficiale categoria (stesso del nav) — un solo accento per tutto il dropdown */
+  const accent = CATEGORY_COLORS[category] || CATEGORY_COLORS['Tutti'] || '#64748b';
 
   const megaCard =
-    'mega-card rounded-2xl bg-white border border-violet-100 shadow-[0_8px_28px_rgba(15,23,42,0.06)] p-5 h-full';
+    'mega-card rounded-2xl bg-white border border-slate-200/90 shadow-[0_8px_28px_rgba(15,23,42,0.06)] p-5 h-full';
   const megaLink =
-    'block text-[13px] font-semibold text-slate-700 hover:text-violet-700 cursor-pointer transition-colors leading-snug py-1';
+    'mega-link block text-[13px] font-semibold text-slate-700 cursor-pointer transition-colors leading-snug py-1 w-full text-left';
+  const megaIcon =
+    'mega-icon w-9 h-9 rounded-full flex items-center justify-center shrink-0';
+  const megaSeeAll =
+    'mega-see-all mt-3 text-[12px] font-semibold transition-colors';
+  const megaPromo =
+    'mega-card mega-card-promo rounded-2xl p-5 h-full flex flex-col justify-between text-white relative overflow-hidden';
 
   // Helper function for Price Slider
   const getPriceLabel = (val: number) => {
@@ -296,7 +282,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
 
       case 'Guide': {
         const guideIcon = (path: string) => (
-          <span className="w-9 h-9 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+          <span className={megaIcon}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={path} />
             </svg>
@@ -347,19 +333,16 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">{col.title}</h3>
                   </div>
                   <p className="text-[11px] text-slate-400 mb-3 pl-[2.65rem] leading-snug">{col.sub}</p>
-                  <ul className="space-y-0.5 border-t border-violet-50 pt-3">
+                  <ul className="space-y-0.5 border-t border-slate-100 pt-3">
                     {col.items.map((item) => (
                       <li key={item}>
-                        <button type="button" className={`${megaLink} w-full text-left`}>
+                        <button type="button" className={megaLink}>
                           {item}
                         </button>
                       </li>
                     ))}
                   </ul>
-                  <button
-                    type="button"
-                    className="mt-3 text-[12px] font-semibold text-violet-600 hover:text-violet-800 transition-colors"
-                  >
+                  <button type="button" className={megaSeeAll}>
                     Vedi tutti →
                   </button>
                 </div>
@@ -367,7 +350,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
             ))}
 
             <div className="col-span-1">
-              <div className="mega-card mega-card-promo rounded-2xl p-5 h-full flex flex-col justify-between bg-gradient-to-br from-violet-600 to-violet-700 text-white shadow-[0_12px_32px_rgba(109,40,217,0.28)] relative overflow-hidden">
+              <div className={megaPromo}>
                 <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10 blur-2xl pointer-events-none" />
                 <div className="relative z-10">
                   <div className="flex items-center gap-2.5 mb-3">
@@ -378,7 +361,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     </span>
                     <h3 className="font-semibold text-[15px] tracking-tight">Expert & Modding</h3>
                   </div>
-                  <p className="text-[12px] text-violet-100 mb-4 leading-relaxed">
+                  <p className="text-[12px] text-white/85 mb-4 leading-relaxed">
                     Guide avanzate per sblocco, root e custom ROM.
                   </p>
                   <ul className="space-y-2.5">
@@ -388,7 +371,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                           type="button"
                           className="flex items-center gap-2 text-[13px] font-medium text-white/90 hover:text-white transition-colors w-full text-left"
                         >
-                          <span className="w-1.5 h-1.5 rounded-full bg-violet-200 shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
                           {item}
                         </button>
                       </li>
@@ -416,7 +399,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
             <div className="col-span-1">
               <div className={megaCard}>
                <div className="flex items-center gap-2.5 mb-4">
-                  <span className="w-9 h-9 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                  <span className={megaIcon}>
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
                   </span>
                   <span className="text-[15px] font-semibold text-slate-900 tracking-tight">In Evidenza</span>
@@ -433,15 +416,15 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
             <div className="col-span-1">
               <div className={megaCard}>
                  <div className="flex items-center gap-2.5 mb-4">
-                   <span className="w-9 h-9 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                   <span className={megaIcon}>
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                    </span>
                    <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Top Brands</h3>
                  </div>
-                 <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 border-t border-violet-50 pt-3">
+                 <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 border-t border-slate-100 pt-3">
                    {collabBrands.map(brand => (
-                     <span key={brand} className="text-[13px] font-semibold text-slate-600 hover:text-violet-700 cursor-pointer transition-colors flex items-center gap-2 group">
-                       <span className="w-1.5 h-1.5 bg-violet-300 rounded-full group-hover:bg-violet-600 transition-colors"></span> {brand}
+                     <span key={brand} className="mega-link text-[13px] font-semibold text-slate-600 cursor-pointer transition-colors flex items-center gap-2 group">
+                       <span className="mega-dot w-1.5 h-1.5 rounded-full shrink-0"></span> {brand}
                      </span>
                    ))}
                  </div>
@@ -452,15 +435,15 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
             <div className="col-span-1">
               <div className={megaCard}>
                  <div className="flex items-center gap-2.5 mb-4">
-                   <span className="w-9 h-9 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                   <span className={megaIcon}>
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                    </span>
                    <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Dispositivi</h3>
                  </div>
-                 <ul className="space-y-0.5 border-t border-violet-50 pt-3">
+                 <ul className="space-y-0.5 border-t border-slate-100 pt-3">
                    {['Wearables & Smartwatch', 'Audio & Cuffie TWS', 'Tablet Android', 'Smart Home', 'Gadget Tech', 'TV Box & Stick'].map((item) => (
                      <li key={item}>
-                       <button type="button" className={`${megaLink} w-full text-left`}>{item}</button>
+                       <button type="button" className={megaLink}>{item}</button>
                      </li>
                    ))}
                  </ul>
@@ -469,11 +452,11 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
 
             {/* Col 4: Promo recensioni pro */}
             <div className="col-span-1">
-                <div className="mega-card mega-card-promo rounded-2xl p-6 h-full flex flex-col justify-between bg-gradient-to-br from-violet-600 to-violet-700 text-white shadow-[0_12px_32px_rgba(109,40,217,0.28)] relative overflow-hidden">
+                <div className={`${megaPromo} p-6`}>
                    <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10 blur-2xl pointer-events-none" />
                    <div className="relative z-10">
                       <h4 className="text-xl font-bold tracking-tight mb-2">Recensioni pro</h4>
-                      <p className="text-[12px] text-violet-100 leading-relaxed mb-5">
+                      <p className="text-[12px] text-white/85 leading-relaxed mb-5">
                         Analisi dettagliate di smartphone, wearable e gadget.
                       </p>
                    </div>
@@ -574,7 +557,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
              <div className="col-span-1">
                <div className={megaCard}>
                <div className="flex items-center gap-2.5 mb-4">
-                 <span className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                 <span className={megaIcon}>
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                  </span>
                  <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Ultime App</h3>
@@ -582,12 +565,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                <div className="space-y-2">
                  {appList.length > 0 ? (
                     appList.map((art) => (
-                      <div key={art.id} onClick={() => onArticleClick(art)} className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-violet-50/80 transition-colors cursor-pointer group">
-                         <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-violet-100">
+                      <div key={art.id} onClick={() => onArticleClick(art)} className="mega-row flex items-center gap-3 p-1.5 rounded-xl transition-colors cursor-pointer group">
+                         <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
                             <img src={art.imageUrl} className="w-full h-full object-cover" alt={art.title} />
                          </div>
                          <div className="min-w-0">
-                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-violet-700 leading-tight line-clamp-2">{art.title}</h4>
+                            <h4 className="mega-row-title text-xs font-semibold text-slate-900 leading-tight line-clamp-2">{art.title}</h4>
                          </div>
                       </div>
                     ))
@@ -595,7 +578,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     <p className="text-xs text-slate-400">Nessuna app recente.</p>
                  )}
                </div>
-               <button className="mt-3 text-[12px] font-semibold text-violet-600 hover:text-violet-800 transition-colors">
+               <button type="button" className={megaSeeAll}>
                   Vedi tutte →
                </button>
                </div>
@@ -605,7 +588,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
              <div className="col-span-1">
                <div className={megaCard}>
                <div className="flex items-center gap-2.5 mb-4">
-                 <span className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                 <span className={megaIcon}>
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                  </span>
                  <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Ultimi Giochi</h3>
@@ -613,12 +596,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                <div className="space-y-2">
                  {gamesList.length > 0 ? (
                     gamesList.map((art) => (
-                      <div key={art.id} onClick={() => onArticleClick(art)} className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-violet-50/80 transition-colors cursor-pointer group">
-                         <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-violet-100">
+                      <div key={art.id} onClick={() => onArticleClick(art)} className="mega-row flex items-center gap-3 p-1.5 rounded-xl transition-colors cursor-pointer group">
+                         <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
                             <img src={art.imageUrl} className="w-full h-full object-cover" alt={art.title} />
                          </div>
                          <div className="min-w-0">
-                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-violet-700 leading-tight line-clamp-2">{art.title}</h4>
+                            <h4 className="mega-row-title text-xs font-semibold text-slate-900 leading-tight line-clamp-2">{art.title}</h4>
                          </div>
                       </div>
                     ))
@@ -626,7 +609,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     <p className="text-xs text-slate-400">Nessun gioco recente.</p>
                  )}
                </div>
-               <button className="mt-3 text-[12px] font-semibold text-violet-600 hover:text-violet-800 transition-colors">
+               <button type="button" className={megaSeeAll}>
                   Vedi tutti →
                </button>
                </div>
@@ -636,27 +619,27 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
              <div className="col-span-1">
                <div className={megaCard}>
                 <div className="flex items-center gap-2.5 mb-4">
-                  <span className="w-9 h-9 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                  <span className={megaIcon}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                   </span>
                   <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Categorie</h3>
                 </div>
-                <ul className="space-y-0.5 border-t border-violet-50 pt-3">
+                <ul className="space-y-0.5 border-t border-slate-100 pt-3">
                   {['Giochi Android Gratis', 'Migliori App Produttività', 'App Foto & Video', 'Personalizzazione', 'Emulatori'].map((item) => (
                     <li key={item}>
-                      <button type="button" className={`${megaLink} w-full text-left`}>{item}</button>
+                      <button type="button" className={megaLink}>{item}</button>
                     </li>
                   ))}
                 </ul>
                </div>
              </div>
 
-             {/* Col 4: Promo (stile card viola homepage) */}
+             {/* Col 4: Promo — stesso verde della categoria App & Giochi */}
              <div className="col-span-1">
-                <div className="mega-card mega-card-promo rounded-2xl p-6 text-white h-full flex flex-col justify-center relative overflow-hidden bg-gradient-to-br from-violet-600 to-violet-700 shadow-[0_12px_32px_rgba(109,40,217,0.28)]">
+                <div className={`${megaPromo} p-6 justify-center`}>
                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                    <h4 className="text-xl font-bold tracking-tight mb-2 relative z-10">Google Play Pass</h4>
-                   <p className="text-[12px] font-medium text-violet-100 mb-5 relative z-10 leading-relaxed">
+                   <p className="text-[12px] font-medium text-white/85 mb-5 relative z-10 leading-relaxed">
                      Centinaia di giochi e app senza pubblicità. Scopri se ne vale la pena.
                    </p>
                    <button className="bg-white/15 hover:bg-white/25 border border-white/20 text-white px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors w-fit relative z-10">
@@ -998,12 +981,13 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
   return (
     <div
       className="mega-menu absolute left-0 top-full w-full z-[80] animate-in fade-in slide-in-from-top-1 duration-200 bg-white"
+      style={{ ['--mega-accent' as string]: accent }}
       onMouseLeave={onClose}
     >
-      {/* barra accento sottile (stile sito) */}
-      <div className={`h-[3px] w-full ${theme.bar} shrink-0`} />
+      {/* barra = colore categoria (come underline del nav) */}
+      <div className="mega-menu-bar h-[3px] w-full shrink-0" />
       {/* Blocco pieno opaco: non lascia trasparire hero / BEST OF */}
-      <div className="mega-menu-panel border-b border-violet-100">
+      <div className="mega-menu-panel border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="grid grid-cols-4 gap-4 xl:gap-5">
             {renderColumns()}
