@@ -11,8 +11,12 @@ import {
   resolveAuthorImageUrl,
   hydrateArticle,
   filterBudgetTechOffers,
+  filterSmartphonesByPriceBand,
   isTechDealArticle,
   isNonTechOfferNoise,
+  isSmartphoneContext,
+  smartphoneGuideBand,
+  type SmartphonePriceBand,
 } from './services/bloggerService';
 import { isInAppBrowser } from './utils/browser';
 import SocialSidebar from './components/SocialSidebar';
@@ -60,6 +64,8 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
   /** Filtro budget Offerte (prezzo estratto dai post). null = nessun tetto. */
   const [maxBudgetEuro, setMaxBudgetEuro] = useState<number | null>(null);
+  /** Guide Acquisto Smartphone: fascia prezzo esclusiva (es. 300–400€). */
+  const [phonePriceBand, setPhonePriceBand] = useState<SmartphonePriceBand | null>(null);
   
   // Split loading states to prevent blocking UI
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
@@ -540,7 +546,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleNavClick = async (nav: string) => {
+  const handleNavClick = async (
+    nav: string,
+    opts?: { phoneBand?: SmartphonePriceBand | null }
+  ) => {
     // Da articolo Blogger: hard reload home (+ categoria). navigate() SPA resta sulla .html
     if (isOnArticlePage) {
       try {
@@ -565,6 +574,12 @@ const App: React.FC = () => {
 
     setActiveCategory(nav);
     if (nav !== 'Offerte') setMaxBudgetEuro(null);
+    // Guide Acquisto passa phoneBand; click nav Smartphone generico azzera la fascia
+    if (opts && 'phoneBand' in opts) {
+      setPhonePriceBand(opts.phoneBand ?? null);
+    } else {
+      setPhonePriceBand(null);
+    }
     setVisibleNewsCount(6); 
     setNextStartIndex(1);
     setHasMoreToFetch(true);
@@ -618,6 +633,7 @@ const App: React.FC = () => {
     setSearchQuery('');
     setActiveCategory('Tutti');
     setMaxBudgetEuro(null);
+    setPhonePriceBand(null);
     setVisibleNewsCount(6);
     setFilteredArticles(articles);
 
@@ -826,6 +842,15 @@ const App: React.FC = () => {
       if (target === 'offerte' && maxBudgetEuro != null) {
         list = filterBudgetTechOffers(list, maxBudgetEuro);
       }
+
+      // Guide Acquisto: smartphone solo nella fascia (es. sotto 400 = 300–400, non 100/200)
+      if (target === 'smartphone' && phonePriceBand != null) {
+        list = filterSmartphonesByPriceBand(list, phonePriceBand);
+      } else if (target === 'smartphone') {
+        // Senza fascia: tieni pezzi su telefoni; escludi rumore non-phone se possibile
+        const phones = list.filter((a) => isSmartphoneContext(a) || (a.category || '').toLowerCase() === 'smartphone');
+        if (phones.length >= 3) list = phones;
+      }
     }
     return list;
   };
@@ -833,6 +858,7 @@ const App: React.FC = () => {
   const displayArticles = isSearch ? filteredArticles : getDisplayArticles();
 
   const handleBudgetFilter = (maxEuro: number) => {
+    setPhonePriceBand(null);
     setMaxBudgetEuro(maxEuro);
     void handleNavClick('Offerte');
   };
@@ -840,6 +866,13 @@ const App: React.FC = () => {
   const handleSeeAllOffers = () => {
     setMaxBudgetEuro(null);
     void handleNavClick('Offerte');
+  };
+
+  /** Guide Acquisto mega-menu: fascia prezzo smartphone esclusiva. */
+  const handleSmartphonePriceGuide = (maxEuro: number | null) => {
+    setMaxBudgetEuro(null);
+    const band = maxEuro == null ? null : smartphoneGuideBand(maxEuro);
+    void handleNavClick('Smartphone', { phoneBand: band });
   };
 
   const handleDealClick = (deal: Deal, location: string) => {
@@ -1879,6 +1912,7 @@ const App: React.FC = () => {
       handleNavClick={handleNavClick}
       handleBudgetFilter={handleBudgetFilter}
       handleSeeAllOffers={handleSeeAllOffers}
+      handleSmartphonePriceGuide={handleSmartphonePriceGuide}
       handleArticleClick={handleArticleClick}
       handleFooterLinkClick={handleFooterLinkClick}
       goToHome={goToHome}
@@ -2050,6 +2084,23 @@ const App: React.FC = () => {
                         </button>
                       </div>
                     )}
+                    {!isSearch && activeCategory === 'Smartphone' && phonePriceBand != null && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 text-[11px] font-black uppercase tracking-wide px-3 py-1">
+                          {phonePriceBand.minExclusive > 0
+                            ? `${phonePriceBand.minExclusive + 1}–${phonePriceBand.maxEuro}€`
+                            : `≤ ${phonePriceBand.maxEuro}€`}
+                          {' · '}smartphone
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPhonePriceBand(null)}
+                          className="text-[11px] font-bold text-gray-500 hover:text-blue-600 underline-offset-2 hover:underline"
+                        >
+                          Rimuovi filtro
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {!isSearch && (
                   <div className="flex items-center gap-5 overflow-x-auto no-scrollbar mt-4 md:mt-0">
@@ -2130,12 +2181,16 @@ const App: React.FC = () => {
                             ? `Nessun risultato trovato per "${searchQuery}".`
                             : activeCategory === 'Offerte' && maxBudgetEuro != null
                               ? `Nessuna offerta smartphone/tech sotto i ${maxBudgetEuro}€ nel feed recente.`
-                              : 'Nessun articolo trovato in questa categoria.'}
+                              : activeCategory === 'Smartphone' && phonePriceBand != null
+                                ? `Nessuno smartphone nella fascia ${phonePriceBand.minExclusive > 0 ? `${phonePriceBand.minExclusive}–${phonePriceBand.maxEuro}` : `≤ ${phonePriceBand.maxEuro}`}€ nel feed recente.`
+                                : 'Nessun articolo trovato in questa categoria.'}
                         </p>
                         <p className="text-xs text-gray-300 mt-2">
                           {activeCategory === 'Offerte' && maxBudgetEuro != null
                             ? 'Prova un budget più alto o rimuovi il filtro.'
-                            : 'Prova a cercare un altro termine o torna alla home.'}
+                            : activeCategory === 'Smartphone' && phonePriceBand != null
+                              ? 'Prova un’altra fascia (es. sotto 200€) o rimuovi il filtro.'
+                              : 'Prova a cercare un altro termine o torna alla home.'}
                         </p>
                         {activeCategory === 'Offerte' && maxBudgetEuro != null ? (
                           <button
@@ -2144,6 +2199,14 @@ const App: React.FC = () => {
                             className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors"
                           >
                             Rimuovi filtro budget
+                          </button>
+                        ) : activeCategory === 'Smartphone' && phonePriceBand != null ? (
+                          <button
+                            type="button"
+                            onClick={() => setPhonePriceBand(null)}
+                            className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors"
+                          >
+                            Rimuovi filtro prezzo
                           </button>
                         ) : (
                           <button onClick={goToHome} className="mt-6 bg-black text-white px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#e31b23] transition-colors">Torna alla Home</button>

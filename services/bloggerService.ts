@@ -289,6 +289,49 @@ export const filterArticlesUnderMaxEuro = (articles: Article[], maxEuro: number)
 };
 
 /**
+ * Fasce Guide Acquisto smartphone (esclusive):
+ * - 100€ → solo ≤100
+ * - 200€ → (100, 200]
+ * - 300€ → (200, 300]
+ * - 400€ → (300, 400]  (non mostra i sotto 100/200)
+ * - 500€ → (400, 500]
+ */
+export type SmartphonePriceBand = {
+  maxEuro: number;
+  minExclusive: number;
+  label: string;
+};
+
+export const smartphoneGuideBand = (maxEuro: number): SmartphonePriceBand => {
+  const max = [100, 200, 300, 400, 500].includes(maxEuro) ? maxEuro : 300;
+  const minExclusive = max <= 100 ? 0 : max - 100;
+  const label =
+    max <= 100
+      ? `Top sotto i ${max}€`
+      : max >= 500
+        ? `Fino a ${max}€`
+        : `Top sotto i ${max}€`;
+  return { maxEuro: max, minExclusive, label };
+};
+
+/** Solo articoli smartphone con prezzo nella fascia (minExclusive, maxEuro]. */
+export const filterSmartphonesByPriceBand = (
+  articles: Article[],
+  band: SmartphonePriceBand
+): Article[] => {
+  return articles.filter((a) => {
+    if (!isSmartphoneContext(a)) return false;
+    if (isNonTechOfferNoise(a)) return false;
+    const p = a.priceEuro != null ? a.priceEuro : extractArticlePriceEuro(a);
+    if (p == null || p <= 0) return false;
+    if (p > band.maxEuro) return false;
+    // Esclude fasce più basse (es. sotto 400 non include 100/200/300)
+    if (p <= band.minExclusive) return false;
+    return true;
+  });
+};
+
+/**
  * Budget Offerte: solo deal tech con prezzo ≤ maxEuro.
  * Preferisce smartphone; se ne trova meno di 2, allarga ad altri gadget tech.
  */

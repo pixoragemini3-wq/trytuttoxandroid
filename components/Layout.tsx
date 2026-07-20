@@ -25,6 +25,7 @@ interface LayoutProps {
   handleNavClick: (nav: string) => void;
   handleBudgetFilter?: (maxEuro: number) => void;
   handleSeeAllOffers?: () => void;
+  handleSmartphonePriceGuide?: (maxEuro: number | null) => void;
   handleArticleClick: (article: Article) => void;
   handleFooterLinkClick: (path: '/about' | '/collab' | '/privacy' | '/') => void;
   goToHome: () => void;
@@ -51,6 +52,7 @@ const Layout: React.FC<LayoutProps> = ({
   handleNavClick,
   handleBudgetFilter,
   handleSeeAllOffers,
+  handleSmartphonePriceGuide,
   handleArticleClick,
   handleFooterLinkClick,
   goToHome,
@@ -277,6 +279,7 @@ const Layout: React.FC<LayoutProps> = ({
             onArticleClick={handleArticleClick}
             onBudgetFilter={handleBudgetFilter}
             onSeeAllOffers={handleSeeAllOffers}
+            onSmartphonePriceGuide={handleSmartphonePriceGuide}
           />
         )}
       </header>

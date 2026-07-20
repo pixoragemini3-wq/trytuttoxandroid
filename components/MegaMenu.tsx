@@ -22,6 +22,8 @@ interface MegaMenuProps {
   /** Applica filtro budget e apre la lista Offerte in homepage. */
   onBudgetFilter?: (maxEuro: number) => void;
   onSeeAllOffers?: () => void;
+  /** Guide Acquisto: fascia smartphone (null = tutti / migliori 2026). */
+  onSmartphonePriceGuide?: (maxEuro: number | null) => void;
 }
 
 const IT_MONTH_NAMES = [
@@ -38,6 +40,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
   onArticleClick,
   onBudgetFilter,
   onSeeAllOffers,
+  onSmartphonePriceGuide,
 }) => {
   const [showAllYears, setShowAllYears] = useState(false);
   const [priceRange, setPriceRange] = useState(1); // 0: <100, 1: <200, 2: <300, 3: <400, 4: <500
@@ -277,25 +280,33 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
                 ))}
               </div>
               <h3 className="font-semibold text-[13px] text-slate-900 mb-3 border-t border-violet-50 pt-3">Guide Acquisto</h3>
-              <ul className="space-y-2">
-                 <li className="text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span> Migliori Smartphone 2026
-                 </li>
-                 <li className="text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> Top sotto i 100€
-                 </li>
-                 <li className="text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> Top sotto i 200€
-                 </li>
-                 <li className="text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> Top sotto i 300€
-                 </li>
-                 <li className="text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> Top sotto i 400€
-                 </li>
-                 <li className="text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> Fino a 500€
-                 </li>
+              <ul className="space-y-1">
+                {(
+                  [
+                    { label: 'Migliori Smartphone 2026', max: null as number | null, accent: true },
+                    { label: 'Top sotto i 100€', max: 100, accent: false },
+                    { label: 'Top sotto i 200€', max: 200, accent: false },
+                    { label: 'Top sotto i 300€', max: 300, accent: false },
+                    { label: 'Top sotto i 400€', max: 400, accent: false },
+                    { label: 'Fino a 500€', max: 500, accent: false },
+                  ] as const
+                ).map((item) => (
+                  <li key={item.label}>
+                    <button
+                      type="button"
+                      className="w-full text-left text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer flex items-center gap-2 py-0.5 rounded transition-colors"
+                      onClick={() => {
+                        onSmartphonePriceGuide?.(item.max);
+                        onClose();
+                      }}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.accent ? 'bg-blue-600' : 'bg-slate-300'}`}
+                      />
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
               </ul>
               </div>
             </div>
