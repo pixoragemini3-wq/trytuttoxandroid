@@ -592,113 +592,183 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
       case 'Offerte':
          return (
           <>
-            {/* Col 1 & 2: Ultime Notizie Offerte (Grid of 6) */}
-            <div className="col-span-2 border-r border-gray-100 pr-4">
-              <h3 className="font-condensed text-xl font-black uppercase mb-4 text-gray-900 border-b-2 border-yellow-400 pb-2">
-                Ultime Offerte
-                <span className="ml-2 text-[10px] font-bold normal-case tracking-normal text-yellow-600">
-                  ≤ {maxBudgetEuro}€
-                </span>
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                 {offerArticles.length > 0 ? (
-                   offerArticles.map(art => {
-                     const price = offerPriceLabel(art);
-                     return (
-                     <div key={art.id} onClick={() => onArticleClick(art)} className="group cursor-pointer flex gap-3 items-center p-2 rounded-lg hover:bg-yellow-50 transition-colors">
-                        <div className="w-12 h-12 shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
-                           <img src={art.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt={art.title} />
-                        </div>
-                        <div className="min-w-0">
-                           <h4 className="text-[10px] font-bold leading-tight text-gray-900 group-hover:text-yellow-600 transition-colors line-clamp-2">{art.title}</h4>
-                           {price && (
-                             <span className="mt-0.5 inline-block text-[9px] font-black text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded">
-                               {price}
-                             </span>
-                           )}
-                        </div>
-                     </div>
-                     );
-                   })
-                 ) : (
-                   <p className="text-xs text-gray-400 col-span-2">
-                     Nessuna offerta con prezzo sotto i {maxBudgetEuro}€ nel feed recente.
-                   </p>
-                 )}
+            {/* Col 1 & 2: Ultime Offerte */}
+            <div className="col-span-2 pr-2">
+              <div className={`${megaCard} h-full`} style={megaCardStyle}>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <MegaIcon>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </MegaIcon>
+                    <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Ultime Offerte</h3>
+                  </div>
+                  <span
+                    className="shrink-0 text-[10px] font-black uppercase tracking-wide px-2 py-1 rounded-lg"
+                    style={{ backgroundColor: rgba(accent, 0.12), color: accent }}
+                  >
+                    ≤ {maxBudgetEuro}€
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {offerArticles.length > 0 ? (
+                    offerArticles.map((art) => {
+                      const price = offerPriceLabel(art);
+                      return (
+                        <button
+                          type="button"
+                          key={art.id}
+                          onClick={() => onArticleClick(art)}
+                          className="group flex gap-2.5 items-center p-2 rounded-xl text-left transition-colors border border-transparent hover:border-slate-100"
+                          style={{ backgroundColor: 'transparent' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = rgba(accent, 0.06);
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <div className="w-11 h-11 shrink-0 bg-slate-100 rounded-lg overflow-hidden border border-slate-100">
+                            <img
+                              src={art.imageUrl}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              alt=""
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-[11px] font-semibold leading-snug text-slate-800 line-clamp-2 group-hover:text-slate-950">
+                              {art.title}
+                            </h4>
+                            {price && (
+                              <span
+                                className="mt-1 inline-block text-[9px] font-black px-1.5 py-0.5 rounded-md"
+                                style={{ backgroundColor: rgba(accent, 0.14), color: darken(accent, 0.15) }}
+                              >
+                                {price}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-slate-400 col-span-2 py-4">
+                      Nessuna offerta tech sotto i {maxBudgetEuro}€ nel feed recente.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSeeAllOffers?.();
+                    onClose();
+                  }}
+                  className={megaSeeAll}
+                  style={megaSeeAllStyle}
+                >
+                  Vedi tutte le offerte →
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onSeeAllOffers?.();
-                  onClose();
-                }}
-                className="mt-4 text-[10px] font-black uppercase tracking-widest text-black hover:text-yellow-500 transition-colors w-full text-center py-2 bg-gray-50 rounded-lg"
-              >
-                Vedi tutte le offerte &rarr;
-              </button>
             </div>
 
-            {/* Col 3: Price Slider — filtra per prezzo estratto dai post */}
-            <div className="col-span-1 border-r border-gray-200 px-4">
-              <h3 className="font-condensed text-xl font-black uppercase mb-4 text-gray-900 border-b-2 border-yellow-400 pb-2">
-                Budget
-              </h3>
-              
-              <div className="bg-yellow-50 p-6 rounded-2xl text-center border border-yellow-100 h-[calc(100%-3rem)] flex flex-col justify-center">
-                 <div className="relative mb-8 pt-4">
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="4" 
-                      step="1" 
-                      value={priceRange} 
+            {/* Col 3: Budget — stessa card system del mega-menu */}
+            <div className="col-span-1">
+              <div className={`${megaCard} flex flex-col`} style={megaCardStyle}>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <MegaIcon>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                    </svg>
+                  </MegaIcon>
+                  <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Budget</h3>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-5 pl-[2.65rem] leading-snug">
+                  Solo smartphone e gadget tech
+                </p>
+
+                <div className="flex-1 flex flex-col justify-center">
+                  <div
+                    className="rounded-xl px-3 py-4 mb-4 border"
+                    style={{
+                      backgroundColor: rgba(accent, 0.06),
+                      borderColor: rgba(accent, 0.15),
+                    }}
+                  >
+                    <input
+                      type="range"
+                      min="0"
+                      max="4"
+                      step="1"
+                      value={priceRange}
                       onChange={(e) => setPriceRange(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-yellow-200 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                      style={{
+                        accentColor: accent,
+                        background: `linear-gradient(to right, ${accent} 0%, ${accent} ${(priceRange / 4) * 100}%, ${rgba(accent, 0.2)} ${(priceRange / 4) * 100}%, ${rgba(accent, 0.2)} 100%)`,
+                      }}
                       aria-label="Budget massimo"
                     />
-                    <div className="flex justify-between mt-2 text-[10px] font-black uppercase text-gray-400 w-full px-1">
-                      <span>100€</span>
-                      <span></span>
-                      <span>300€</span>
-                      <span></span>
-                      <span>500€</span>
+                    <div className="flex justify-between mt-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 w-full px-0.5">
+                      <span className={priceRange === 0 ? 'text-slate-800' : ''}>100€</span>
+                      <span className={priceRange === 1 ? 'text-slate-800' : ''}>200€</span>
+                      <span className={priceRange === 2 ? 'text-slate-800' : ''}>300€</span>
+                      <span className={priceRange === 3 ? 'text-slate-800' : ''}>400€</span>
+                      <span className={priceRange === 4 ? 'text-slate-800' : ''}>500€</span>
                     </div>
-                 </div>
-                 
-                 <div className="text-center">
-                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Trova offerte sotto i:</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onBudgetFilter?.(maxBudgetEuro);
-                        onClose();
-                      }}
-                      className="bg-black text-white px-4 py-3 rounded-xl font-black text-sm uppercase tracking-tight shadow-lg hover:bg-yellow-500 transition-colors w-full"
-                    >
-                      {getPriceLabel(priceRange)}
-                    </button>
-                    <p className="mt-3 text-[10px] text-gray-400 leading-snug">
-                      Solo smartphone e gadget tech (prezzo da titolo/post).
-                    </p>
-                 </div>
+                  </div>
+
+                  <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider text-center">
+                    Trova offerte sotto i
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onBudgetFilter?.(maxBudgetEuro);
+                      onClose();
+                    }}
+                    className="w-full rounded-xl text-white text-[12px] font-black uppercase tracking-wider py-3 transition-all hover:opacity-95 hover:shadow-md active:scale-[0.98]"
+                    style={{
+                      background: `linear-gradient(145deg, ${accent} 0%, ${darken(accent, 0.18)} 100%)`,
+                      boxShadow: `0 8px 20px ${rgba(accent, 0.35)}`,
+                    }}
+                  >
+                    {getPriceLabel(priceRange)}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Col 4: Telegram Promo Channel (Resized) */}
-            <div className="col-span-1 bg-[#24A1DE] p-4 rounded-2xl text-center relative overflow-hidden group shadow-lg flex flex-col justify-center items-center h-full">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
-               
-               {/* Telegram Icon */}
-               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform">
-                  <svg className="w-6 h-6 text-[#24A1DE]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z"/></svg>
-               </div>
+            {/* Col 4: Canale TG — promo coerente con megaPromo (palette Offerte, non blu “Telegram puro”) */}
+            <div className="col-span-1">
+              <div className={`${megaPromo} text-center items-center`} style={megaPromoStyle}>
+                <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-black/10 blur-2xl pointer-events-none" />
 
-               <h4 className="font-condensed text-2xl font-black uppercase text-white mb-1 relative z-10 italic">Canale<br/>Offerte</h4>
-               <p className="text-[10px] text-white/90 mb-4 font-medium relative z-10 max-w-xs">Errori di prezzo e coupon esclusivi.</p>
-               
-               <a href="https://t.me/tuttoxandroid" target="_blank" rel="noopener noreferrer" className="inline-block bg-white text-[#24A1DE] px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-xl relative z-10 w-full">
-                 Unisciti
-               </a>
+                <div className="relative z-10 flex flex-col items-center flex-1 justify-center w-full">
+                  <div className="w-12 h-12 rounded-full bg-white/15 border border-white/25 flex items-center justify-center mb-3 backdrop-blur-sm">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.7-1.53 4.47-1.8 4.97-1.8.11 0 .35.03.5.15.13.11.17.25.18.35a.8.8 0 01-.01.21z" />
+                    </svg>
+                  </div>
+                  <h4 className="font-condensed text-2xl font-black uppercase text-white tracking-tight leading-none mb-2">
+                    Canale
+                    <br />
+                    Offerte
+                  </h4>
+                  <p className="text-[11px] text-white/85 leading-relaxed mb-5 max-w-[11rem]">
+                    Errori di prezzo e coupon esclusivi su Telegram.
+                  </p>
+                  <a
+                    href="https://t.me/tuttoxandroid"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white text-[11px] font-bold uppercase tracking-wider py-2.5 transition-colors"
+                  >
+                    Unisciti al canale →
+                  </a>
+                </div>
+              </div>
             </div>
           </>
          );
