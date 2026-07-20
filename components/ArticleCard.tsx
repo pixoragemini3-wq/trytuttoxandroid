@@ -9,7 +9,7 @@ interface ArticleCardProps {
   onClick?: () => void;
   className?: string;
   isLoading?: boolean;
-  type?: 'standard' | 'horizontal' | 'hero' | 'sidebar';
+  type?: 'standard' | 'horizontal' | 'hero' | 'sidebar' | 'mega';
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -36,13 +36,15 @@ const getCatColor = (cat: string) => CATEGORY_COLORS[cat] ?? hashColor(cat);
 const FALLBACK = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800';
 
 const Meta: React.FC<{ author: string; date: string }> = ({ author, date }) => (
-  <div className="flex items-center gap-2 mt-auto pt-1.5 md:pt-2">
+  <div className="flex items-center gap-2 mt-auto pt-1.5 md:pt-2 min-w-0">
     <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#e31b23] flex items-center justify-center text-white text-[9px] font-black uppercase shrink-0">
       {author?.[0] ?? 'T'}
     </div>
-    <span className="text-[11px] md:text-[12px] font-semibold text-gray-700 truncate">{author}</span>
-    <span className="text-gray-300 text-[10px]">·</span>
-    <span className="text-[11px] md:text-[12px] text-gray-400 whitespace-nowrap">{date}</span>
+    <span className="text-[11px] md:text-[12px] font-semibold text-gray-700 min-w-0 break-words leading-snug">
+      {author}
+    </span>
+    <span className="text-gray-300 text-[10px] shrink-0">·</span>
+    <span className="text-[11px] md:text-[12px] text-gray-400 whitespace-nowrap shrink-0">{date}</span>
   </div>
 );
 
@@ -128,6 +130,43 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, className =
             <span className="text-white/40 text-[11px]">{article.date}</span>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  /* ── MEGA (dropdown menu): layout verticale, niente tagli su titolo/autore ── */
+  if (cardType === 'mega') {
+    return (
+      <div
+        ref={cardRef}
+        onClick={onClick}
+        className={`group cursor-pointer flex flex-col w-full min-w-0 bg-transparent ${className}`}
+      >
+        <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-gray-100 mb-3">
+          {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
+          <img
+            src={article.imageUrl}
+            alt={article.title}
+            onError={e => { e.currentTarget.src = FALLBACK; }}
+            onLoad={() => setImgLoaded(true)}
+            className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </div>
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5 block leading-none"
+          style={{ color }}
+        >
+          {badge.label}
+        </span>
+        <h3 className="font-condensed text-[16px] xl:text-[17px] font-black leading-[1.2] tracking-tight text-gray-950 group-hover:text-[#e31b23] transition-colors duration-200 mb-2 break-words [overflow-wrap:anywhere]">
+          {article.title}
+        </h3>
+        {article.excerpt ? (
+          <p className="text-[12px] text-gray-500 leading-snug line-clamp-2 mb-2.5">
+            {article.excerpt}
+          </p>
+        ) : null}
+        <Meta author={article.author} date={article.date} />
       </div>
     );
   }

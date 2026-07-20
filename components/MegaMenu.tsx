@@ -8,7 +8,7 @@ import {
   fetchPostsByDateRange,
 } from '../services/bloggerService';
 import NewsletterForm from './NewsletterForm';
-import { CATEGORY_COLORS } from '../constants';
+import { CATEGORY_COLORS, MOCK_ARTICLES } from '../constants';
 
 interface MegaMenuProps {
   category: string;
@@ -27,6 +27,12 @@ const ARCHIVE_START_YEAR = 2013;
 const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArticleClick }) => {
   const [showAllYears, setShowAllYears] = useState(false);
   const [priceRange, setPriceRange] = useState(1); // 0: <100, 1: <200, 2: <300, 3: <400, 4: <500
+
+  // Feed reale o mock: evita menu vuoti se articles non è ancora pronto
+  const sourceArticles = useMemo(
+    () => (articles && articles.length > 0 ? articles : MOCK_ARTICLES),
+    [articles]
+  );
 
   // Archivio storico a cascata: anni → mesi → articoli (conteggi ufficiali Blogger)
   const [archiveYear, setArchiveYear] = useState<number | null>(null);
@@ -78,50 +84,69 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
     };
   }, [category, yearCountsReady]);
 
+  const articleHay = (a: Article) =>
+    `${a.title || ''} ${(a.tags || []).join(' ')} ${a.category || ''} ${a.excerpt || ''}`.toLowerCase();
+
   // 1. Get the latest article for this category (Highlight)
   // LOGIC UPDATE: Prioritize 'featured' articles within the specific category.
   const featuredArticle = useMemo(() => {
-    // First try to find a featured article in this category (matches tags like 'newsinevidenza' via bloggerService)
-    const specificFeatured = articles.find(a => a.category === category && a.featured === true);
+    const specificFeatured = sourceArticles.find(a => a.category === category && a.featured === true);
     if (specificFeatured) return specificFeatured;
-    
-    // Fallback to the latest article in this category
-    return articles.find(a => a.category === category) || articles[0];
-  }, [articles, category]);
+    const byCat = sourceArticles.find(a => a.category === category);
+    if (byCat) return byCat;
+    return sourceArticles[0];
+  }, [sourceArticles, category]);
 
   // Secondary articles for News column to fill space
   const secondaryNews = useMemo(() => {
     if (category !== 'News') return [];
-    return articles.filter(a => a.id !== featuredArticle.id).slice(0, 2);
-  }, [articles, category, featuredArticle]);
+    return sourceArticles.filter(a => a.id !== featuredArticle?.id).slice(0, 2);
+  }, [sourceArticles, category, featuredArticle]);
 
   // Offerte Articles (Latest 6)
   const offerArticles = useMemo(() => {
      if (category !== 'Offerte') return [];
-     return articles.filter(a => a.category === 'Offerte').slice(0, 6);
-  }, [articles, category]);
+     return sourceArticles.filter(a => a.category === 'Offerte' || /offerta|sconto|coupon|amazon/i.test(articleHay(a))).slice(0, 6);
+  }, [sourceArticles, category]);
 
-  // --- LOGICA AGGIORNATA PER APP & GIOCHI ---
-  
-  // Lista specifica per le APP (Esclude titoli con 'gioc', 'game', 'play' se generici)
-  const appList = useMemo(() => {
+  // --- APP & GIOCHI: pool ampio (come homepage), poi split app/giochi ---
+  const isGameArticle = (a: Article) => {
+    const hay = articleHay(a);
+    const tags = (a.tags || []).map((t) => t.toLowerCase());
+    return (
+      tags.some((t) => /gioc|game|gaming/.test(t)) ||
+      /\b(gioc[oi]|gaming|game|offline|emulator[ei]?|play store|apk pure|gacha|pubg|fortnite|call of duty|roblox)\b/i.test(hay)
+    );
+  };
+
+  const appGamesPool = useMemo(() => {
     if (category !== 'App & Giochi') return [];
-    return articles.filter(a => 
-      (a.category === 'App & Giochi' || a.category === 'App') && 
-      !a.title.toLowerCase().includes('gioc') && 
-      !a.title.toLowerCase().includes('game') &&
-      !a.title.toLowerCase().includes('offline')
-    ).slice(0, 4);
-  }, [articles, category]);
+    const matched = sourceArticles.filter((a) => {
+      if (a.category === 'App & Giochi' || a.category === 'App') return true;
+      return /\bapp\b|gioco|giochi|game|gaming|play store|apk|whatsapp|instagram|telegram|tiktok|android app|google play/i.test(
+        articleHay(a)
+      );
+    });
+    // Se il feed recente non ha label App, usa comunque gli ultimi pezzi (meglio di lista vuota)
+    return matched.length > 0 ? matched : sourceArticles.slice(0, 16);
+  }, [sourceArticles, category]);
 
-  // Lista specifica per i GIOCHI (Include titoli con 'gioc', 'game', 'play' ecc)
   const gamesList = useMemo(() => {
     if (category !== 'App & Giochi') return [];
-    return articles.filter(a => 
-      (a.category === 'App & Giochi' || a.category === 'App') && 
-      (a.title.toLowerCase().includes('gioc') || a.title.toLowerCase().includes('game') || a.title.toLowerCase().includes('offline'))
-    ).slice(0, 4);
-  }, [articles, category]);
+    const games = appGamesPool.filter(isGameArticle).slice(0, 4);
+    if (games.length > 0) return games;
+    // fallback: seconda metà del pool se non c’è match “game” nel titolo
+    return appGamesPool.slice(Math.min(4, appGamesPool.length), Math.min(8, appGamesPool.length));
+  }, [appGamesPool, category]);
+
+  const appList = useMemo(() => {
+    if (category !== 'App & Giochi') return [];
+    const gameIds = new Set(gamesList.map((g) => g.id));
+    const apps = appGamesPool.filter((a) => !isGameArticle(a) && !gameIds.has(a.id)).slice(0, 4);
+    if (apps.length > 0) return apps;
+    // fallback: primi del pool non già in giochi
+    return appGamesPool.filter((a) => !gameIds.has(a.id)).slice(0, 4);
+  }, [appGamesPool, gamesList, category]);
 
   // 2. Dynamic Brands (Smartphone)
   const activeBrands = useMemo(() => {
@@ -251,20 +276,23 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
               </div>
             </div>
 
-            {/* Col 2: Featured Article (Mini) */}
+            {/* Col 2: Featured Article — layout mega, titolo/autore interi */}
             <div className="col-span-1">
-              <div className={megaCard}>
+              <div className={megaCard} style={megaCardStyle}>
                <div className="flex items-center gap-2.5 mb-4">
-                  <span className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-                  </span>
+                  <MegaIcon>
+                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: accent }} />
+                  </MegaIcon>
                   <span className="text-[15px] font-semibold text-slate-900 tracking-tight">In Evidenza</span>
                </div>
-               <ArticleCard 
-                  article={{...featuredArticle, type: 'standard'}} 
-                  onClick={() => onArticleClick(featuredArticle)}
-                  className="!p-0 !m-0 !bg-transparent !shadow-none hover:!scale-100" 
-               />
+               {featuredArticle && (
+                 <ArticleCard
+                   article={featuredArticle}
+                   type="mega"
+                   onClick={() => onArticleClick(featuredArticle)}
+                   className="!p-0 !m-0 !bg-transparent !shadow-none"
+                 />
+               )}
               </div>
             </div>
 
@@ -444,11 +472,14 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                   </MegaIcon>
                   <span className="text-[15px] font-semibold text-slate-900 tracking-tight">In Evidenza</span>
                </div>
-               <ArticleCard 
-                  article={{...featuredArticle, type: 'standard'}} 
-                  onClick={() => onArticleClick(featuredArticle)}
-                  className="!p-0 !m-0 !bg-transparent !shadow-none hover:!scale-100" 
-               />
+               {featuredArticle && (
+                 <ArticleCard
+                   article={featuredArticle}
+                   type="mega"
+                   onClick={() => onArticleClick(featuredArticle)}
+                   className="!p-0 !m-0 !bg-transparent !shadow-none"
+                 />
+               )}
               </div>
             </div>
 
@@ -728,7 +759,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
         const currentYear = new Date().getFullYear();
         const allYears = Array.from({ length: currentYear - 2013 + 1 }, (_, i) => currentYear - i);
         const displayedYears = showAllYears ? allYears : allYears.slice(0, 9);
-        const topViewed = articles.slice(0, 5);
+        const topViewed = sourceArticles.slice(0, 5);
 
         const hotTopics = [
           'Android 15', 'AI', 'Samsung', 'Sicurezza', 'WhatsApp', 'Google', 'Pixel 9', 'Offerte'
@@ -806,11 +837,14 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                     <span className="w-2 h-2 bg-[#e31b23] rounded-full animate-pulse"></span>
                     <span className="text-xs font-black uppercase tracking-widest">In Evidenza</span>
                  </div>
-                 <ArticleCard 
-                    article={{...featuredArticle, type: 'standard'}} 
-                    onClick={() => onArticleClick(featuredArticle)}
-                    className="!p-0 !m-0 !bg-transparent !shadow-none hover:!scale-100 mb-4" 
-                 />
+                 {featuredArticle && (
+                   <ArticleCard
+                     article={featuredArticle}
+                     type="mega"
+                     onClick={() => onArticleClick(featuredArticle)}
+                     className="!p-0 !m-0 !bg-transparent !shadow-none mb-4"
+                   />
+                 )}
                </div>
                <div className="space-y-2 border-t border-gray-100 pt-3">
                   {secondaryNews.map(art => (
@@ -1040,11 +1074,14 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                   <span className="text-xs font-black uppercase tracking-widest">In Evidenza</span>
                </div>
                <div className="max-w-sm">
-                 <ArticleCard 
-                    article={{...featuredArticle, type: 'standard'}} 
-                    onClick={() => onArticleClick(featuredArticle)}
-                    className="!p-0 !m-0 !bg-transparent !shadow-none hover:!scale-100" 
-                 />
+                 {featuredArticle && (
+                   <ArticleCard
+                     article={featuredArticle}
+                     type="mega"
+                     onClick={() => onArticleClick(featuredArticle)}
+                     className="!p-0 !m-0 !bg-transparent !shadow-none"
+                   />
+                 )}
                </div>
             </div>
           </>
