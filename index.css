@@ -1274,9 +1274,32 @@ body > .google-auto-placed,
 }
 
 /* ============================================
-   MEGA MENU — modern minimal refresh
-   Cleaner hovers, premium micro-interactions, nice slider
+   MEGA MENU — allineato allo stile spotlight/card del sito
    ============================================ */
+
+.mega-menu-panel {
+  background:
+    linear-gradient(165deg, rgba(250, 248, 255, 0.98) 0%, rgba(255, 255, 255, 0.96) 45%, rgba(245, 243, 255, 0.98) 100%);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.mega-menu .mega-card {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.mega-menu .mega-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 36px rgba(15, 23, 42, 0.09),
+    0 4px 12px rgba(109, 40, 217, 0.06);
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+.mega-menu .mega-card-promo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(109, 40, 217, 0.35);
+}
 
 /* Softer premium panel already handled in component, here the details */
 .mega-range {
