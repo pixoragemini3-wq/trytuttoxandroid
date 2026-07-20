@@ -113,10 +113,11 @@ const Layout: React.FC<LayoutProps> = ({
       {/* CSS esplicito: su Blogger Tailwind h-[200px] da esm non è affidabile */}
       <style>{`
         @media (min-width: 768px) {
+          /* Banda nera: altezza fissa 180px — non modificare */
           .txa-header-band {
             height: 180px !important;
             max-height: 180px !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             display: flex !important;
             flex-direction: column !important;
             box-sizing: border-box !important;
@@ -129,12 +130,20 @@ const Layout: React.FC<LayoutProps> = ({
           .txa-header-band .txa-header-row {
             height: 100% !important;
             min-height: 0 !important;
+            overflow: visible !important;
           }
+          /* Logo +20% rispetto a 132px → 158px; zoom leggero su hover */
           .txa-header-logo {
-            height: 132px !important;
-            max-height: 132px !important;
+            height: 158px !important;
+            max-height: 158px !important;
             width: auto !important;
             object-fit: contain !important;
+            transform-origin: left center;
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+          }
+          .txa-header-logo-wrap:hover .txa-header-logo {
+            transform: scale(1.06);
           }
         }
       `}</style>
@@ -159,15 +168,15 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="txa-header-main max-w-[1200px] mx-auto px-4 md:px-6 w-full md:flex-1 md:min-h-0">
           <div className="txa-header-row flex items-center justify-between h-28 md:h-full overflow-hidden">
 
-            {/* Logo — 148px desktop (stessa misura), non si ridimensiona con la banda */}
+            {/* Logo +20% (banda resta 180px); hover = leggero zoom */}
             <div
-              className={`cursor-pointer shrink-0 ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
+              className={`txa-header-logo-wrap cursor-pointer shrink-0 ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
               onClick={goToHome}
             >
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="txa-header-logo h-[124px] w-auto object-contain"
+                className="txa-header-logo h-[149px] w-auto object-contain origin-left"
               />
             </div>
 
