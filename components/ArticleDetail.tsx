@@ -1054,7 +1054,22 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
           </h3>
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Scorri per altre →</span>
       </div>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
+      <style>{`
+        .txa-offer-live-card{display:flex;flex-direction:column;height:100%;}
+        .txa-offer-live-img{
+          position:relative;width:100%;aspect-ratio:1/1;flex-shrink:0;
+          overflow:hidden;border-radius:0.5rem;background:#f9fafb;
+          margin-bottom:0.5rem;
+        }
+        .txa-offer-live-img img{
+          position:absolute;inset:0;width:100%!important;height:100%!important;
+          max-width:100%!important;max-height:100%!important;
+          object-fit:contain!important;object-position:center!important;
+          padding:0.4rem;box-sizing:border-box;mix-blend-mode:multiply;
+        }
+        .txa-offer-live-title{min-height:2.75rem;}
+      `}</style>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 items-stretch">
            {[...deals, ...deals].slice(0, 10).map((deal, idx) => (
             <a 
               key={`${deal.id}-${idx}`} 
@@ -1062,13 +1077,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
               target="_blank" 
               rel="noopener noreferrer" 
               onClick={() => handleDealClick(deal, 'mobile_carousel')}
-              className="min-w-[40%] max-w-[40%] bg-white border border-gray-200 rounded-xl p-3 snap-start shadow-sm flex flex-col justify-between hover:border-[#e31b23] transition-colors"
+              className="txa-offer-live-card min-w-[40%] max-w-[40%] w-[40%] bg-white border border-gray-200 rounded-xl p-3 snap-start shadow-sm hover:border-[#e31b23] transition-colors"
             >
-              <div className="w-full aspect-square bg-gray-50 rounded-lg mb-2 p-2 flex items-center justify-center">
-                 <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="w-full h-full object-contain mix-blend-multiply" />
+              <div className="txa-offer-live-img">
+                 <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="" />
               </div>
-              <div className="flex-1 flex flex-col justify-between min-h-[72px]">
-                 <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-3 mb-2">{deal.product}</p>
+              <div className="flex-1 flex flex-col justify-between min-h-0">
+                 <p className="txa-offer-live-title text-xs font-bold text-gray-900 leading-snug line-clamp-2 mb-2">{deal.product}</p>
                  <span className="block text-sm font-black text-[#e31b23]">{deal.newPrice}</span>
               </div>
            </a>
@@ -1126,14 +1141,26 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
               Vedi tutte su Telegram
            </a>
         </div>
+        <style>{`
+          .txa-deal-desk-img{
+            position:relative;width:100%;height:5.5rem;flex-shrink:0;
+            overflow:hidden;border-radius:0.5rem;background:#fff;
+          }
+          .txa-deal-desk-img img{
+            position:absolute;inset:0;width:100%!important;height:100%!important;
+            max-width:100%!important;max-height:100%!important;
+            object-fit:contain!important;object-position:center!important;
+            padding:0.4rem;box-sizing:border-box;
+          }
+        `}</style>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
            {deals.slice(0, 4).map(deal => (
-              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group min-h-[180px]" style={{ color: '#ffffff' }}>
-                 <div className="w-full h-20 bg-white rounded-lg p-2 flex items-center justify-center">
-                    <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="max-w-full max-h-full object-contain" />
+              <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group h-full min-h-[200px]" style={{ color: '#ffffff' }}>
+                 <div className="txa-deal-desk-img">
+                    <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="" />
                  </div>
                  <div className="min-w-0 flex-1 flex flex-col justify-between">
-                    <p className="txa-deal-title text-xs font-bold leading-snug line-clamp-3 mb-2" style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}>{deal.product}</p>
+                    <p className="txa-deal-title text-xs font-bold leading-snug line-clamp-2 mb-2 min-h-[2.5rem]" style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}>{deal.product}</p>
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="txa-deal-price text-lg font-black" style={{ color: '#fde047', WebkitTextFillColor: '#fde047' }}>{deal.newPrice}</span>
                       {deal.oldPrice && <span className="txa-deal-old-price text-xs font-bold line-through" style={{ color: 'rgba(255,255,255,0.75)', WebkitTextFillColor: 'rgba(255,255,255,0.75)' }}>{deal.oldPrice}</span>}

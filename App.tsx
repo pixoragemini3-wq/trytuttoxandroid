@@ -933,20 +933,20 @@ const App: React.FC = () => {
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => handleDealClick(deal, 'home_deals')}
-        className="txa-deal-card shrink-0 w-[132px] sm:w-[140px] snap-start bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-1.5 p-2 hover:bg-black/55 hover:border-yellow-400/40 transition-all"
+        className="txa-deal-card shrink-0 w-[132px] sm:w-[140px] h-[148px] sm:h-[156px] snap-start bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-1.5 p-2 hover:bg-black/55 hover:border-yellow-400/40 transition-all"
         style={{ color: '#ffffff' }}
       >
-        <div className="w-full shrink-0 bg-white rounded-lg p-1 flex items-center justify-center h-12">
+        <div className="txa-deal-card-img relative w-full shrink-0 bg-white rounded-lg overflow-hidden h-14 sm:h-[3.75rem]">
           <DealImage
             src={deal.imageUrl}
             link={deal.link}
             alt={deal.product}
-            className="max-w-full max-h-full object-contain mix-blend-multiply"
+            className="absolute inset-0 w-full h-full object-contain object-center p-1 mix-blend-multiply"
           />
         </div>
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <h4
-            className="txa-deal-title font-bold leading-snug text-[10px] line-clamp-2 mb-0.5"
+            className="txa-deal-title font-bold leading-snug text-[10px] line-clamp-2 mb-0.5 min-h-[2rem]"
             style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
           >
             {deal.product}
@@ -991,6 +991,11 @@ const App: React.FC = () => {
           .txa-deals-banner .txa-deal-hot{color:#b91c1c!important;-webkit-text-fill-color:#b91c1c!important;}
           .txa-deals-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none;}
           .txa-deals-scroll::-webkit-scrollbar{display:none;}
+          .txa-deal-card-img img{
+            position:absolute;inset:0;width:100%!important;height:100%!important;
+            object-fit:contain!important;object-position:center!important;
+            padding:0.25rem;box-sizing:border-box;
+          }
         `}</style>
 
         <div className="px-3 lg:px-4 relative z-10">

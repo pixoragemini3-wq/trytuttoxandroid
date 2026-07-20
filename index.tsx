@@ -12,6 +12,9 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
+// Hide crawlable HTML shell only after React mounts (theme CSS: html.txa-spa-ready)
+document.documentElement.classList.add('txa-spa-ready');
+
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>

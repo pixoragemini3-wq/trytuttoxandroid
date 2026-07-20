@@ -103,6 +103,7 @@ const DealImage: React.FC<Props> = ({ src, link, alt, className = '' }) => {
       decoding="async"
       referrerPolicy="no-referrer"
       className={className}
+      style={{ maxWidth: '100%', maxHeight: '100%' }}
       onLoad={(e) => {
         if (isVisuallyBlank(e.currentTarget)) {
           void tryNext(url);

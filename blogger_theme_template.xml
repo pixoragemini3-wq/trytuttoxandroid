@@ -176,16 +176,29 @@
   }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   
-  /* SEO FALLBACK HIDDEN VISUALLY BUT VISIBLE TO BOTS */
+  /*
+   * SEO crawlable content: visible by default for crawlers/no-JS.
+   * Hidden only after SPA mounts (html.txa-spa-ready) so React UI is unchanged.
+   */
   .seo-fallback {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0,0,0,0);
-      border: 0;
+    position: static;
+    width: auto;
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 2rem;
+    font-family: Inter, system-ui, sans-serif;
+    color: #111827;
+    line-height: 1.65;
+  }
+  .seo-fallback h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin: 0 0 1rem;
+  }
+  .seo-fallback img { max-width: 100%; height: auto; }
+  html.txa-spa-ready .seo-fallback {
+    display: none !important;
   }
 ]]></b:skin>
 
@@ -286,6 +299,29 @@
   </div>
 
   <div id='root'></div>
+
+  <script>
+    //<![CDATA[
+    (function() {
+      function markSpaReady() {
+        var root = document.getElementById('root');
+        if (root && root.childElementCount > 0) {
+          document.documentElement.classList.add('txa-spa-ready');
+          return true;
+        }
+        return false;
+      }
+      if (markSpaReady()) return;
+      var root = document.getElementById('root');
+      if (!root || typeof MutationObserver === 'undefined') return;
+      var obs = new MutationObserver(function() {
+        if (markSpaReady()) obs.disconnect();
+      });
+      obs.observe(root, { childList: true, subtree: true });
+      setTimeout(function() { try { obs.disconnect(); } catch (e) {} }, 45000);
+    })();
+    //]]>
+  </script>
   
   <script type='module'>
     //<![CDATA[
@@ -294,11 +330,9 @@
     .catch(err => {
       console.error("CRITICAL ERROR LOADING APP:", err);
       const root = document.getElementById('root');
-      root.innerHTML = `
-        <div style="font-family: sans-serif; text-align: center; padding: 40px;">
-          <h1 style="color: #e31b23;">Caricamento in corso...</h1>
-        </div>
-      `;
+      if (root) {
+        root.innerHTML = '<div style="font-family:sans-serif;text-align:center;padding:24px;" role="status"><p style="color:#e31b23;font-weight:700;">Interfaccia non caricata. Puoi leggere l&#39;articolo nella pagina.</p></div>';
+      }
     });
     //]]>
   </script>
