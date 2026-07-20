@@ -853,49 +853,81 @@ const App: React.FC = () => {
     }
   };
 
-  const dealsToShow = activeCategory === 'Offerte' ? 8 : 4;
+  /** Parse prezzo deal (es. "69,00€") per filtro budget. */
+  const parseDealPriceEuro = (raw: string | undefined): number | null => {
+    if (!raw) return null;
+    const s = String(raw).replace(/[€\s]/g, '').replace(/euro|eur/gi, '').trim();
+    if (!s) return null;
+    if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(s)) {
+      const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+      return Number.isFinite(n) ? Math.round(n) : null;
+    }
+    if (/^\d+[.,]\d{1,2}$/.test(s)) {
+      const n = parseFloat(s.replace(',', '.'));
+      return Number.isFinite(n) ? Math.round(n) : null;
+    }
+    const n = parseFloat(s.replace(/[^\d.,]/g, '').replace(',', '.'));
+    return Number.isFinite(n) ? Math.round(n) : null;
+  };
 
-  const DealsSection = () => {
-    const dealCards = deals.slice(0, dealsToShow);
-    const dealCard = (deal: typeof deals[0], compact: boolean) => (
+  /**
+   * Banner deal compatto (scroll orizzontale).
+   * Usato a metà pagina solo con filtro budget Offerte — niente griglia 8 card gigante.
+   */
+  const DealsSection = ({
+    compact = true,
+    maxEuro = null as number | null,
+  }: {
+    compact?: boolean;
+    maxEuro?: number | null;
+  }) => {
+    let pool = deals;
+    if (maxEuro != null && maxEuro > 0) {
+      const under = deals.filter((d) => {
+        const p = parseDealPriceEuro(d.newPrice);
+        return p != null && p > 0 && p <= maxEuro;
+      });
+      pool = under.length > 0 ? under : deals;
+    }
+    const dealCards = pool.slice(0, compact ? 8 : 4);
+
+    if (dealCards.length === 0) return null;
+
+    const dealCard = (deal: typeof deals[0]) => (
       <a
         key={deal.id}
         href={deal.link}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => handleDealClick(deal, 'home_deals')}
-        className={
-          compact
-            ? 'txa-deal-card shrink-0 w-[148px] snap-start bg-black/35 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-2 p-2.5'
-            : 'bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-4 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[170px]'
-        }
+        className="txa-deal-card shrink-0 w-[132px] sm:w-[140px] snap-start bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-1.5 p-2 hover:bg-black/55 hover:border-yellow-400/40 transition-all"
         style={{ color: '#ffffff' }}
       >
-        <div className={`w-full shrink-0 bg-white rounded-lg p-1.5 flex items-center justify-center ${compact ? 'h-14' : 'h-20 p-2'}`}>
+        <div className="w-full shrink-0 bg-white rounded-lg p-1 flex items-center justify-center h-12">
           <DealImage
             src={deal.imageUrl}
             link={deal.link}
             alt={deal.product}
-            className={`max-w-full max-h-full object-contain mix-blend-multiply ${compact ? '' : 'group-hover:scale-105 transition-transform duration-500'}`}
+            className="max-w-full max-h-full object-contain mix-blend-multiply"
           />
         </div>
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <h4
-            className={`txa-deal-title font-bold leading-snug ${compact ? 'text-[10px] line-clamp-2 mb-1' : 'text-xs mb-2 line-clamp-3'}`}
+            className="txa-deal-title font-bold leading-snug text-[10px] line-clamp-2 mb-0.5"
             style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
           >
             {deal.product}
           </h4>
-          <div className="flex items-baseline gap-1.5 flex-wrap">
+          <div className="flex items-baseline gap-1 flex-wrap">
             <span
-              className={`txa-deal-price font-black tracking-tight ${compact ? 'text-sm' : 'text-sm sm:text-base'}`}
+              className="txa-deal-price font-black tracking-tight text-xs"
               style={{ color: '#fde047', WebkitTextFillColor: '#fde047' }}
             >
               {deal.newPrice}
             </span>
             {deal.oldPrice && (
               <span
-                className="txa-deal-old-price text-[10px] font-bold line-through"
+                className="txa-deal-old-price text-[9px] font-bold line-through"
                 style={{ color: 'rgba(255,255,255,0.75)', WebkitTextFillColor: 'rgba(255,255,255,0.75)' }}
               >
                 {deal.oldPrice}
@@ -907,81 +939,68 @@ const App: React.FC = () => {
     );
 
     return (
-    <section
-      className="txa-deals-banner py-3 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-x-clip overflow-y-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
-      style={{ color: '#ffffff' }}
-    >
-      <style>{`
-        .txa-deals-banner,.txa-deals-banner h1,.txa-deals-banner h2,.txa-deals-banner h3,.txa-deals-banner h4,
-        .txa-deals-banner p,.txa-deals-banner span,.txa-deals-banner a:not(.txa-deal-cta-light),
-        .txa-deals-banner .txa-deal-title,.txa-deals-banner .font-condensed{
-          color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
-        }
-        .txa-deals-banner .txa-deals-banner-title{
-          color:#e8ff00!important;-webkit-text-fill-color:#e8ff00!important;
-          text-shadow:0 0 14px rgba(232,255,0,.45),0 1px 3px rgba(0,0,0,.4)!important;
-          overflow:visible!important;text-overflow:clip!important;white-space:normal!important;
-          max-width:100%;padding-right:0.2em;
-        }
-        .txa-deals-banner .txa-deal-price{color:#fde047!important;-webkit-text-fill-color:#fde047!important;}
-        .txa-deals-banner .txa-deal-old-price{color:rgba(255,255,255,.75)!important;-webkit-text-fill-color:rgba(255,255,255,.75)!important;}
-        .txa-deals-banner .txa-deal-hot{color:#b91c1c!important;-webkit-text-fill-color:#b91c1c!important;}
-        .txa-deals-banner .txa-deals-banner-title::after{display:none!important;content:none!important;}
-        .txa-deals-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-        .txa-deals-scroll::-webkit-scrollbar{display:none;}
-      `}</style>
-      <div className="absolute top-0 right-0 w-40 h-40 lg:w-64 lg:h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-10 -mt-10 pointer-events-none"></div>
+      <section
+        className="txa-deals-banner py-2.5 lg:py-3 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-xl lg:rounded-2xl mx-0 overflow-hidden shadow-lg relative border-t-2 border-[#e31b23] mb-4 animate-in fade-in slide-in-from-bottom-2 duration-400"
+        style={{ color: '#ffffff' }}
+      >
+        <style>{`
+          .txa-deals-banner,.txa-deals-banner h2,.txa-deals-banner h4,
+          .txa-deals-banner span,.txa-deals-banner a:not(.txa-deal-cta-light),
+          .txa-deals-banner .txa-deal-title{
+            color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+          }
+          .txa-deals-banner .txa-deals-banner-title{
+            color:#e8ff00!important;-webkit-text-fill-color:#e8ff00!important;
+            text-shadow:0 0 10px rgba(232,255,0,.35),0 1px 2px rgba(0,0,0,.35)!important;
+          }
+          .txa-deals-banner .txa-deal-price{color:#fde047!important;-webkit-text-fill-color:#fde047!important;}
+          .txa-deals-banner .txa-deal-old-price{color:rgba(255,255,255,.75)!important;-webkit-text-fill-color:rgba(255,255,255,.75)!important;}
+          .txa-deals-banner .txa-deal-hot{color:#b91c1c!important;-webkit-text-fill-color:#b91c1c!important;}
+          .txa-deals-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+          .txa-deals-scroll::-webkit-scrollbar{display:none;}
+        `}</style>
 
-      <div className="max-w-7xl mx-auto px-3 lg:px-6 relative z-10">
-        {/* Header: titolo sempre intero (niente truncate che taglia la “o”); TG a destra */}
-        <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2.5 lg:mb-6">
-          <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-             <h2
-               className="txa-deals-banner-title font-condensed text-[1.15rem] xs:text-xl sm:text-2xl lg:text-6xl font-black uppercase tracking-[-0.02em] italic leading-[1.05] break-words"
-               style={{
-                 color: '#e8ff00',
-                 WebkitTextFillColor: '#e8ff00',
-                 textShadow: '0 0 14px rgba(232,255,0,0.45), 0 1px 3px rgba(0,0,0,0.4)',
-                 /* italic condensa l’ultima lettera: padding destro evita il taglio */
-                 paddingRight: '0.2em',
-                 overflow: 'visible',
-               }}
-             >
-               Offerte del Giorno
-             </h2>
-             <span className="txa-deal-hot hidden sm:inline bg-white px-2 py-0.5 lg:px-3 lg:py-1 rounded text-[9px] lg:text-xs font-black uppercase tracking-widest shadow-md animate-pulse shrink-0" style={{ color: '#b91c1c', WebkitTextFillColor: '#b91c1c' }}>HOT</span>
+        <div className="px-3 lg:px-4 relative z-10">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h2 className="txa-deals-banner-title font-condensed text-base sm:text-lg font-black uppercase tracking-tight italic leading-none">
+                Offerte del Giorno
+              </h2>
+              {maxEuro != null && (
+                <span className="shrink-0 text-[9px] font-black uppercase tracking-wide bg-yellow-400/20 text-yellow-200 border border-yellow-400/30 px-1.5 py-0.5 rounded">
+                  ≤ {maxEuro}€
+                </span>
+              )}
+              <span
+                className="txa-deal-hot hidden sm:inline bg-white px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shrink-0"
+                style={{ color: '#b91c1c', WebkitTextFillColor: '#b91c1c' }}
+              >
+                HOT
+              </span>
+            </div>
+
+            <a
+              href="https://t.me/tuttoxandroid"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1 bg-[#24A1DE] hover:bg-white/90 pl-1 pr-2 py-0.5 rounded-full transition-all group shadow border border-white/20"
+              aria-label="Canale Telegram offerte"
+            >
+              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center p-0.5 shrink-0">
+                <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#ffffff' }}>
+                TG
+              </span>
+            </a>
           </div>
 
-          <a
-            href="https://t.me/tuttoxandroid"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-1.5 lg:gap-3 bg-[#24A1DE] hover:bg-white pl-1.5 pr-2.5 lg:pl-2 lg:pr-6 py-1 lg:py-2 rounded-full transition-all group shadow-lg border border-white/20 hover:scale-105 cursor-pointer mt-0.5"
-            aria-label="Canale Telegram offerte"
-          >
-            <div className="w-7 h-7 lg:w-10 lg:h-10 bg-white rounded-full flex items-center justify-center p-0.5 shadow-md shrink-0">
-              <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="" />
-            </div>
-            <div className="hidden lg:flex flex-col leading-none">
-              <span className="text-[10px] font-black uppercase mb-0.5" style={{ color: '#ffffff' }}>Canale</span>
-              <span className="text-sm font-black uppercase tracking-wide" style={{ color: '#ffffff' }}>Offerte Italy</span>
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-wide lg:hidden" style={{ color: '#ffffff' }}>TG</span>
-            <svg className="w-3.5 h-3.5 lg:w-5 lg:h-5 opacity-80 group-hover:translate-x-0.5 transition-transform" style={{ color: '#ffffff' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-          </a>
+          {/* Una sola riga compatta, scroll orizzontale (mobile + desktop) */}
+          <div className="txa-deals-scroll flex gap-2 overflow-x-auto pb-0.5 snap-x snap-mandatory">
+            {dealCards.map((deal) => dealCard(deal))}
+          </div>
         </div>
-
-        {/* Mobile: una sola riga, scroll orizzontale */}
-        <div className="txa-deals-scroll flex lg:hidden gap-2.5 overflow-x-auto pb-0.5 snap-x snap-mandatory">
-          {dealCards.map((deal) => dealCard(deal, true))}
-        </div>
-
-        {/* Desktop: griglia */}
-        <div className={`hidden lg:grid gap-3 ${dealsToShow > 4 ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'} items-stretch`}>
-          {dealCards.map((deal) => dealCard(deal, false))}
-        </div>
-      </div>
-    </section>
+      </section>
     );
   };
 
@@ -1982,11 +2001,7 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {isHome && !isSearch && deals.length > 0 && (activeCategory === 'Tutti' || activeCategory === 'Offerte') && (
-                   <div className={`px-4 lg:px-0 ${activeCategory === 'Offerte' ? 'mt-6' : 'mt-4'}`}>
-                      <DealsSection />
-                   </div>
-                )}
+                {/* Banner deal rimosso dall’alto: compare compatto a metà pagina solo con filtro budget */}
                 
                 {/* MOVED: Social Banner placed EXTERNALLY above the News Section Content */}
                 {isHome && activeCategory === 'Tutti' && !isSearch && (
@@ -2068,6 +2083,17 @@ const App: React.FC = () => {
                 {isHome && activeCategory === 'Smartphone' && !isSearch && (
                   <SmartphoneShowcase />
                 )}
+
+                {/* Offerte del giorno: strip compatta a metà pagina, solo con budget (200€, 300€…) */}
+                {isHome &&
+                  !isSearch &&
+                  activeCategory === 'Offerte' &&
+                  maxBudgetEuro != null &&
+                  deals.length > 0 && (
+                    <div className="mb-6">
+                      <DealsSection compact maxEuro={maxBudgetEuro} />
+                    </div>
+                  )}
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   <div className="lg:col-span-2 min-w-0">
