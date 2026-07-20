@@ -132,10 +132,10 @@ const Layout: React.FC<LayoutProps> = ({
             min-height: 0 !important;
             overflow: visible !important;
           }
-          /* Logo +20% rispetto a 132px → 158px; zoom leggero su hover */
+          /* Logo: 132 → +20% (158) → +15% (182); banda resta 180px */
           .txa-header-logo {
-            height: 158px !important;
-            max-height: 158px !important;
+            height: 182px !important;
+            max-height: 182px !important;
             width: auto !important;
             object-fit: contain !important;
             transform-origin: left center;
@@ -168,7 +168,7 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="txa-header-main max-w-[1200px] mx-auto px-4 md:px-6 w-full md:flex-1 md:min-h-0">
           <div className="txa-header-row flex items-center justify-between h-28 md:h-full overflow-hidden">
 
-            {/* Logo +20% (banda resta 180px); hover = leggero zoom */}
+            {/* Logo +20% poi +15% (banda resta 180px); hover = leggero zoom */}
             <div
               className={`txa-header-logo-wrap cursor-pointer shrink-0 ${isSearchVisible ? 'hidden md:flex' : 'flex'} items-center h-full`}
               onClick={goToHome}
@@ -176,7 +176,7 @@ const Layout: React.FC<LayoutProps> = ({
               <img
                 src={LOGO_URL}
                 alt="TuttoXAndroid"
-                className="txa-header-logo h-[149px] w-auto object-contain origin-left"
+                className="txa-header-logo h-[171px] w-auto object-contain origin-left"
               />
             </div>
 
