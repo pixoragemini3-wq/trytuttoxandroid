@@ -23,6 +23,8 @@ interface LayoutProps {
   articles: Article[];
   handleSearchSubmit: (e: React.FormEvent) => void;
   handleNavClick: (nav: string) => void;
+  handleBudgetFilter?: (maxEuro: number) => void;
+  handleSeeAllOffers?: () => void;
   handleArticleClick: (article: Article) => void;
   handleFooterLinkClick: (path: '/about' | '/collab' | '/privacy' | '/') => void;
   goToHome: () => void;
@@ -47,6 +49,8 @@ const Layout: React.FC<LayoutProps> = ({
   articles,
   handleSearchSubmit,
   handleNavClick,
+  handleBudgetFilter,
+  handleSeeAllOffers,
   handleArticleClick,
   handleFooterLinkClick,
   goToHome,
@@ -271,6 +275,8 @@ const Layout: React.FC<LayoutProps> = ({
             onClose={() => setActiveMegaMenu(null)}
             articles={articles}
             onArticleClick={handleArticleClick}
+            onBudgetFilter={handleBudgetFilter}
+            onSeeAllOffers={handleSeeAllOffers}
           />
         )}
       </header>

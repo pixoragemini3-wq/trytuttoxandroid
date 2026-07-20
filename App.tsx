@@ -4,7 +4,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MOCK_ARTICLES, MOCK_DEALS, NAV_CATEGORIES, LOGO_URL, CATEGORY_COLORS } from './constants';
 import ArticleCard from './components/ArticleCard';
 import { Article, Deal } from './types';
-import { fetchBloggerPosts, fetchBloggerDeals, fetchArticleByUrl, resolveAuthorImageUrl, hydrateArticle } from './services/bloggerService';
+import {
+  fetchBloggerPosts,
+  fetchBloggerDeals,
+  fetchArticleByUrl,
+  resolveAuthorImageUrl,
+  hydrateArticle,
+  filterArticlesUnderMaxEuro,
+} from './services/bloggerService';
 import { isInAppBrowser } from './utils/browser';
 import SocialSidebar from './components/SocialSidebar';
 import SocialSection from './components/SocialSection';
@@ -49,6 +56,8 @@ const App: React.FC = () => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
+  /** Filtro budget Offerte (prezzo estratto dai post). null = nessun tetto. */
+  const [maxBudgetEuro, setMaxBudgetEuro] = useState<number | null>(null);
   
   // Split loading states to prevent blocking UI
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
@@ -553,6 +562,7 @@ const App: React.FC = () => {
     }
 
     setActiveCategory(nav);
+    if (nav !== 'Offerte') setMaxBudgetEuro(null);
     setVisibleNewsCount(6); 
     setNextStartIndex(1);
     setHasMoreToFetch(true);
@@ -605,6 +615,7 @@ const App: React.FC = () => {
     } catch { /* */ }
     setSearchQuery('');
     setActiveCategory('Tutti');
+    setMaxBudgetEuro(null);
     setVisibleNewsCount(6);
     setFilteredArticles(articles);
 
@@ -728,7 +739,8 @@ const App: React.FC = () => {
       const categoryKeywords: Record<string, string[]> = {
         'smartphone': ['smartphone', 'cellulare', 'telefono', 'samsung', 'xiaomi', 'redmi', 'poco', 'pixel', 'oneplus', 'oppo', 'realme', 'honor', 'motorola', 'asus', 'sony', 'nothing', 'vivo', 'iphone', 'android', 'aukey', 'blackview', 'cubot', 'ezviz', 'leagoo', 'lefant', 'spigen', 'teclast', 'ugoos', 'ulefone'],
         'news': ['news', 'notizie', 'novità', 'aggiornamento', 'leaks', 'rumors', 'anteprima', 'tech', 'tecnologia', 'android', 'google'],
-        'recensioni': ['recensioni', 'recensione', 'review', 'prova', 'test', 'analisi', 'opinioni'],
+        // Solo etichette forti: "test"/"analisi" nel titolo matchano news tipo "Apple testa…"
+        'recensioni': ['recensioni', 'recensione', 'review'],
         'guide': ['guide', 'guida', 'tutorial', 'come fare', 'how to', 'soluzione', 'problemi', 'trucchi', 'tips', 'impostare', 'nascondere'],
         'offerte': ['offerte', 'offerta', 'offerteimperdibili', 'sconto', 'promo', 'prezzo', 'amazon', 'ebay', 'coupon', 'black friday', 'prime day', 'volantino', 'deal'],
         'app & giochi': ['app', 'applicazione', 'giochi', 'game', 'play store', 'apk', 'whatsapp', 'instagram', 'telegram', 'facebook', 'tiktok'],
@@ -744,13 +756,13 @@ const App: React.FC = () => {
         if (articleTags.includes(target)) return true;
 
         const labelAliases: Record<string, string[]> = {
-          'recensioni': ['recensioni', 'recensione'],
+          'recensioni': ['recensioni', 'recensione', 'review'],
           'guide': ['guide', 'guida', 'tutorial'],
           'offerte': ['offerte', 'offerteimperdibili', 'amazon', 'sconto', 'coupon', 'promo'],
           'app & giochi': ['app', 'giochi'],
         };
         const aliases = labelAliases[target];
-        if (aliases?.some((a) => articleTags.includes(a) || articleCategory === a)) return true;
+        if (aliases?.some((alias) => articleTags.includes(alias) || articleCategory === alias)) return true;
         
         if (target === 'app & giochi') {
              if (articleTags.some(t => t.includes('app') || t.includes('giochi') || t.includes('game'))) return true;
@@ -772,14 +784,27 @@ const App: React.FC = () => {
           }
         }
 
+        // Recensioni: solo titolo/excerpt con segnale esplicito (no "testa", "analisi generica")
+        if (target === 'recensioni') {
+          const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
+          if (
+            /\brecension[ei]\b|\breview\b|\bprova\s+(?:completa|del|della|di)\b|\bhands[\s-]?on\b/i.test(
+              hay
+            )
+          ) {
+            return true;
+          }
+          return false;
+        }
+
         const keywords = categoryKeywords[target];
         if (keywords) {
            const hasKeywordMatch = keywords.some(k => 
              articleTags.some(t => t.includes(k)) || articleCategory.includes(k)
            );
            if (hasKeywordMatch) return true;
-           // Anche sul titolo per keyword categoria (es. "samsung" nel titolo)
-           if (target === 'smartphone' || target === 'recensioni' || target === 'guide') {
+           // Titolo: solo smartphone/guide (recensioni gestite sopra, più strict)
+           if (target === 'smartphone' || target === 'guide') {
              const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
              if (keywords.some((k) => k.length >= 4 && hay.includes(k))) return true;
            }
@@ -787,11 +812,34 @@ const App: React.FC = () => {
 
         return false;
       });
+
+      // Budget Offerte: solo post con prezzo estratto ≤ maxBudgetEuro
+      if (target === 'offerte' && maxBudgetEuro != null) {
+        const priced = filterArticlesUnderMaxEuro(list, maxBudgetEuro);
+        // Se troppo pochi, tieni anche offerte senza prezzo leggibile in coda
+        if (priced.length >= 3) {
+          list = priced;
+        } else {
+          const pricedIds = new Set(priced.map((a) => a.id));
+          const rest = list.filter((a) => !pricedIds.has(a.id));
+          list = [...priced, ...rest];
+        }
+      }
     }
     return list;
   };
   
   const displayArticles = isSearch ? filteredArticles : getDisplayArticles();
+
+  const handleBudgetFilter = (maxEuro: number) => {
+    setMaxBudgetEuro(maxEuro);
+    void handleNavClick('Offerte');
+  };
+
+  const handleSeeAllOffers = () => {
+    setMaxBudgetEuro(null);
+    void handleNavClick('Offerte');
+  };
 
   const handleDealClick = (deal: Deal, location: string) => {
     if (typeof (window as any).gtag === 'function') {
@@ -1809,6 +1857,8 @@ const App: React.FC = () => {
       articles={articles}
       handleSearchSubmit={handleSearchSubmit}
       handleNavClick={handleNavClick}
+      handleBudgetFilter={handleBudgetFilter}
+      handleSeeAllOffers={handleSeeAllOffers}
       handleArticleClick={handleArticleClick}
       handleFooterLinkClick={handleFooterLinkClick}
       goToHome={goToHome}
@@ -1966,9 +2016,25 @@ const App: React.FC = () => {
               <div className="max-w-7xl mx-auto px-4">
                 
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-5 border-b border-gray-100">
-                  <h3 className="font-condensed text-3xl md:text-4xl font-black uppercase text-gray-900 tracking-tight leading-none">
-                     {isSearch ? `Risultati per: "${searchQuery}"` : (activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory)}
-                  </h3>
+                  <div>
+                    <h3 className="font-condensed text-3xl md:text-4xl font-black uppercase text-gray-900 tracking-tight leading-none">
+                       {isSearch ? `Risultati per: "${searchQuery}"` : (activeCategory === 'Tutti' ? 'Ultime Notizie' : activeCategory)}
+                    </h3>
+                    {!isSearch && activeCategory === 'Offerte' && maxBudgetEuro != null && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-[11px] font-black uppercase tracking-wide px-3 py-1">
+                          Budget ≤ {maxBudgetEuro}€
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setMaxBudgetEuro(null)}
+                          className="text-[11px] font-bold text-gray-500 hover:text-yellow-600 underline-offset-2 hover:underline"
+                        >
+                          Rimuovi filtro
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {!isSearch && (
                   <div className="flex items-center gap-5 overflow-x-auto no-scrollbar mt-4 md:mt-0">
                     {ALL_CATEGORIES.filter(c => c !== 'Tutti').map(cat => {

@@ -290,7 +290,7 @@
   <script type='module'>
     //<![CDATA[
     const cacheBuster = "v" + new Date().getTime(); 
-    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid@b2c5b62/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
+    import(`https://esm.sh/gh/pixoragemini3-wq/trytuttoxandroid@0eb924b/index.tsx?deps=react@18.2.0,react-dom@18.2.0,react-router-dom@6.22.3&v=${cacheBuster}`)
     .catch(err => {
       console.error("CRITICAL ERROR LOADING APP:", err);
       const root = document.getElementById('root');

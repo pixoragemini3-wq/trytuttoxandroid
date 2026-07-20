@@ -3,9 +3,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Article } from '../types';
 import ArticleCard from './ArticleCard';
 import {
+  budgetIndexToMaxEuro,
+  extractArticlePriceEuro,
   fetchArchiveMonthCounts,
   fetchArchiveYearCounts,
   fetchPostsByDateRange,
+  filterArticlesUnderMaxEuro,
+  isOfferArticle,
 } from '../services/bloggerService';
 import NewsletterForm from './NewsletterForm';
 import { CATEGORY_COLORS, MOCK_ARTICLES } from '../constants';
@@ -15,6 +19,9 @@ interface MegaMenuProps {
   onClose: () => void;
   articles: Article[];
   onArticleClick: (article: Article) => void;
+  /** Applica filtro budget e apre la lista Offerte in homepage. */
+  onBudgetFilter?: (maxEuro: number) => void;
+  onSeeAllOffers?: () => void;
 }
 
 const IT_MONTH_NAMES = [
@@ -24,9 +31,17 @@ const IT_MONTH_NAMES = [
 
 const ARCHIVE_START_YEAR = 2013;
 
-const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArticleClick }) => {
+const MegaMenu: React.FC<MegaMenuProps> = ({
+  category,
+  onClose,
+  articles,
+  onArticleClick,
+  onBudgetFilter,
+  onSeeAllOffers,
+}) => {
   const [showAllYears, setShowAllYears] = useState(false);
   const [priceRange, setPriceRange] = useState(1); // 0: <100, 1: <200, 2: <300, 3: <400, 4: <500
+  const maxBudgetEuro = budgetIndexToMaxEuro(priceRange);
 
   // Feed reale o mock: evita menu vuoti se articles non è ancora pronto
   const sourceArticles = useMemo(
@@ -103,11 +118,25 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
     return sourceArticles.filter(a => a.id !== featuredArticle?.id).slice(0, 2);
   }, [sourceArticles, category, featuredArticle]);
 
-  // Offerte Articles (Latest 6)
+  // Offerte: ultime sotto il budget dello slider (prezzo estratto da titolo/body/DEAL)
   const offerArticles = useMemo(() => {
-     if (category !== 'Offerte') return [];
-     return sourceArticles.filter(a => a.category === 'Offerte' || /offerta|sconto|coupon|amazon/i.test(articleHay(a))).slice(0, 6);
-  }, [sourceArticles, category]);
+    if (category !== 'Offerte') return [];
+    const pool = sourceArticles.filter(
+      (a) =>
+        a.category === 'Offerte' ||
+        isOfferArticle(a) ||
+        /offerta|sconto|coupon|amazon|€|\beuro\b/i.test(articleHay(a))
+    );
+    const under = filterArticlesUnderMaxEuro(pool, maxBudgetEuro);
+    // Se nessun prezzo sotto soglia, mostra comunque le ultime offerte (senza filtro)
+    const list = under.length > 0 ? under : pool;
+    return list.slice(0, 6);
+  }, [sourceArticles, category, maxBudgetEuro]);
+
+  const offerPriceLabel = (a: Article): string | null => {
+    const p = a.priceEuro != null ? a.priceEuro : extractArticlePriceEuro(a);
+    return p != null ? `${p}€` : null;
+  };
 
   // --- APP & GIOCHI: pool ampio (come homepage), poi split app/giochi ---
   const isGameArticle = (a: Article) => {
@@ -559,29 +588,51 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
           <>
             {/* Col 1 & 2: Ultime Notizie Offerte (Grid of 6) */}
             <div className="col-span-2 border-r border-gray-100 pr-4">
-              <h3 className="font-condensed text-xl font-black uppercase mb-4 text-gray-900 border-b-2 border-yellow-400 pb-2">Ultime Offerte</h3>
+              <h3 className="font-condensed text-xl font-black uppercase mb-4 text-gray-900 border-b-2 border-yellow-400 pb-2">
+                Ultime Offerte
+                <span className="ml-2 text-[10px] font-bold normal-case tracking-normal text-yellow-600">
+                  ≤ {maxBudgetEuro}€
+                </span>
+              </h3>
               <div className="grid grid-cols-2 gap-3">
                  {offerArticles.length > 0 ? (
-                   offerArticles.map(art => (
+                   offerArticles.map(art => {
+                     const price = offerPriceLabel(art);
+                     return (
                      <div key={art.id} onClick={() => onArticleClick(art)} className="group cursor-pointer flex gap-3 items-center p-2 rounded-lg hover:bg-yellow-50 transition-colors">
                         <div className="w-12 h-12 shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
                            <img src={art.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt={art.title} />
                         </div>
                         <div className="min-w-0">
                            <h4 className="text-[10px] font-bold leading-tight text-gray-900 group-hover:text-yellow-600 transition-colors line-clamp-2">{art.title}</h4>
+                           {price && (
+                             <span className="mt-0.5 inline-block text-[9px] font-black text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded">
+                               {price}
+                             </span>
+                           )}
                         </div>
                      </div>
-                   ))
+                     );
+                   })
                  ) : (
-                   <p className="text-xs text-gray-400">Nessuna offerta recente.</p>
+                   <p className="text-xs text-gray-400 col-span-2">
+                     Nessuna offerta con prezzo sotto i {maxBudgetEuro}€ nel feed recente.
+                   </p>
                  )}
               </div>
-              <button className="mt-4 text-[10px] font-black uppercase tracking-widest text-black hover:text-yellow-500 transition-colors w-full text-center py-2 bg-gray-50 rounded-lg">
+              <button
+                type="button"
+                onClick={() => {
+                  onSeeAllOffers?.();
+                  onClose();
+                }}
+                className="mt-4 text-[10px] font-black uppercase tracking-widest text-black hover:text-yellow-500 transition-colors w-full text-center py-2 bg-gray-50 rounded-lg"
+              >
                 Vedi tutte le offerte &rarr;
               </button>
             </div>
 
-            {/* Col 3: Price Slider (Moved from Recensioni) */}
+            {/* Col 3: Price Slider — filtra per prezzo estratto dai post */}
             <div className="col-span-1 border-r border-gray-200 px-4">
               <h3 className="font-condensed text-xl font-black uppercase mb-4 text-gray-900 border-b-2 border-yellow-400 pb-2">
                 Budget
@@ -595,8 +646,9 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                       max="4" 
                       step="1" 
                       value={priceRange} 
-                      onChange={(e) => setPriceRange(parseInt(e.target.value))}
+                      onChange={(e) => setPriceRange(parseInt(e.target.value, 10))}
                       className="w-full h-2 bg-yellow-200 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      aria-label="Budget massimo"
                     />
                     <div className="flex justify-between mt-2 text-[10px] font-black uppercase text-gray-400 w-full px-1">
                       <span>100€</span>
@@ -609,9 +661,19 @@ const MegaMenu: React.FC<MegaMenuProps> = ({ category, onClose, articles, onArti
                  
                  <div className="text-center">
                     <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Trova offerte sotto i:</p>
-                    <button className="bg-black text-white px-4 py-3 rounded-xl font-black text-sm uppercase tracking-tight shadow-lg hover:bg-yellow-500 transition-colors w-full">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onBudgetFilter?.(maxBudgetEuro);
+                        onClose();
+                      }}
+                      className="bg-black text-white px-4 py-3 rounded-xl font-black text-sm uppercase tracking-tight shadow-lg hover:bg-yellow-500 transition-colors w-full"
+                    >
                       {getPriceLabel(priceRange)}
                     </button>
+                    <p className="mt-3 text-[10px] text-gray-400 leading-snug">
+                      Prezzi letti da titolo e post (es. 199€, sotto i 300€).
+                    </p>
                  </div>
               </div>
             </div>

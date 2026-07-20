@@ -54,6 +54,166 @@ export const scoreOfferSignals = (input: OfferSignalInput): number => {
 
 export const isOfferArticle = (input: OfferSignalInput): boolean => scoreOfferSignals(input) >= 3;
 
+const YEAR_LIKE = (n: number) => n >= 2010 && n <= 2030;
+/** Contesto prima del prezzo: non è il prezzo di vendita del prodotto. */
+const PRICE_NEG_BEFORE =
+  /(?:sconto|sconti|risparmi[oa]?|restituire|penale|mult[ea]|fino\s+a|oltre|pi[uù]\s+di|da\s+oltre|valgono?|vale\s+|cashback|rimborso|bonus|interessi|mAh|GB\b|TB\b|\bHz\b|\bW\b|\bMP\b)/i;
+/** Contesto dopo il prezzo: "30€ di sconto", "100€ di rimborso". */
+const PRICE_NEG_AFTER =
+  /^\s*(?:di\s+)?(?:sconto|sconti|risparmio|rimborso|cashback|bonus|extra|in\s+buoni)/i;
+
+/** Interpreta token numerici IT/EU: 225,99 → 226; 1.299 → 1299; 69.500 → 69500. */
+export const parseEuroAmount = (raw: string | undefined | null): number | null => {
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (!s) return null;
+  s = s.replace(/[€\s]/g, '').replace(/euro|eur/gi, '').trim();
+  if (!s) return null;
+
+  // 1.299,00 o 1.299
+  if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(s)) {
+    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) && n >= 15 && n <= 5000 ? Math.round(n) : null;
+  }
+  // 1,299.00 (US)
+  if (/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(s)) {
+    const n = parseFloat(s.replace(/,/g, ''));
+    return Number.isFinite(n) && n >= 15 && n <= 5000 ? Math.round(n) : null;
+  }
+  // 225,99 o 225.99
+  if (/^\d+[.,]\d{1,2}$/.test(s)) {
+    const n = parseFloat(s.replace(',', '.'));
+    return Number.isFinite(n) && n >= 15 && n <= 5000 ? Math.round(n) : null;
+  }
+  // intero
+  if (/^\d+$/.test(s)) {
+    const n = parseInt(s, 10);
+    if (YEAR_LIKE(n)) return null;
+    return n >= 15 && n <= 5000 ? n : null;
+  }
+  // fallback: digiti
+  const digits = s.replace(/[^\d.,]/g, '');
+  if (!digits) return null;
+  return parseEuroAmount(digits);
+};
+
+const stripTagsForPrice = (html: string): string =>
+  String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Estrae un prezzo in euro da deal box, titolo o contenuto.
+ * Preferisce segnali ad alta confidenza (DEAL, "a 199€", "sotto i 300€").
+ * Rifiuta sconti ("sconto di 700€"), anni e importi fuori range.
+ */
+export const extractArticlePriceEuro = (
+  article: Pick<Article, 'title' | 'excerpt' | 'content' | 'dealData'> &
+    Partial<Pick<Article, 'category' | 'tags'>>
+): number | null => {
+  if (article.dealData?.newPrice) {
+    const fromDeal = parseEuroAmount(article.dealData.newPrice);
+    if (fromDeal) return fromDeal;
+  }
+
+  const title = stripTagsForPrice(article.title || '');
+  const excerpt = stripTagsForPrice(article.excerpt || '');
+  const body = stripTagsForPrice((article.content || '').slice(0, 3500));
+  const hay = `${title} ${excerpt} ${body}`;
+
+  // "sotto i 500€" / "meno di 300 euro" → tetto budget (usato come prezzo di riferimento)
+  const cap =
+    title.match(/sotto\s+(?:i\s+)?(\d{2,4})\s*(?:€|euro|eur)?/i) ||
+    title.match(/meno\s+di\s+(\d{2,4})\s*(?:€|euro|eur)?/i) ||
+    hay.match(/sotto\s+(?:i\s+)?(\d{2,4})\s*(?:€|euro|eur)\b/i) ||
+    hay.match(/meno\s+di\s+(\d{2,4})\s*(?:€|euro|eur)\b/i);
+  if (cap) {
+    const n = parseInt(cap[1], 10);
+    if (n >= 50 && n <= 2000 && !YEAR_LIKE(n)) return n;
+  }
+
+  /**
+   * Numero IT con migliaia: 1.199 | 225,99 | 199
+   * Evita di catturare solo "199" da "1.199€".
+   */
+  const EURO_NUM = String.raw`(\d{1,3}(?:\.\d{3})+|\d{1,4})(?:[.,](\d{2}))?`;
+
+  const collectPrices = (text: string): number[] => {
+    const out: number[] = [];
+    // No \b after €: "122€:" non ha word-boundary (entrambi non-word)
+    const re = new RegExp(
+      `(?:€\\s*|EUR\\s*)${EURO_NUM}|${EURO_NUM}\\s*(?:€|euro|eur)(?![a-zA-Z])`,
+      'gi'
+    );
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      const intPart = m[1] || m[3];
+      const decPart = m[2] || m[4];
+      const token = decPart ? `${intPart},${decPart}` : intPart;
+      const idx = m.index;
+      const before = text.slice(Math.max(0, idx - 32), idx);
+      const after = text.slice(idx + m[0].length, idx + m[0].length + 24);
+      if (PRICE_NEG_BEFORE.test(before)) continue;
+      if (PRICE_NEG_AFTER.test(after)) continue;
+      const p = parseEuroAmount(token);
+      if (p) out.push(p);
+    }
+    return out;
+  };
+
+  // Preferisci pattern vendita espliciti nel titolo
+  const saleRe = new RegExp(
+    `(?:a\\s+soli|a\\s+soli\\s+|prezzo|in\\s+offerta(?:\\s+a)?|ora(?:\\s+a)?)\\s*(?:€\\s*)?${EURO_NUM}\\s*(?:€|euro|eur)?|\\ba\\s+${EURO_NUM}\\s*€`,
+    'i'
+  );
+  const saleTitle = title.match(saleRe);
+  if (saleTitle) {
+    const intPart = saleTitle[1] || saleTitle[3];
+    const decPart = saleTitle[2] || saleTitle[4];
+    const token = decPart ? `${intPart},${decPart}` : intPart;
+    const p = parseEuroAmount(token);
+    if (p) {
+      const idx = saleTitle.index ?? 0;
+      const before = title.slice(Math.max(0, idx - 32), idx);
+      const after = title.slice(idx + saleTitle[0].length, idx + saleTitle[0].length + 24);
+      if (!PRICE_NEG_BEFORE.test(before) && !PRICE_NEG_AFTER.test(after)) return p;
+    }
+  }
+
+  const titlePrices = collectPrices(title);
+  if (titlePrices.length) return Math.min(...titlePrices);
+
+  const excerptPrices = collectPrices(excerpt);
+  if (excerptPrices.length) return Math.min(...excerptPrices);
+
+  // Body solo se sembra un'offerta (evita carburanti, multe, specifiche)
+  if (isOfferArticle(article) || (article.category || '').toLowerCase() === 'offerte') {
+    const bodyPrices = collectPrices(body);
+    if (bodyPrices.length) return Math.min(...bodyPrices);
+  }
+
+  return null;
+};
+
+/** Max euro dallo slider budget (0→100 … 4→500). */
+export const budgetIndexToMaxEuro = (index: number): number => {
+  const map = [100, 200, 300, 400, 500];
+  return map[Math.max(0, Math.min(4, index))] ?? 200;
+};
+
+/** Filtra articoli con prezzo estratto ≤ maxEuro (esclude chi non ha prezzo). */
+export const filterArticlesUnderMaxEuro = (articles: Article[], maxEuro: number): Article[] => {
+  if (!maxEuro || maxEuro <= 0) return articles;
+  return articles.filter((a) => {
+    const p = a.priceEuro != null ? a.priceEuro : extractArticlePriceEuro(a);
+    return p != null && p > 0 && p <= maxEuro;
+  });
+};
+
 /**
  * Ricalibra la categoria navigazione: se è soprattutto un'offerta
  * (anche con etichetta news/brand), vince Offerte. Non sovrascrive
@@ -808,7 +968,13 @@ export const hydrateArticle = <T extends Pick<Article, 'title' | 'category'> & P
     dealData: article.dealData,
   });
 
-  return { ...article, tags, category };
+  const merged = { ...article, tags, category };
+  const priceEuro =
+    article.priceEuro != null
+      ? article.priceEuro
+      : extractArticlePriceEuro(merged);
+
+  return { ...merged, priceEuro };
 };
 
 const articleMatchesNavCategory = (article: Article, category: Category): boolean => {
@@ -862,7 +1028,7 @@ const mapFeedEntryToArticle = (entry: any): Article => {
     dealData,
   });
 
-  return {
+  const base = {
     id,
     title: cleanTitle,
     excerpt: cleanExcerpt,
@@ -875,9 +1041,14 @@ const mapFeedEntryToArticle = (entry: any): Article => {
     date: new Date(entry.published.$t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }),
     publishedAt: entry.published?.$t || undefined,
     url: postUrl,
-    type: 'standard',
+    type: 'standard' as const,
     featured: isFeatured,
     dealData: dealData,
+  };
+
+  return {
+    ...base,
+    priceEuro: extractArticlePriceEuro(base),
   };
 };
 
@@ -1083,6 +1254,17 @@ export const fetchBloggerPosts = async (category?: Category, searchQuery?: strin
             content: cleanContent,
             dealData: dealData,
             publishedAt,
+            priceEuro:
+              hydrated.priceEuro != null
+                ? hydrated.priceEuro
+                : extractArticlePriceEuro({
+                    title: cleanTitle,
+                    excerpt: cleanExcerpt,
+                    content: cleanContent,
+                    dealData,
+                    category: hydrated.category,
+                    tags,
+                  }),
           };
       });
 

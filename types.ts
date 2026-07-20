@@ -24,6 +24,8 @@ export interface Article {
   featured?: boolean;
   type?: 'standard' | 'mini' | 'hero' | 'horizontal';
   dealData?: DealData | null;
+  /** Prezzo in euro estratto da dealData / titolo / body (per filtro budget Offerte). */
+  priceEuro?: number | null;
 }
 
 export interface Deal {
