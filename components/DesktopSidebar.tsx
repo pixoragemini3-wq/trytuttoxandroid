@@ -8,8 +8,8 @@ interface DesktopSidebarProps {
   isLoading?: boolean;
 }
 
-/** Meno notizie per pagina = titoli leggibili senza tagli */
-const PAGE_SIZE = 3;
+/** 4 notizie per blocco: riempie l’altezza della colonna gialla */
+const PAGE_SIZE = 4;
 const MAX_ITEMS = 120;
 const ROTATE_MS = 5000;
 
@@ -78,14 +78,15 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         <div className="w-10 h-[3px] bg-black mt-2.5 rounded-full" />
       </div>
 
-      {/* Lista: 3 pezzi, spazio e line-height leggibili */}
+      {/* Lista: 4 pezzi per occupare lo spazio sotto il titolo */}
       <div className="relative z-10 flex-1 min-h-0 flex flex-col">
         <div
           key={animKey}
-          className="flex flex-col gap-3.5 flex-1 min-h-0 justify-start animate-in fade-in slide-in-from-bottom-2 duration-400"
+          className="flex flex-col gap-3 flex-1 min-h-0 justify-start animate-in fade-in slide-in-from-bottom-2 duration-400"
         >
           {isLoading ? (
             <>
+              <ArticleSkeleton type="sidebar" />
               <ArticleSkeleton type="sidebar" />
               <ArticleSkeleton type="sidebar" />
               <ArticleSkeleton type="sidebar" />
@@ -98,11 +99,11 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
                 onClick={() => onArticleClick(article)}
                 className="group cursor-pointer flex gap-3 items-start w-full text-left bg-transparent border-0 p-0 shrink-0"
               >
-                <span className="font-condensed text-[1.35rem] font-black text-black/30 group-hover:text-black transition-colors leading-none w-8 shrink-0 pt-0.5 tabular-nums">
+                <span className="font-condensed text-[1.3rem] font-black text-black/30 group-hover:text-black transition-colors leading-none w-8 shrink-0 pt-0.5 tabular-nums">
                   {formatNum(startNum + idx + 1)}
                 </span>
                 <div className="min-w-0 flex-1 border-t border-black/15 pt-1.5">
-                  <h4 className="font-condensed text-[14px] xl:text-[15px] leading-[1.25] font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all line-clamp-2 break-words">
+                  <h4 className="font-condensed text-[13.5px] xl:text-[14.5px] leading-[1.25] font-bold text-black group-hover:underline decoration-2 underline-offset-2 transition-all line-clamp-2 break-words">
                     {article.title}
                   </h4>
                 </div>
