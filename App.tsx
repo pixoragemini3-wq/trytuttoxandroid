@@ -1042,57 +1042,189 @@ const App: React.FC = () => {
     );
   };
 
-  const SmartphoneShowcase = () => (
-    <div className="w-full mb-10 animate-in fade-in slide-in-from-right duration-500">
-      <div className="bg-[#c0ff8c] border-y-2 border-black/5 py-4 mb-6 overflow-x-auto no-scrollbar shadow-inner">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center min-w-max gap-12 md:gap-0">
-            {['SAMSUNG', 'XIAOMI', 'PIXEL', 'ONEPLUS', 'MOTOROLA', 'REALME', 'SONY', 'NOTHING', 'HONOR'].map(brand => (
-              <button 
-                key={brand} 
-                onClick={() => { 
-                  setSearchQuery(brand); 
+  const SmartphoneShowcase = () => {
+    // Articoli in evidenza sotto i banner community (riempie il vuoto senza ripetere tutta la lista)
+    const featuredPhones = displayArticles.slice(0, 4);
+    const priceGuides: { max: number; label: string; hint: string }[] = [
+      { max: 200, label: 'Sotto 200€', hint: 'Entry level solidi' },
+      { max: 300, label: '200–300€', hint: 'Miglior rapporto qualità' },
+      { max: 400, label: '300–400€', hint: 'Fascia media top' },
+      { max: 500, label: 'Fino a 500€', hint: 'Premium accessibili' },
+    ];
+
+    return (
+      <div className="w-full mb-8 space-y-5 animate-in fade-in slide-in-from-right duration-500">
+        <div className="bg-[#c0ff8c] border-y-2 border-black/5 py-3.5 -mx-4 px-4 overflow-x-auto no-scrollbar shadow-inner rounded-none sm:rounded-2xl sm:mx-0">
+          <div className="flex justify-between items-center min-w-max gap-10 md:gap-6 md:min-w-0 md:flex-wrap md:justify-center">
+            {['SAMSUNG', 'XIAOMI', 'PIXEL', 'ONEPLUS', 'MOTOROLA', 'REALME', 'SONY', 'NOTHING', 'HONOR'].map((brand) => (
+              <button
+                key={brand}
+                type="button"
+                onClick={() => {
+                  setSearchQuery(brand);
                   handleSearchSubmit({ preventDefault: () => {} } as any);
                   if (typeof (window as any).gtag === 'function') {
                     (window as any).gtag('event', 'search', { search_term: brand });
                   }
                 }}
-                className="text-black font-black text-sm md:text-xl uppercase tracking-widest cursor-pointer hover:underline decoration-4 underline-offset-4 decoration-black/20 hover:scale-110 transition-all"
+                className="text-black font-black text-sm md:text-base uppercase tracking-widest cursor-pointer hover:underline decoration-4 underline-offset-4 decoration-black/20 hover:scale-105 transition-all"
               >
                 {brand}
               </button>
             ))}
+          </div>
         </div>
-      </div>
-      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-48 md:h-60 rounded-[2rem] overflow-hidden group shadow-xl transition-all hover:scale-[1.01]">
-            <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover" alt="Background" />
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-blue-600/70 mix-blend-multiply"></div>
-            <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
-               <div className="flex justify-between items-start">
-                  <span className="bg-white/20 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm border border-white/10 backdrop-blur-sm">Community Ufficiale</span>
-               </div>
-               <div className="flex flex-col items-center text-center">
-                   <h3 className="font-condensed text-5xl md:text-6xl font-black uppercase italic leading-none text-white drop-shadow-lg transform -skew-x-6">ANDROID<br/>ITALY</h3>
-               </div>
-               <div className="flex items-center justify-center">
-                   <span className="bg-white text-blue-600 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-lg">Unisciti al Gruppo &rarr;</span>
-               </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <a
+            href="https://www.facebook.com/groups/Android.Italy/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative h-44 md:h-52 rounded-[1.75rem] overflow-hidden group shadow-xl transition-all hover:scale-[1.01]"
+          >
+            <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover" alt="Android Italy" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-blue-600/70 mix-blend-multiply" />
+            <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
+              <span className="self-start bg-white/20 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm border border-white/10 backdrop-blur-sm">
+                Community ufficiale
+              </span>
+              <div className="flex flex-col items-center text-center">
+                <h3 className="font-condensed text-4xl md:text-5xl font-black uppercase italic leading-none text-white drop-shadow-lg transform -skew-x-6">
+                  ANDROID
+                  <br />
+                  ITALY
+                </h3>
+              </div>
+              <div className="flex items-center justify-center">
+                <span className="bg-white text-blue-600 px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-lg">
+                  Unisciti al gruppo &rarr;
+                </span>
+              </div>
             </div>
-         </a>
-         <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-48 md:h-60 rounded-[2rem] overflow-hidden group shadow-xl transition-all hover:scale-[1.01]">
-            <img src="https://i.imgur.com/GHOv30o.png" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Background" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
-            <div className="absolute inset-0 p-6 flex flex-col justify-center items-center z-10 text-center">
-               <div className="w-14 h-14 bg-white p-1 rounded-full shadow-2xl mb-3 relative group-hover:scale-110 transition-transform duration-500">
-                  <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo" />
-               </div>
-               <h3 className="font-condensed text-4xl md:text-5xl font-black uppercase text-white mb-4 leading-none drop-shadow-lg">TuttoXAndroid</h3>
-               <span className="bg-[#e31b23] text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest group-hover:bg-white group-hover:text-[#e31b23] transition-colors shadow-lg shadow-red-900/50">Segui la Pagina &rarr;</span>
+          </a>
+          <a
+            href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative h-44 md:h-52 rounded-[1.75rem] overflow-hidden group shadow-xl transition-all hover:scale-[1.01]"
+          >
+            <img
+              src="https://i.imgur.com/GHOv30o.png"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              alt="TuttoXAndroid"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+            <div className="absolute inset-0 p-5 flex flex-col justify-center items-center z-10 text-center">
+              <div className="w-12 h-12 bg-white p-1 rounded-full shadow-2xl mb-2 relative group-hover:scale-110 transition-transform duration-500">
+                <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo" />
+              </div>
+              <h3 className="font-condensed text-3xl md:text-4xl font-black uppercase text-white mb-3 leading-none drop-shadow-lg">
+                TuttoXAndroid
+              </h3>
+              <span className="bg-[#e31b23] text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest group-hover:bg-white group-hover:text-[#e31b23] transition-colors shadow-lg shadow-red-900/50">
+                Segui la pagina &rarr;
+              </span>
             </div>
-         </a>
+          </a>
+        </div>
+
+        {/* Riempie il vuoto sotto i banner: guide per fascia di prezzo */}
+        <div className="rounded-[1.75rem] border border-blue-100/80 bg-gradient-to-br from-blue-50 via-white to-amber-50/40 p-4 md:p-5 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-0.5">Guide acquisto</p>
+              <h4 className="font-condensed text-2xl md:text-3xl font-black uppercase italic text-gray-900 leading-none">
+                Scegli per fascia di prezzo
+              </h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSmartphonePriceGuide(null)}
+              className="text-[11px] font-bold text-gray-500 hover:text-blue-700 underline-offset-2 hover:underline"
+            >
+              Vedi tutti gli smartphone
+            </button>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-3">
+            {priceGuides.map((band) => {
+              const active = phonePriceBand?.maxEuro === band.max;
+              return (
+                <button
+                  key={band.max}
+                  type="button"
+                  onClick={() => handleSmartphonePriceGuide(band.max)}
+                  className={`text-left rounded-2xl border px-3.5 py-3.5 md:py-4 transition-all active:scale-[0.98] ${
+                    active
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/25'
+                      : 'border-gray-200/80 bg-white hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5'
+                  }`}
+                >
+                  <span
+                    className={`text-[9px] font-black uppercase tracking-widest ${
+                      active ? 'text-blue-100' : 'text-blue-600'
+                    }`}
+                  >
+                    Top pick
+                  </span>
+                  <span className={`block font-condensed text-xl md:text-2xl font-black uppercase leading-tight mt-0.5 ${active ? 'text-white' : 'text-gray-900'}`}>
+                    {band.label}
+                  </span>
+                  <span className={`block text-[11px] mt-1 ${active ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {band.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mini griglia articoli: occupa lo spazio sotto i banner con contenuto utile */}
+        {featuredPhones.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-condensed text-xl md:text-2xl font-black uppercase italic text-gray-900 leading-none">
+                In evidenza
+              </h4>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                Ultimi pezzi
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {featuredPhones.map((item) => (
+                <button
+                  key={`sp-feat-${item.id}`}
+                  type="button"
+                  onClick={() => handleArticleClick(item)}
+                  className="group flex gap-3 rounded-2xl border border-gray-100 bg-white p-2.5 text-left shadow-sm hover:shadow-md hover:border-blue-200 transition-all"
+                >
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-24 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                    <img
+                      src={item.imageUrl}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.src =
+                          'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=400';
+                      }}
+                    />
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center py-0.5 pr-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-700 mb-1">
+                      {item.category || 'Smartphone'}
+                    </span>
+                    <span className="font-condensed text-[15px] md:text-base font-black leading-snug text-gray-900 line-clamp-2 group-hover:text-[#e31b23] transition-colors">
+                      {item.title}
+                    </span>
+                    <span className="text-[11px] text-gray-400 mt-1 truncate">{item.date}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const AppsGamesMenu = () => {
     // Rotazione multi-slot al giorno: Guide, Offerte, Smartphone, App, Recensioni
@@ -2175,7 +2307,15 @@ const App: React.FC = () => {
                         key={isSearch ? `search-${searchQuery}` : activeCategory} 
                         className={`flex flex-col gap-3.5 md:gap-4 mb-8 animate-in fade-in duration-500 ${slideDirection === 'right' ? 'slide-in-from-right-20' : 'slide-in-from-left-20'}`}
                       >
-                          {displayArticles.slice(0, visibleNewsCount).map(item => (
+                          {/* Su Smartphone i primi 4 sono già in showcase "In evidenza" (solo se ce ne sono abbastanza) */}
+                          {displayArticles
+                            .slice(
+                              isHome && activeCategory === 'Smartphone' && !isSearch && displayArticles.length > 4
+                                ? 4
+                                : 0,
+                              visibleNewsCount
+                            )
+                            .map((item) => (
                             <ArticleCard key={item.id} article={{...item, type: 'standard'}} onClick={() => handleArticleClick(item)} />
                           ))}
                       </div>
