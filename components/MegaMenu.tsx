@@ -191,6 +191,21 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
     ];
   }, [category]);
 
+  // Articoli secondari sotto i banner community nel mega-menu Smartphone
+  const secondarySmartphones = useMemo(() => {
+    if (category !== 'Smartphone') return [];
+    const phoneRe =
+      /\b(galaxy|pixel|iphone|xiaomi|redmi|poco|oneplus|smartphone|honor|realme|motorola|nothing|sony|samsung)\b/i;
+    return sourceArticles
+      .filter((a) => a.id !== featuredArticle?.id)
+      .filter(
+        (a) =>
+          a.category === 'Smartphone' ||
+          phoneRe.test(articleHay(a))
+      )
+      .slice(0, 4);
+  }, [sourceArticles, category, featuredArticle]);
+
   /** Colore ufficiale categoria (stesso del nav) — richiami visibili, non solo grigio */
   const accent = CATEGORY_COLORS[category] || CATEGORY_COLORS['Tutti'] || '#64748b';
 
@@ -331,48 +346,128 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
               </div>
             </div>
 
-            {/* Col 3 & 4: SOCIAL CARDS (Images Updated) */}
-            <div className="col-span-2 flex flex-col gap-4">
-               {/* Android Italy Card with Background */}
-               <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-32 w-full rounded-2xl overflow-hidden group shadow-lg hover:shadow-xl transition-all border border-blue-100">
-                  {/* Updated Background: More visible image */}
+            {/* Col 3 & 4: community + lista che riempie il vuoto sotto i banner */}
+            <div className="col-span-2 flex flex-col gap-3 h-full min-h-0">
+               <a href="https://www.facebook.com/groups/Android.Italy/" target="_blank" rel="noopener noreferrer" className="relative h-[6.5rem] w-full shrink-0 rounded-2xl overflow-hidden group shadow-lg hover:shadow-xl transition-all border border-blue-100">
                   <img src="https://i.imgur.com/5czWQot.png" className="absolute inset-0 w-full h-full object-cover" alt="Background" />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 via-blue-800/60 to-transparent"></div>
-                  
-                  <div className="absolute inset-0 p-5 flex items-center justify-between z-10">
+                  <div className="absolute inset-0 p-4 flex items-center justify-between z-10">
                      <div>
                         <span className="bg-white/20 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest backdrop-blur-sm">Community Ufficiale</span>
-                        <h3 className="font-condensed text-3xl font-black uppercase italic text-white leading-none mt-1 shadow-black drop-shadow-md">Android Italy</h3>
+                        <h3 className="font-condensed text-2xl md:text-3xl font-black uppercase italic text-white leading-none mt-1 shadow-black drop-shadow-md">Android Italy</h3>
                         <p className="text-[10px] text-blue-100 font-medium">Il gruppo di supporto #1 in Italia</p>
                      </div>
                      <div className="text-right">
-                        <span className="block text-2xl font-black text-white">36k+</span>
+                        <span className="block text-xl font-black text-white">36k+</span>
                         <span className="text-[9px] uppercase font-bold text-white/80 bg-black/20 px-2 py-1 rounded-lg">Iscritti</span>
                      </div>
                   </div>
                </a>
 
-               {/* TuttoXAndroid Card - SPECIFIC IMAGE USED */}
-               <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-32 w-full rounded-2xl overflow-hidden group shadow-lg hover:shadow-xl transition-all border border-gray-200">
+               <a href="https://www.facebook.com/tuttoxandroidcom/?ref=embed_page" target="_blank" rel="noopener noreferrer" className="relative h-[6.5rem] w-full shrink-0 rounded-2xl overflow-hidden group shadow-lg hover:shadow-xl transition-all border border-gray-200">
                   <img src="https://i.imgur.com/GHOv30o.png" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="TuttoXAndroid Cover" />
-                  {/* Dark Gradient Overlay for text readability */}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
-
-                  <div className="absolute inset-0 p-5 flex items-center justify-between z-10">
-                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white rounded-full p-1 shadow-lg shrink-0 overflow-hidden">
+                  <div className="absolute inset-0 p-4 flex items-center justify-between z-10">
+                     <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 bg-white rounded-full p-1 shadow-lg shrink-0 overflow-hidden">
                            <img src="https://i.imgur.com/HcqNQcO.png" className="w-full h-full object-contain" alt="Logo" />
                         </div>
-                        <div>
-                           <h3 className="font-condensed text-2xl font-black uppercase text-white leading-none drop-shadow-md">TuttoXAndroid</h3>
+                        <div className="min-w-0">
+                           <h3 className="font-condensed text-xl md:text-2xl font-black uppercase text-white leading-none drop-shadow-md">TuttoXAndroid</h3>
                            <span className="text-[9px] text-gray-200 font-black uppercase tracking-widest drop-shadow-sm">Pagina Ufficiale</span>
                         </div>
                      </div>
-                     <button className="bg-[#1877F2] text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest group-hover:bg-white group-hover:text-[#1877F2] transition-colors shadow-lg">
+                     <span className="bg-[#1877F2] text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest group-hover:bg-white group-hover:text-[#1877F2] transition-colors shadow-lg shrink-0">
                         Segui
-                     </button>
+                     </span>
                   </div>
                </a>
+
+               {/* Riempie lo spazio bianco sotto i banner */}
+               <div className={`${megaCard} flex-1 flex flex-col min-h-0`} style={megaCardStyle}>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                     <div className="flex items-center gap-2.5 min-w-0">
+                        <MegaIcon>
+                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                           </svg>
+                        </MegaIcon>
+                        <h3 className="font-semibold text-[15px] text-slate-900 tracking-tight">Altri smartphone</h3>
+                     </div>
+                     <button
+                        type="button"
+                        onClick={() => {
+                          onSmartphonePriceGuide?.(null);
+                          onClose();
+                        }}
+                        className="text-[10px] font-black uppercase tracking-wide shrink-0 hover:underline"
+                        style={{ color: accent }}
+                     >
+                        Vedi tutti →
+                     </button>
+                  </div>
+
+                  {secondarySmartphones.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 content-start">
+                      {secondarySmartphones.map((art) => (
+                        <button
+                          type="button"
+                          key={art.id}
+                          onClick={() => {
+                            onArticleClick(art);
+                            onClose();
+                          }}
+                          className="group flex gap-2.5 items-center p-2 rounded-xl text-left transition-colors border border-transparent hover:border-slate-100"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = rgba(accent, 0.06);
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <div className="w-11 h-11 shrink-0 bg-slate-100 rounded-lg overflow-hidden border border-slate-100">
+                            <img
+                              src={art.imageUrl}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              alt=""
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-[11px] font-semibold leading-snug text-slate-800 line-clamp-2 group-hover:text-slate-950">
+                              {art.title}
+                            </h4>
+                            {art.date && (
+                              <span className="mt-0.5 block text-[9px] text-slate-400 font-medium">
+                                {art.date}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 py-2">Nessun altro pezzo smartphone nel feed recente.</p>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+                    <a
+                      href="https://t.me/tuttoxandroid"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wide text-white bg-gradient-to-r from-[#2AABEE] to-[#229ED9] hover:opacity-95 transition-opacity"
+                    >
+                      Telegram
+                    </a>
+                    <a
+                      href="https://whatsapp.com/channel/0029Va7xizpJ3jv7HZbVVH3a"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wide text-white bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:opacity-95 transition-opacity"
+                    >
+                      WhatsApp
+                    </a>
+                  </div>
+               </div>
             </div>
           </>
         );
