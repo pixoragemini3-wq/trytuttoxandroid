@@ -12,6 +12,8 @@ import {
   truncateLeadForQuote,
   hydrateArticle,
   stripJsonArtifactsFromHtml,
+  readCachedDealsInstant,
+  persistHomeDealsCache,
 } from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 import NewsletterForm from './NewsletterForm';
@@ -111,8 +113,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   /** Foto extra dalla fonte (es. tuttoandroid) se il post Blogger ne ha poche */
   const [sourceExtraImages, setSourceExtraImages] = useState<string[]>([]);
-  /** Offerte del giorno: props home + fetch locale se vuote (deep link articolo) */
-  const [liveDeals, setLiveDeals] = useState<Deal[]>(() => (deals?.length ? deals.slice(0, 4) : []));
+  /** Offerte: props home → cache locale (istantanea) → fetch rete solo in background */
+  const [liveDeals, setLiveDeals] = useState<Deal[]>(() => {
+    if (deals?.length) return deals.slice(0, 4);
+    return readCachedDealsInstant(4);
+  });
   const contentRef = useRef<HTMLDivElement>(null);
   const [portalNodes, setPortalNodes] = useState<{
     deals: Element | null,
@@ -282,28 +287,35 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return /(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli)/i.test(hay);
   }, [article]);
 
-  // Sync da home + auto-fetch se l'articolo Offerte apre senza pool deals
+  // Sync da home (quando il parent finisce il fetch)
   useEffect(() => {
     if (deals?.length) setLiveDeals(deals.slice(0, 4));
   }, [deals]);
 
+  // Solo path Veloce: niente secondo fetch lento (~30s). Cache già in state.
   useEffect(() => {
     if (!isDealCategory) return;
-    if (liveDeals.length >= 2) return;
     let cancelled = false;
     (async () => {
       try {
-        let list = await fetchBloggerDeals({ fast: true });
-        if (!list.length) list = await fetchBloggerDeals({ fast: false });
-        if (!cancelled && list.length) setLiveDeals(list.slice(0, 4));
+        // Se non c’era cache, prova subito di nuovo la lettura (race con home)
+        if (liveDeals.length < 2) {
+          const cached = readCachedDealsInstant(4);
+          if (cached.length && !cancelled) setLiveDeals(cached);
+        }
+        const list = await fetchBloggerDeals({ fast: true });
+        if (cancelled || !list.length) return;
+        setLiveDeals(list.slice(0, 4));
+        persistHomeDealsCache(list);
       } catch {
-        /* resta vuoto → CTA Telegram */
+        /* mantieni cache / props */
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [article.id, isDealCategory, liveDeals.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh solo al cambio articolo
+  }, [article.id, isDealCategory]);
 
   /**
    * "Continua a leggere" solo se il testo è davvero incompleto.
@@ -1819,32 +1831,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                       }}
                     />
 
-                    {/* Banner Offerte del Giorno — React nativo a metà pezzo (no portal) */}
-                    {isDealCategory && (
+                    {/* Banner Offerte: solo se abbiamo deal (cache/props/rete). Niente “Caricamento” da 30s. */}
+                    {isDealCategory && liveDeals.length > 0 && (
                       <div className="not-prose my-8" data-txa-mid-deals="1">
-                        {liveDeals.length > 0 ? (
-                          <>
-                            <MobileDealsCarousel />
-                            <DesktopDealsBanner />
-                          </>
-                        ) : (
-                          <div className="my-8 rounded-2xl border-2 border-[#e31b23]/30 bg-gradient-to-r from-gray-900 to-[#e31b23] p-6 text-center text-white">
-                            <p className="font-condensed text-2xl font-black uppercase italic text-[#e8ff00] mb-2">
-                              Offerte del Giorno
-                            </p>
-                            <p className="text-sm text-white/90 mb-4">
-                              Caricamento offerte… oppure aprile sul canale Telegram.
-                            </p>
-                            <a
-                              href="https://t.me/tuttoxandroid"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 bg-white text-gray-900 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest no-underline"
-                            >
-                              Vedi su Telegram
-                            </a>
-                          </div>
-                        )}
+                        <MobileDealsCarousel />
+                        <DesktopDealsBanner />
                       </div>
                     )}
 

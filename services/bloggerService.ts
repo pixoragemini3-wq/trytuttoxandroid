@@ -33,7 +33,7 @@ const SMARTPHONE_RE =
  * Usato per escludere da Offerte / budget anche se c’è un € nel testo.
  */
 const NON_TECH_NOISE_RE =
-  /\b(?:lavaggio\s+auto|auto\s+in\s+strada|tassa\s+(?:sui\s+)?conti|conto\s+corrente|conti\s+correnti|multe?(?:\s|$)|bollett[ae]|mutuo|assicurazion|abbigliamento|magliett[ae]|calzini|pampling|pamplona|caff[eè]|lavatrice|frigorifer|forno\b|autostrada|carburant|pensione|invalidit|bici\s+elettrica|sachsenrad|finom|engie|puntofisso|bollette|rimborso\s+fiscale|cashback\s+oral|oral-?b|trasporto\s+oggetti|videogiochi\s+da\s+collezione|asta\s+record)\b/i;
+  /\b(?:lavaggio\s+auto|auto\s+in\s+strada|tassa\s+(?:sui\s+)?conti|conto\s+corrente|conti\s+correnti|multe?(?:\s|$)|bollett[ae]|mutuo|assicurazion|abbigliamento|magliett[ae]|calzini|pampling|pamplona|caff[eè]|lavatrice|frigorifer|forno\b|autostrada|carburant|pensione|invalidit|bici\s+elettrica|sachsenrad|finom|engie|puntofisso|bollette|rimborso\s+fiscale|cashback\s+oral|oral-?b|trasporto\s+oggetti|videogiochi\s+da\s+collezione|asta\s+record|plug-?in\s+hybrid|listino\s+prezzi|prova\s+su\s+strada|immatricolazione|suv\b|station\s+wagon)\b/i;
 
 type OfferSignalInput = {
   title?: string;
@@ -1563,9 +1563,74 @@ export type FetchDealsOptions = {
   fast?: boolean;
 };
 
+/** Cache home / Telegram — lettura sincrona per banner istantaneo (0 rete). */
+export const HOME_DEALS_SESSION_KEY = 'txa_home_deals_v1';
+export const HOME_DEALS_LOCAL_KEY = 'txa_home_deals_v2';
+export const TELEGRAM_DEALS_CACHE_KEY = 'txa_telegram_deals_v8';
+
+export const readCachedDealsInstant = (max = 4): Deal[] => {
+  const parseList = (raw: string | null): Deal[] => {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw) as Deal[] | { deals?: Deal[]; t?: number };
+      if (Array.isArray(parsed)) {
+        return parsed.filter((d) => d && (d.link || d.product)).slice(0, max);
+      }
+      if (parsed && Array.isArray(parsed.deals)) {
+        return parsed.deals.filter((d) => d && (d.link || d.product)).slice(0, max);
+      }
+    } catch {
+      /* */
+    }
+    return [];
+  };
+  try {
+    const s = parseList(sessionStorage.getItem(HOME_DEALS_SESSION_KEY));
+    if (s.length) return s;
+  } catch {
+    /* */
+  }
+  try {
+    const l = parseList(localStorage.getItem(HOME_DEALS_LOCAL_KEY));
+    if (l.length) return l;
+  } catch {
+    /* */
+  }
+  try {
+    const tg = parseList(
+      sessionStorage.getItem(TELEGRAM_DEALS_CACHE_KEY) ||
+        localStorage.getItem(TELEGRAM_DEALS_CACHE_KEY)
+    );
+    if (tg.length) return tg;
+  } catch {
+    /* */
+  }
+  return [];
+};
+
+export const persistHomeDealsCache = (list: Deal[]): void => {
+  const top = list.slice(0, 4);
+  if (!top.length) return;
+  try {
+    sessionStorage.setItem(HOME_DEALS_SESSION_KEY, JSON.stringify(top));
+  } catch {
+    /* */
+  }
+  try {
+    localStorage.setItem(
+      HOME_DEALS_LOCAL_KEY,
+      JSON.stringify({ t: Date.now(), deals: top })
+    );
+  } catch {
+    /* */
+  }
+};
+
 export const fetchBloggerDeals = async (opts: FetchDealsOptions = {}): Promise<Deal[]> => {
   const fast = opts.fast !== false; // default: veloce (home banner)
   try {
+    // In fast: se c’è cache, usala come base se la rete fallisce o è lenta
+    const instantCache = fast ? readCachedDealsInstant(4) : [];
     const bloggerPromise = (async () => {
       try {
         const labels = fast
@@ -1660,16 +1725,22 @@ export const fetchBloggerDeals = async (opts: FetchDealsOptions = {}): Promise<D
       // Soft fill leggero: solo widget ads-system, niente rete extra
       allDeals = await softFillDealsToCount(allDeals, rawPool, 4, { fast: true });
     }
+    // Rete vuota/lenta → non lasciare il banner “Caricamento” per 30s
+    if (!allDeals.length && instantCache.length) {
+      allDeals = instantCache;
+    }
     allDeals = allDeals.slice(0, 4);
 
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
-    return allDeals.map((deal, idx) => ({
+    const out = allDeals.map((deal, idx) => ({
       ...deal,
       product: formatDealProductTitle(deal.product),
       brandColor: dealColors[idx % dealColors.length],
     }));
+    if (out.length) persistHomeDealsCache(out);
+    return out;
   } catch {
-    return [];
+    return fast ? readCachedDealsInstant(4) : [];
   }
 };
 

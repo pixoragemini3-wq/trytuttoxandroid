@@ -17,6 +17,8 @@ import {
   isSmartphoneContext,
   smartphoneGuideBand,
   formatDealProductTitle,
+  readCachedDealsInstant,
+  persistHomeDealsCache,
   type SmartphonePriceBand,
 } from './services/bloggerService';
 import { isInAppBrowser } from './utils/browser';
@@ -60,31 +62,8 @@ const App: React.FC = () => {
   });
 
   const [articles, setArticles] = useState<Article[]>([]);
-  // Offerte: idrata subito da cache locale (session + local, TTL lungo) — niente attesa rete
-  const [deals, setDeals] = useState<Deal[]>(() => {
-    const read = (raw: string | null): Deal[] => {
-      if (!raw) return [];
-      try {
-        const parsed = JSON.parse(raw) as Deal[] | { deals?: Deal[]; t?: number };
-        if (Array.isArray(parsed)) return parsed.slice(0, 4);
-        if (parsed && Array.isArray(parsed.deals)) {
-          // localStorage con timestamp: valido 2h
-          if (parsed.t && Date.now() - parsed.t > 2 * 60 * 60 * 1000) return [];
-          return parsed.deals.slice(0, 4);
-        }
-      } catch { /* */ }
-      return [];
-    };
-    try {
-      const fromSession = read(sessionStorage.getItem('txa_home_deals_v1'));
-      if (fromSession.length) return fromSession;
-    } catch { /* */ }
-    try {
-      return read(localStorage.getItem('txa_home_deals_v2'));
-    } catch {
-      return [];
-    }
-  });
+  // Offerte: idrata subito da cache (session/local/TG) — banner senza attesa rete
+  const [deals, setDeals] = useState<Deal[]>(() => readCachedDealsInstant(4));
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
   /** Filtro budget Offerte (prezzo estratto dai post). null = nessun tetto. */
@@ -315,19 +294,6 @@ const App: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const persistDeals = (list: Deal[]) => {
-      const top = list.slice(0, 4);
-      try {
-        sessionStorage.setItem('txa_home_deals_v1', JSON.stringify(top));
-      } catch { /* */ }
-      try {
-        localStorage.setItem(
-          'txa_home_deals_v2',
-          JSON.stringify({ t: Date.now(), deals: top })
-        );
-      } catch { /* */ }
-    };
-
     const loadPosts = async () => {
       setIsArticlesLoading(true);
       try {
@@ -348,21 +314,22 @@ const App: React.FC = () => {
 
     const loadDeals = async () => {
       try {
-        // Fast path: niente microlink/jina a catena — banner in pochi secondi
+        // Fast path: se cache già piena, refresh in background senza svuotare UI
         const dealsData = await fetchBloggerDeals({ fast: true });
         if (cancelled || !dealsData.length) return;
         setDeals(dealsData.slice(0, 4));
-        persistDeals(dealsData);
+        persistHomeDealsCache(dealsData);
       } catch {
         /* mantieni cache */
       }
     };
 
     void loadPosts();
-    // Offerte dopo il primo paint (non competono con il feed articoli)
+    // Offerte subito se cache vuota; altrimenti refresh leggero dopo paint
+    const hasCache = readCachedDealsInstant(4).length > 0;
     const dealsTimer = window.setTimeout(() => {
       void loadDeals();
-    }, 50);
+    }, hasCache ? 200 : 0);
 
     const dealsInterval = window.setInterval(() => {
       void loadDeals();
