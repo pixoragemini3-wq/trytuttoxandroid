@@ -904,8 +904,8 @@ const App: React.FC = () => {
   };
 
   /**
-   * Banner deal compatto (scroll orizzontale).
-   * Usato a metà pagina solo con filtro budget Offerte — niente griglia 8 card gigante.
+   * Banner deal compatto (scroll orizzontale) + CTA Telegram.
+   * Home: Tutti / Offerte. Con filtro budget filtra le card per prezzo.
    */
   const DealsSection = ({
     compact = true,
@@ -2172,8 +2172,25 @@ const App: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Banner deal rimosso dall’alto: compare compatto a metà pagina solo con filtro budget */}
-                
+                {/* Banner Offerte del Giorno (Telegram) — home Tutti + sezione Offerte */}
+                {isHome &&
+                  !isSearch &&
+                  deals.length > 0 &&
+                  (activeCategory === 'Tutti' || activeCategory === 'Offerte') && (
+                    <div
+                      className={`px-4 lg:px-0 ${
+                        activeCategory === 'Offerte' ? 'mt-6' : 'mt-4'
+                      }`}
+                    >
+                      <DealsSection
+                        compact
+                        maxEuro={
+                          activeCategory === 'Offerte' ? maxBudgetEuro : null
+                        }
+                      />
+                    </div>
+                  )}
+
                 {/* MOVED: Social Banner placed EXTERNALLY above the News Section Content */}
                 {isHome && activeCategory === 'Tutti' && !isSearch && (
                   <div ref={staticBannerRef} className="px-4 lg:px-0 mt-6 mb-2">
@@ -2272,17 +2289,6 @@ const App: React.FC = () => {
                   <SmartphoneShowcase />
                 )}
 
-                {/* Offerte del giorno: strip compatta a metà pagina, solo con budget (200€, 300€…) */}
-                {isHome &&
-                  !isSearch &&
-                  activeCategory === 'Offerte' &&
-                  maxBudgetEuro != null &&
-                  deals.length > 0 && (
-                    <div className="mb-6">
-                      <DealsSection compact maxEuro={maxBudgetEuro} />
-                    </div>
-                  )}
-                
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   <div className="lg:col-span-2 min-w-0">
                     {/* ANIMATED GRID CONTAINER - Key ensures re-render and animation triggers on swipe */}
