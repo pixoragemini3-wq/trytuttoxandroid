@@ -77,6 +77,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [fullContent, setFullContent] = useState(article.content);
   const [isUpdating, setIsUpdating] = useState(false);
+  /** Foto extra dalla fonte (es. tuttoandroid) se il post Blogger ne ha poche */
+  const [sourceExtraImages, setSourceExtraImages] = useState<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const [portalNodes, setPortalNodes] = useState<{
     deals: Element | null,
@@ -517,9 +519,89 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return out;
   };
 
+  const preferFullSizeImgUrl = (url: string): string =>
+    url
+      .replace(/-\d{2,4}x\d{2,4}(\.(?:jpe?g|png|webp))(?:\?.*)?$/i, '$1')
+      .replace(/\?.*$/, '');
+
+  const extractFonteUrl = (html: string): string | null => {
+    if (!html) return null;
+    const m =
+      html.match(
+        /class=["'][^"']*txa-source[^"']*["'][^>]*>[\s\S]{0,400}?href=["'](https?:\/\/[^"']+)["']/i
+      ) ||
+      html.match(/Fonte:\s*(?:<[^>]+>\s*)*href=["'](https?:\/\/[^"']+)["']/i) ||
+      html.match(
+        /href=["'](https?:\/\/(?:www\.)?(?:tuttoandroid\.net|androidworld\.it|hdblog\.it|mobileworld\.it)[^"']+)["']/i
+      );
+    return m?.[1]?.trim() || null;
+  };
+
+  /** Immagini editoriali dal pezzo originale (niente logo, ads, correlati). */
+  const parseSourceEditorialImages = (
+    raw: string,
+    title: string,
+    existingKeys: Set<string>
+  ): string[] => {
+    if (!raw || raw.length < 400) return [];
+    // Taglia prima di pubblicità / correlati / sidebar
+    let slice = raw;
+    const cut = raw.search(
+      /Pubblicit[aà]|related[- ]posts|Articoli correlati|Leggi anche|yarpp|sharedaddy|comments-area|Altri articoli/i
+    );
+    if (cut > 800) slice = raw.slice(0, cut);
+
+    const found: string[] = [];
+    const push = (u: string) => {
+      let url = (u || '').trim().replace(/&amp;/g, '&');
+      if (!url || !/^https?:\/\//i.test(url)) return;
+      if (/amazon\.|amzn\.|media-amazon/i.test(url)) return;
+      if (/logo|favicon|inserti|black-friday|e-black|avatar|emoji|badge/i.test(url)) return;
+      if (/-\d{2,3}x\d{2,3}\.(?:jpe?g|png|webp)/i.test(url)) return; // thumb
+      url = preferFullSizeImgUrl(url);
+      if (!isEditorialArticleImage(url)) return;
+      const key = normalizeImgSrc(url);
+      if (existingKeys.has(key) || found.some((f) => normalizeImgSrc(f) === key)) return;
+      found.push(url);
+    };
+
+    const md = /!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi;
+    let m: RegExpExecArray | null;
+    while ((m = md.exec(slice)) !== null) push(m[1]);
+    const imgTag = /<img[^>]+src=["']([^"']+)["']/gi;
+    while ((m = imgTag.exec(slice)) !== null) push(m[1]);
+    const bare =
+      /https?:\/\/img\.(?:tuttoandroid\.net|androidworld\.it)\/wp-content\/uploads\/[^\s"'<>)]+/gi;
+    while ((m = bare.exec(slice)) !== null) push(m[0]);
+
+    // Preferisci foto collegate al titolo (es. "Google Meet" → Google-Meet.png)
+    const titleTokens = (title || '')
+      .toLowerCase()
+      .split(/[^a-z0-9àèéìòù]+/i)
+      .filter((t) => t.length >= 4 && !/^(come|nuova|arriva|della|delle|questo|quella|web|news)$/i.test(t));
+    const scored = found.map((url) => {
+      const path = url.toLowerCase();
+      let score = 0;
+      for (const t of titleTokens) {
+        if (path.includes(t)) score += 3;
+      }
+      // Path con data recente e nome prodotto
+      if (/\/20\d{2}\/\d{2}\//.test(path)) score += 1;
+      if (/hero|screenshot|ui|interfaccia/i.test(path)) score += 1;
+      // Penalizza correlati tipici non nel titolo
+      if (/pixel|samsung|tim-logo|galaxy|motorola|xiaomi/i.test(path) && score < 3) score -= 5;
+      return { url, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    const good = scored.filter((s) => s.score > 0).map((s) => s.url);
+    // Se il titolo non matcha nulla, prendi le prime 2 “pulite” del body (prima dei correlati)
+    const picked = (good.length ? good : found).slice(0, 4);
+    return picked.map(forceArticleImgRes);
+  };
+
   /**
    * Se le foto extra sono tutte ammassate in testa/coda, le ridistribuisce nel corpo.
-   * Con 1 sola immagine non fa nulla.
+   * Con 1 sola immagine non fa nulla (salvo extra già fusi nel body).
    */
   const maybeRedistributeBodyPhotos = (
     bodyHtml: string,
@@ -530,14 +612,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     const heroKey = heroSrc ? normalizeImgSrc(heroSrc) : '';
     const extras = all.filter((s) => normalizeImgSrc(s) !== heroKey);
 
-    // Solo 0–1 foto oltre l'hero: lascia com'è (anche 1 sola immagine totale)
+    // Solo 0–1 foto oltre l'hero: lascia com'è
     if (extras.length <= 1) return bodyHtml;
 
-    // Con 2+ extra (totale ≥3 foto) ha senso spezzare il muro di testo
-    // Con 3+ extra (totale ≥4) inseriamo fino a 4 foto intermedie
     const toPlace = extras.slice(0, extras.length >= 3 ? 4 : 2).map(forceArticleImgRes);
 
-    // Rimuovi i blocchi foto dal corpo (li reinseriamo in posizioni migliori)
     let cleaned = removeImageBlocksBySrc(bodyHtml, toPlace);
     cleaned = cleaned.replace(
       /<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>\s*<\/div>/gi,
@@ -748,15 +827,33 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       }
     );
 
-    // Se l'originale ha più foto (≈3–4+), distribuiscile nel testo; se ne ha 1, non toccare
+    // Foto dalla fonte originale non presenti nel post (es. solo 1 img su Blogger)
+    const heroKey = hero ? normalizeImgSrc(hero) : '';
+    const already = new Set(
+      collectImgSrcs(cleaned)
+        .concat(picked)
+        .map(normalizeImgSrc)
+    );
+    const fromSource = sourceExtraImages
+      .filter((s) => {
+        const k = normalizeImgSrc(s);
+        return k && k !== heroKey && !already.has(k);
+      })
+      .slice(0, 3);
+    if (fromSource.length) {
+      cleaned = injectMidArticlePhotos(cleaned, fromSource, article.title || '');
+    }
+
+    // Se l'originale (o la fonte) ha più foto, distribuiscile nel testo
     cleaned = maybeRedistributeBodyPhotos(cleaned, hero, article.title || '');
 
     return { featuredImages: picked.slice(0, 1), proseBody: cleaned };
-  }, [displayBody, article.imageUrl, article.title]);
+  }, [displayBody, article.imageUrl, article.title, sourceExtraImages]);
 
   useEffect(() => {
     setFullContent(article.content);
-    
+    setSourceExtraImages([]);
+
     const loadFull = async () => {
       setIsUpdating(true);
       try {
@@ -764,14 +861,82 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         if (freshContent && freshContent.length > (article.content?.length || 0)) {
           setFullContent(freshContent);
         }
-      } catch(e) {
-        console.error("Failed to load full article", e);
+      } catch (e) {
+        console.error('Failed to load full article', e);
       } finally {
         setIsUpdating(false);
       }
     };
     loadFull();
   }, [article.id]);
+
+  // Se il post ha poche foto, recupera quelle del pezzo originale (link Fonte)
+  useEffect(() => {
+    let cancelled = false;
+    const html = fullContent || article.content || '';
+    const existing = collectImgSrcs(html)
+      .concat(article.imageUrl ? [article.imageUrl] : [])
+      .filter(isEditorialArticleImage);
+    // Già ricco di foto → non fetch
+    if (existing.length >= 3) {
+      setSourceExtraImages([]);
+      return;
+    }
+    const fonte = extractFonteUrl(html);
+    if (!fonte || !/tuttoandroid\.net|androidworld\.it|hdblog\.it|mobileworld\.it/i.test(fonte)) {
+      return;
+    }
+
+    const existingKeys = new Set(existing.map(normalizeImgSrc));
+    const cacheKey = `txa_src_imgs_v1_${fonte}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as string[];
+        if (Array.isArray(parsed) && parsed.length) {
+          setSourceExtraImages(parsed);
+          return;
+        }
+      }
+    } catch { /* */ }
+
+    (async () => {
+      const targets = [
+        `https://r.jina.ai/${fonte}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(fonte)}`,
+        `https://corsproxy.io/?${encodeURIComponent(fonte)}`,
+      ];
+      for (const url of targets) {
+        if (cancelled) return;
+        try {
+          const ctrl = new AbortController();
+          const t = window.setTimeout(() => ctrl.abort(), 14000);
+          const res = await fetch(url, { signal: ctrl.signal });
+          window.clearTimeout(t);
+          if (!res.ok) continue;
+          const text = await res.text();
+          if (!text || text.length < 500) continue;
+          const imgs = parseSourceEditorialImages(text, article.title || '', existingKeys);
+          if (imgs.length) {
+            if (!cancelled) {
+              setSourceExtraImages(imgs);
+              try {
+                sessionStorage.setItem(cacheKey, JSON.stringify(imgs));
+              } catch { /* */ }
+            }
+            return;
+          }
+        } catch {
+          /* next proxy */
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers stabili nel render
+  }, [article.id, article.title, article.imageUrl, fullContent]);
 
   const extractTocHash = (href: string): string => {
     if (!href) return '';
