@@ -556,59 +556,90 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     existingKeys: Set<string>
   ): string[] => {
     if (!raw || raw.length < 400) return [];
-    // Taglia prima di pubblicità / correlati / sidebar
+    // Taglia prima di pubblicità / correlati / sidebar / footer widget
     let slice = raw;
     const cut = raw.search(
-      /Pubblicit[aà]|related[- ]posts|Articoli correlati|Leggi anche|yarpp|sharedaddy|comments-area|Altri articoli/i
+      /Pubblicit[aà]|related[- ]posts|Articoli correlati|Leggi anche|yarpp|sharedaddy|comments-area|Altri articoli|Ti potrebbe interessare|Potrebbe interessarti|Ultimi articoli|Pi[uù] letti|In evidenza|Footer|Newsletter|Iscriviti|Share this|Condividi/i
     );
     if (cut > 800) slice = raw.slice(0, cut);
+    // Evita di “pescare” mezza homepage: restano solo le prime ~25k del pezzo
+    if (slice.length > 28000) slice = slice.slice(0, 28000);
 
     const found: string[] = [];
     const push = (u: string) => {
       let url = (u || '').trim().replace(/&amp;/g, '&');
       if (!url || !/^https?:\/\//i.test(url)) return;
       if (/amazon\.|amzn\.|media-amazon/i.test(url)) return;
-      if (/logo|favicon|inserti|black-friday|e-black|avatar|emoji|badge/i.test(url)) return;
+      // Logo, ads, avatar, stock generiche spesso usate come filler
+      if (
+        /logo|favicon|inserti|black-friday|e-black|avatar|emoji|badge|gravatar|author|widget|sprite|icon[-_]|placeholder|stock|cartoon|illustrat|dashcam|dash-cam|generic|ai-gen|midjourney|dall-?e/i.test(
+          url
+        )
+      ) {
+        return;
+      }
+      // Nomi file generici tipo article-20260722-122546 (spesso AI stock non tematici)
+      if (/\/article-\d{8}-\d+/i.test(url)) return;
       if (/-\d{2,3}x\d{2,3}\.(?:jpe?g|png|webp)/i.test(url)) return; // thumb
       url = preferFullSizeImgUrl(url);
       if (!isEditorialArticleImage(url)) return;
+      // Solo media editoriali dei siti fonte (niente CDN random / tracking)
+      if (
+        !/img\.(?:tuttoandroid\.net|androidworld\.it)|hdblog\.it|mobileworld\.it|googleusercontent\.com|bp\.blogspot\.com|wp-content\/uploads/i.test(
+          url
+        )
+      ) {
+        return;
+      }
       const key = normalizeImgSrc(url);
       if (existingKeys.has(key) || found.some((f) => normalizeImgSrc(f) === key)) return;
       found.push(url);
     };
 
+    // Solo markdown/HTML espliciti: NON scandire URL “nudi” in tutta la pagina
+    // (quella via raccoglieva correlati, sidebar e thumb di altri pezzi).
     const md = /!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi;
     let m: RegExpExecArray | null;
     while ((m = md.exec(slice)) !== null) push(m[1]);
     const imgTag = /<img[^>]+src=["']([^"']+)["']/gi;
     while ((m = imgTag.exec(slice)) !== null) push(m[1]);
-    const bare =
-      /https?:\/\/img\.(?:tuttoandroid\.net|androidworld\.it)\/wp-content\/uploads\/[^\s"'<>)]+/gi;
-    while ((m = bare.exec(slice)) !== null) push(m[0]);
 
     // Preferisci foto collegate al titolo (es. "Google Meet" → Google-Meet.png)
+    const stop = /^(come|nuova|arriva|della|delle|dello|dello|questo|quella|quello|queste|questi|anche|dopo|prima|sono|nella|nelle|nello|degli|delle|degli|perché|perche|italia|mondo|news|web|app|apps|foto|video|oggi|anni|anno|mega|giga)$/i;
     const titleTokens = (title || '')
       .toLowerCase()
       .split(/[^a-z0-9àèéìòù]+/i)
-      .filter((t) => t.length >= 4 && !/^(come|nuova|arriva|della|delle|questo|quella|web|news)$/i.test(t));
-    const scored = found.map((url) => {
+      .filter((t) => t.length >= 4 && !stop.test(t));
+
+    const scored = found.map((url, idx) => {
       const path = url.toLowerCase();
       let score = 0;
+      let hits = 0;
       for (const t of titleTokens) {
-        if (path.includes(t)) score += 3;
+        if (path.includes(t)) {
+          score += 4;
+          hits += 1;
+        }
       }
-      // Path con data recente e nome prodotto
-      if (/\/20\d{2}\/\d{2}\//.test(path)) score += 1;
-      if (/hero|screenshot|ui|interfaccia/i.test(path)) score += 1;
-      // Penalizza correlati tipici non nel titolo
-      if (/pixel|samsung|tim-logo|galaxy|motorola|xiaomi/i.test(path) && score < 3) score -= 5;
-      return { url, score };
+      // Bonus solo come tie-break, mai da solo per accettare un'immagine
+      if (/hero|screenshot|ui|interfaccia|recensione/i.test(path)) score += 1;
+      // Penalizza brand tipici dei correlati se non nel titolo
+      if (
+        /pixel|samsung|galaxy|motorola|xiaomi|iphone|iphone|tim-logo|whatsapp|instagram|gboard/i.test(path) &&
+        hits === 0
+      ) {
+        score -= 8;
+      }
+      // Ordine nel documento: le prime foto del pezzo valgono di più delle ultime (correlati)
+      score += Math.max(0, 3 - idx) * 0.1;
+      return { url, score, hits };
     });
     scored.sort((a, b) => b.score - a.score);
-    const good = scored.filter((s) => s.score > 0).map((s) => s.url);
-    // Se il titolo non matcha nulla, prendi le prime 2 “pulite” del body (prima dei correlati)
-    const picked = (good.length ? good : found).slice(0, 4);
-    return picked.map(forceArticleImgRes);
+
+    // STRICT: accetta solo immagini con almeno un token del titolo nel filename/path.
+    // Meglio 0 foto extra che dashcam/cartoni presi da correlati o widget.
+    const good = scored.filter((s) => s.hits >= 1 && s.score >= 4).map((s) => s.url);
+    return good.slice(0, 3).map(forceArticleImgRes);
   };
 
   /**
