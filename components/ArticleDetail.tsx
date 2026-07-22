@@ -421,6 +421,132 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return srcs;
   };
 
+  /** Esclude pixel, icone, loghi e immagini non editoriali. */
+  const isEditorialArticleImage = (src: string): boolean => {
+    if (!src || !/^https?:\/\//i.test(src)) return false;
+    const s = src.toLowerCase();
+    if (s.startsWith('data:')) return false;
+    if (/pixel|spacer|tracking|1x1|favicon|emoji|badge|button|sprite/i.test(s)) return false;
+    if (/doubleclick|googlesyndication|facebook\.com\/tr|analytics/i.test(s)) return false;
+    // Thumbnail Blogger minimi (s72, s160) — non foto articolo
+    if (/\/s(3[2-9]|[4-9]\d|1[0-5]\d)(-c)?\//i.test(s)) return false;
+    if (/=s(3[2-9]|[4-9]\d|1[0-5]\d)\b/i.test(s)) return false;
+    return true;
+  };
+
+  const forceArticleImgRes = (url: string): string => {
+    if (!url) return url;
+    if (/googleusercontent\.com|bp\.blogspot\.com/i.test(url)) {
+      return url
+        .replace(/\/s\d+(-c)?\//, '/s1600/')
+        .replace(/\/w\d+-h\d+(-c)?\//, '/s1600/')
+        .replace(/=[sNw]\d+.*$/i, '=s1600');
+    }
+    return url;
+  };
+
+  const escapeHtmlAttr = (v: string): string =>
+    v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+  const makeMidArticlePhotoBlock = (src: string, alt: string): string => {
+    const hi = forceArticleImgRes(src);
+    const a = escapeHtmlAttr(alt || '');
+    return (
+      `<div class="separator txa-mid-photo" style="clear:both;text-align:center">` +
+      `<img src="${escapeHtmlAttr(hi)}" alt="${a}" loading="lazy" />` +
+      `</div>`
+    );
+  };
+
+  /**
+   * Inserisce foto a metà articolo (dopo H2 o paragrafi), senza inventare immagini:
+   * solo URL già presenti nel post originale.
+   */
+  const injectMidArticlePhotos = (html: string, srcs: string[], alt: string): string => {
+    if (!html || !srcs.length) return html;
+    const blocks = srcs.map((s) => makeMidArticlePhotoBlock(s, alt));
+
+    const findEnds = (re: RegExp): number[] => {
+      const ends: number[] = [];
+      let m: RegExpExecArray | null;
+      const r = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+      while ((m = r.exec(html)) !== null) ends.push(m.index + m[0].length);
+      return ends;
+    };
+
+    // Preferisci dopo i titoli sezione (salta il primo H2 = inizio articolo)
+    let anchors = findEnds(/<\/h2>/i).slice(1);
+    if (anchors.length < blocks.length) {
+      const pEnds = findEnds(/<\/p>/i);
+      // Zona centrale ~20%–85% del testo
+      const lo = Math.floor(html.length * 0.18);
+      const hi = Math.floor(html.length * 0.88);
+      const midPs = pEnds.filter((p) => p >= lo && p <= hi);
+      for (const p of midPs) {
+        if (anchors.length >= blocks.length + 2) break;
+        if (!anchors.some((a) => Math.abs(a - p) < 80)) anchors.push(p);
+      }
+      anchors.sort((a, b) => a - b);
+    }
+
+    if (!anchors.length) {
+      // Articolo molto corto: appendi in coda
+      return `${html}\n${blocks.join('\n')}`;
+    }
+
+    // Distribuisci le foto in modo uniforme sugli anchor disponibili
+    const picks: { at: number; block: string }[] = [];
+    for (let i = 0; i < blocks.length; i++) {
+      const t = blocks.length === 1 ? 0.5 : i / (blocks.length - 1 || 1);
+      const idx = Math.min(anchors.length - 1, Math.round(t * (anchors.length - 1)));
+      // Evita due foto sullo stesso punto
+      let at = anchors[idx];
+      let guard = 0;
+      while (picks.some((p) => Math.abs(p.at - at) < 40) && guard < anchors.length) {
+        at = anchors[(idx + guard + 1) % anchors.length];
+        guard++;
+      }
+      picks.push({ at, block: blocks[i] });
+    }
+
+    picks.sort((a, b) => b.at - a.at); // da fine a inizio
+    let out = html;
+    for (const { at, block } of picks) {
+      out = `${out.slice(0, at)}\n${block}\n${out.slice(at)}`;
+    }
+    return out;
+  };
+
+  /**
+   * Se le foto extra sono tutte ammassate in testa/coda, le ridistribuisce nel corpo.
+   * Con 1 sola immagine non fa nulla.
+   */
+  const maybeRedistributeBodyPhotos = (
+    bodyHtml: string,
+    heroSrc: string,
+    articleTitle: string
+  ): string => {
+    const all = collectImgSrcs(bodyHtml).filter(isEditorialArticleImage);
+    const heroKey = heroSrc ? normalizeImgSrc(heroSrc) : '';
+    const extras = all.filter((s) => normalizeImgSrc(s) !== heroKey);
+
+    // Solo 0–1 foto oltre l'hero: lascia com'è (anche 1 sola immagine totale)
+    if (extras.length <= 1) return bodyHtml;
+
+    // Con 2+ extra (totale ≥3 foto) ha senso spezzare il muro di testo
+    // Con 3+ extra (totale ≥4) inseriamo fino a 4 foto intermedie
+    const toPlace = extras.slice(0, extras.length >= 3 ? 4 : 2).map(forceArticleImgRes);
+
+    // Rimuovi i blocchi foto dal corpo (li reinseriamo in posizioni migliori)
+    let cleaned = removeImageBlocksBySrc(bodyHtml, toPlace);
+    cleaned = cleaned.replace(
+      /<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>\s*<\/div>/gi,
+      ''
+    );
+
+    return injectMidArticlePhotos(cleaned, toPlace, articleTitle);
+  };
+
   const removeImageBlocksBySrc = (html: string, srcs: string[]): string => {
     const pending = new Set(srcs.map(normalizeImgSrc));
     if (!pending.size) return html;
@@ -589,20 +715,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   }, [fullContent, article.content, article.excerpt]);
 
   const { featuredImages, proseBody } = useMemo(() => {
-    const hero = (article.imageUrl || '').trim();
-    const bodySrcs = collectImgSrcs(displayBody);
+    const bodySrcs = collectImgSrcs(displayBody).filter(isEditorialArticleImage);
+    const heroRaw = (article.imageUrl || '').trim();
+    const hero =
+      (heroRaw && isEditorialArticleImage(heroRaw) ? heroRaw : '') ||
+      bodySrcs[0] ||
+      '';
+
     const picked: string[] = [];
+    if (hero) picked.push(forceArticleImgRes(hero));
 
-    const pushUnique = (src: string) => {
-      if (!src) return;
-      if (picked.some((p) => normalizeImgSrc(p) === normalizeImgSrc(src))) return;
-      picked.push(src);
-    };
-
-    // Una sola immagine in evidenza: le altre restano nel corpo dove le ha meso l'editor
-    if (hero) pushUnique(hero);
-    else if (bodySrcs[0]) pushUnique(bodySrcs[0]);
-
+    // Hero solo in evidenza in alto; togli dal corpo per non duplicare
     let cleaned = removeImageBlocksBySrc(displayBody, picked);
     cleaned = cleaned.replace(
       /^\s*(?:<div[^>]*\bclass=["'][^"']*separator[^"']*["'][^>]*>[\s\S]*?<\/div>\s*)+/i,
@@ -625,8 +748,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       }
     );
 
+    // Se l'originale ha più foto (≈3–4+), distribuiscile nel testo; se ne ha 1, non toccare
+    cleaned = maybeRedistributeBodyPhotos(cleaned, hero, article.title || '');
+
     return { featuredImages: picked.slice(0, 1), proseBody: cleaned };
-  }, [displayBody, article.imageUrl]);
+  }, [displayBody, article.imageUrl, article.title]);
 
   useEffect(() => {
     setFullContent(article.content);
