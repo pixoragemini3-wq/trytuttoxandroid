@@ -16,6 +16,7 @@ import {
   isNonTechOfferNoise,
   isSmartphoneContext,
   smartphoneGuideBand,
+  formatDealProductTitle,
   type SmartphonePriceBand,
 } from './services/bloggerService';
 import { isInAppBrowser } from './utils/browser';
@@ -926,7 +927,10 @@ const App: React.FC = () => {
 
     if (dealCards.length === 0) return null;
 
-    const dealCard = (deal: (typeof deals)[0], compact: boolean) => (
+    const dealCard = (deal: (typeof deals)[0], compact: boolean) => {
+      // Solo descrizione prodotto in card (il link resta sull'<a>, non nel testo)
+      const productTitle = formatDealProductTitle(deal.product);
+      return (
       <a
         key={deal.id}
         href={deal.link}
@@ -935,44 +939,46 @@ const App: React.FC = () => {
         onClick={() => handleDealClick(deal, 'home_deals')}
         className={
           compact
-            ? 'txa-deal-card shrink-0 w-[148px] snap-start bg-black/35 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-2 p-2.5'
-            : 'bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-3.5 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[160px] h-full'
+            ? 'txa-deal-card shrink-0 w-[132px] snap-start bg-black/35 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-1.5 p-2'
+            : 'txa-deal-card bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-2 p-2.5 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 h-full'
         }
         style={{ color: '#ffffff' }}
       >
+        {/* Immagine quadrata (non striscia orizzontale) */}
         <div
-          className={`txa-deal-card-img relative w-full shrink-0 bg-white rounded-lg overflow-hidden ${
-            compact ? 'h-14' : 'h-[4.5rem]'
+          className={`txa-deal-card-img relative w-full shrink-0 bg-white rounded-lg overflow-hidden aspect-square ${
+            compact ? '' : ''
           }`}
         >
           <DealImage
             src={deal.imageUrl}
             link={deal.link}
-            alt={deal.product}
-            className={`absolute inset-0 w-full h-full object-contain object-center p-1.5 mix-blend-multiply ${
+            alt={productTitle}
+            className={`absolute inset-0 w-full h-full object-contain object-center p-2 mix-blend-multiply ${
               compact ? '' : 'group-hover:scale-105 transition-transform duration-500'
             }`}
           />
         </div>
-        <div className="flex-1 min-w-0 flex flex-col justify-between">
+        <div className="flex-1 min-w-0 flex flex-col justify-between gap-1">
           <h4
             className={`txa-deal-title font-bold leading-snug ${
-              compact ? 'text-[10px] line-clamp-2 mb-1 min-h-[2rem]' : 'text-xs mb-2 line-clamp-3 min-h-[2.5rem]'
+              compact ? 'text-[10px] line-clamp-2 min-h-[2rem]' : 'text-[11px] xl:text-xs line-clamp-2 min-h-[2.1rem]'
             }`}
             style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
+            title={productTitle}
           >
-            {deal.product}
+            {productTitle}
           </h4>
-          <div className="flex items-baseline gap-1.5 flex-wrap">
+          <div className="flex items-baseline gap-1 flex-wrap mt-auto">
             <span
-              className={`txa-deal-price font-black tracking-tight ${compact ? 'text-sm' : 'text-sm sm:text-base'}`}
+              className={`txa-deal-price font-black tracking-tight ${compact ? 'text-sm' : 'text-sm xl:text-base'}`}
               style={{ color: '#fde047', WebkitTextFillColor: '#fde047' }}
             >
               {deal.newPrice}
             </span>
             {deal.oldPrice && (
               <span
-                className="txa-deal-old-price text-[10px] font-bold line-through"
+                className="txa-deal-old-price text-[9px] xl:text-[10px] font-bold line-through"
                 style={{ color: 'rgba(255,255,255,0.75)', WebkitTextFillColor: 'rgba(255,255,255,0.75)' }}
               >
                 {deal.oldPrice}
@@ -981,7 +987,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </a>
-    );
+      );
+    };
 
     return (
       <section
@@ -1006,10 +1013,15 @@ const App: React.FC = () => {
           .txa-deals-banner .txa-deals-banner-title::after{display:none!important;content:none!important;}
           .txa-deals-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none;}
           .txa-deals-scroll::-webkit-scrollbar{display:none;}
+          .txa-deal-card-img{aspect-ratio:1/1!important;}
           .txa-deal-card-img img{
             position:absolute;inset:0;width:100%!important;height:100%!important;
             object-fit:contain!important;object-position:center!important;
-            padding:0.35rem;box-sizing:border-box;
+            padding:0.5rem;box-sizing:border-box;
+          }
+          .txa-deal-title{
+            overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;
+            word-break:break-word;overflow-wrap:anywhere;
           }
         `}</style>
         <div className="absolute top-0 right-0 w-40 h-40 lg:w-64 lg:h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-10 -mt-10 pointer-events-none" />

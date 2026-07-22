@@ -1499,11 +1499,63 @@ export const fetchArticleByUrl = async (url: string): Promise<Article | null> =>
   }
 };
 
-const formatDealProductTitle = (raw: string): string => {
-  let product = (raw || 'Offerta Tech').replace(/^[\p{Emoji}\s]+/gu, '').trim();
-  product = product.replace(/\s+/g, ' ');
-  if (product.length > 110) product = `${product.slice(0, 107).trim()}…`;
+/**
+ * Titolo leggibile per le card: solo descrizione prodotto, mai link Amazon/URL.
+ */
+export const formatDealProductTitle = (raw: string): string => {
+  let product = (raw || '').trim();
+  // Rimuovi URL e frammenti Amazon (mai mostrare link in UI)
+  product = product.replace(/https?:\/\/[^\s<>"')\]]+/gi, ' ');
+  product = product.replace(/(?:www\.)?(?:amazon\.[a-z.]+|amzn\.[a-z.]+)\/[^\s<>"')\]]*/gi, ' ');
+  product = product.replace(/[?&](?:tag|linkCode|ref|psc|th|psc)=[^\s&]*/gi, ' ');
+  product = product.replace(/\bB0[A-Z0-9]{8}\b/gi, ' '); // ASIN nudo
+  product = product.replace(/^[\p{Emoji}\s*#._-]+/gu, '').trim();
+  // Prefissi prezzo tipo "A 1,74 €" non sono un titolo
+  product = product.replace(/^a\s+\d+[.,]\d{0,2}\s*€\s*/i, '');
+  product = product.replace(/^\d+[.,]\d{0,2}\s*€\s*/i, '');
+  product = product.replace(/\s+/g, ' ').trim();
+  product = product.replace(/^[-–—|:·]+\s*/, '').replace(/\s*[-–—|:·]+$/, '');
+
+  const looksLikeUrl =
+    !product ||
+    product.length < 4 ||
+    /^https?:/i.test(product) ||
+    /amazon\.|amzn\.|\/dp\/|tag=/i.test(product);
+  const hasWords = /[a-zA-ZàèéìòùÀÈÉÌÒÙ]{3,}/.test(product);
+  if (looksLikeUrl || !hasWords) return 'Offerta Amazon';
+
+  if (product.length > 88) product = `${product.slice(0, 85).trim()}…`;
   return product;
+};
+
+/** Sceglie la riga più “prodotto” dal contesto Telegram (no link, no solo prezzo). */
+const extractProductNameFromContext = (context: string): string => {
+  const lines = (context || '')
+    .split(/\n+/)
+    .map((l) => l.replace(/[*_#`]/g, '').trim())
+    .filter(Boolean);
+
+  const candidates = lines.filter((l) => {
+    if (l.length < 8 || l.length > 160) return false;
+    if (/^https?:\/\//i.test(l) || /amazon\.|amzn\.|\/dp\//i.test(l)) return false;
+    if (/acquista su amazon|applica coupon|di sconto|risparmiando|link affiliat/i.test(l)) return false;
+    if (/^\d+[.,]\d{0,2}\s*€/.test(l) || /^a\s+\d+[.,]/i.test(l)) return false;
+    if (!/[a-zA-Zàèéìòù]{3,}/i.test(l)) return false;
+    return true;
+  });
+
+  if (!candidates.length) return 'Offerta Amazon';
+  // Preferisci titolo prodotto “pulito”, non la riga più lunga se è spam
+  const scored = candidates
+    .map((l) => {
+      let score = Math.min(l.length, 80);
+      if (/^[A-Z0-9]/.test(l)) score += 8;
+      if (/\b(ml|gb|tb|w|mm|inch|pack|set|pro|max|plus)\b/i.test(l)) score += 12;
+      if (l.length > 100) score -= 20;
+      return { l, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  return formatDealProductTitle(scored[0].l.replace(/^\d+\.\s*/, '').replace(/^a soli\s+/i, ''));
 };
 
 export const fetchBloggerDeals = async (): Promise<Deal[]> => {
@@ -1589,6 +1641,8 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
     return allDeals.map((deal, idx) => ({
         ...deal,
+        // Mai pubblicare link grezzi come titolo card
+        product: formatDealProductTitle(deal.product),
         brandColor: dealColors[idx % dealColors.length]
     }));
     
@@ -1843,7 +1897,10 @@ const softFillDealsToCount = (selected: Deal[], pool: Deal[], minCount: number):
     if (!link || /t\.me\/|telegram\.me/i.test(link)) continue;
     if (!/amazon\.|amzn\./i.test(link) && !deal.newPrice) continue;
 
-    const soft: Deal = { ...deal };
+    const soft: Deal = {
+      ...deal,
+      product: formatDealProductTitle(deal.product),
+    };
     if (!soft.imageUrl || /unsplash\.com/i.test(soft.imageUrl)) {
       soft.imageUrl = amazonImageFromLink(soft.link) || soft.imageUrl || DEAL_IMG_FALLBACK;
     }
@@ -1924,9 +1981,13 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     const imageUrl = asin
       ? amazonImageFromLink(link)
       : (tgImg || amazonImageFromLink(link) || DEAL_IMG_FALLBACK);
+    let cleanProduct = formatDealProductTitle(product);
+    if (cleanProduct === 'Offerta Amazon') {
+      cleanProduct = extractProductNameFromContext(priceText);
+    }
     deals.push({
       id: `tg-${deals.length}-${(asin || link).slice(-12)}`,
-      product,
+      product: cleanProduct,
       oldPrice,
       newPrice,
       saveAmount: 'Telegram',
@@ -1956,13 +2017,7 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     if (seenLinks.has(link)) continue;
     const start = Math.max(0, m.index - 350);
     const context = text.slice(start, m.index + m[0].length);
-    const lines = context
-      .split('\n')
-      .map((l) => l.replace(/[*_#]/g, '').trim())
-      .filter((l) => l.length > 6 && !/^https?:\/\//i.test(l) && !/acquista su amazon|applica coupon|di sconto/i.test(l));
-    let product = lines[lines.length - 1] || 'Offerta Tech';
-    product = product.replace(/^\d+\.\s*/, '').replace(/^a soli\s+/i, '');
-    product = formatDealProductTitle(product);
+    const product = extractProductNameFromContext(context);
     pushDeal(product, link, context);
     if (deals.length >= 28) break;
   }
@@ -2033,9 +2088,9 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  // v5: anteprime verificate + soft-fill a ≥4 offerte prodotto
-  const CACHE_KEY = 'txa_telegram_deals_v5';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v5_time';
+  // v6: titoli solo descrizione (no URL) + soft-fill ≥4
+  const CACHE_KEY = 'txa_telegram_deals_v6';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v6_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
   const TARGET_WITH_IMG = 12;
   const MIN_DEALS = 4;
