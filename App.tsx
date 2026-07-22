@@ -920,10 +920,17 @@ const App: React.FC = () => {
       });
       pool = under.length > 0 ? under : deals;
     }
+    // Home: sempre 4 slot; Offerte: fino a 8
     const dealsToShow = activeCategory === 'Offerte' ? 8 : 4;
     const dealCards = pool.slice(0, dealsToShow);
 
     if (dealCards.length === 0) return null;
+
+    // Riempie la griglia a 4 colonne se il feed ne ha meno (slot CTA Telegram)
+    const needFillSlots =
+      activeCategory !== 'Offerte' && dealCards.length > 0 && dealCards.length < 4
+        ? 4 - dealCards.length
+        : 0;
 
     const dealCard = (deal: (typeof deals)[0], compact: boolean) => (
       <a
@@ -935,13 +942,13 @@ const App: React.FC = () => {
         className={
           compact
             ? 'txa-deal-card shrink-0 w-[148px] snap-start bg-black/35 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-2 p-2.5'
-            : 'bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-4 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[170px]'
+            : 'bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-3 p-3.5 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 min-h-[160px] h-full'
         }
         style={{ color: '#ffffff' }}
       >
         <div
           className={`txa-deal-card-img relative w-full shrink-0 bg-white rounded-lg overflow-hidden ${
-            compact ? 'h-14' : 'h-20'
+            compact ? 'h-14' : 'h-[4.5rem]'
           }`}
         >
           <DealImage
@@ -956,7 +963,7 @@ const App: React.FC = () => {
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <h4
             className={`txa-deal-title font-bold leading-snug ${
-              compact ? 'text-[10px] line-clamp-2 mb-1 min-h-[2rem]' : 'text-xs mb-2 line-clamp-3 min-h-[2.75rem]'
+              compact ? 'text-[10px] line-clamp-2 mb-1 min-h-[2rem]' : 'text-xs mb-2 line-clamp-3 min-h-[2.5rem]'
             }`}
             style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
           >
@@ -982,9 +989,33 @@ const App: React.FC = () => {
       </a>
     );
 
+    const telegramFillCard = (idx: number, compact: boolean) => (
+      <a
+        key={`tg-fill-${idx}`}
+        href="https://t.me/tuttoxandroid"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={
+          compact
+            ? 'txa-deal-card shrink-0 w-[148px] snap-start bg-[#24A1DE]/25 backdrop-blur-md rounded-xl border border-white/20 shadow-md flex flex-col items-center justify-center gap-2 p-2.5 text-center'
+            : 'bg-[#24A1DE]/20 backdrop-blur-md rounded-xl border border-white/20 shadow-lg hover:bg-[#24A1DE]/35 transition-all group flex flex-col items-center justify-center gap-2 p-3.5 hover:-translate-y-1 duration-300 min-h-[160px] h-full text-center'
+        }
+        style={{ color: '#ffffff' }}
+        aria-label="Altre offerte su Telegram Offerte Italy"
+      >
+        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center p-1 shadow-md">
+          <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="" />
+        </div>
+        <span className="text-[11px] font-black uppercase tracking-wide leading-snug px-1">
+          Altre offerte su Telegram
+        </span>
+        <span className="text-[10px] font-bold text-yellow-300">Apri canale →</span>
+      </a>
+    );
+
     return (
       <section
-        className="txa-deals-banner py-3 lg:py-8 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-x-clip overflow-y-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
+        className="txa-deals-banner py-3 lg:py-6 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-x-clip overflow-y-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
         style={{ color: '#ffffff' }}
       >
         <style>{`
@@ -1014,14 +1045,14 @@ const App: React.FC = () => {
         <div className="absolute top-0 right-0 w-40 h-40 lg:w-64 lg:h-64 bg-white opacity-5 rounded-full blur-[80px] -mr-10 -mt-10 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-3 lg:px-6 relative z-10">
-          <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2.5 lg:mb-6">
+          <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2.5 lg:mb-4">
             <div className="flex items-center gap-2 min-w-0 flex-1 pr-1 flex-wrap">
               <h2
-                className="txa-deals-banner-title font-condensed text-[1.15rem] xs:text-xl sm:text-2xl lg:text-6xl font-black uppercase tracking-[-0.02em] italic leading-[1.05] break-words"
+                className="txa-deals-banner-title font-condensed text-[1rem] xs:text-lg sm:text-xl lg:text-[3.2rem] font-black uppercase tracking-[-0.02em] italic leading-[1.05] break-words"
                 style={{
                   color: '#e8ff00',
                   WebkitTextFillColor: '#e8ff00',
-                  textShadow: '0 0 14px rgba(232,255,0,0.45), 0 1px 3px rgba(0,0,0,0.4)',
+                  textShadow: '0 0 12px rgba(232,255,0,0.4), 0 1px 2px rgba(0,0,0,0.4)',
                   paddingRight: '0.2em',
                   overflow: 'visible',
                 }}
@@ -1081,17 +1112,21 @@ const App: React.FC = () => {
           {/* Mobile: scroll orizzontale */}
           <div className="txa-deals-scroll flex lg:hidden gap-2.5 overflow-x-auto pb-0.5 snap-x snap-mandatory">
             {dealCards.map((deal) => dealCard(deal, true))}
+            {needFillSlots > 0 &&
+              Array.from({ length: needFillSlots }).map((_, i) => telegramFillCard(i, true))}
           </div>
 
-          {/* Desktop: griglia classica */}
+          {/* Desktop: griglia 4 colonne (home) / fino a 8 (Offerte) */}
           <div
-            className={`hidden lg:grid gap-3 ${
+            className={`hidden lg:grid gap-2.5 xl:gap-3 ${
               dealsToShow > 4
                 ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
-                : 'grid-cols-2 lg:grid-cols-4'
+                : 'grid-cols-4'
             } items-stretch`}
           >
             {dealCards.map((deal) => dealCard(deal, false))}
+            {needFillSlots > 0 &&
+              Array.from({ length: needFillSlots }).map((_, i) => telegramFillCard(i, false))}
           </div>
         </div>
       </section>

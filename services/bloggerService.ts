@@ -1566,13 +1566,18 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const telegramPromise = fetchTelegramDeals();
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
 
-    // Modello classico: se Telegram risponde, usiamo SOLO quelle offerte (canale live).
-    // Blogger Amazon solo come fallback se il canale non è raggiungibile.
-    // Entrambe le fonti: solo offerte con anteprima verificata (no riquadri bianchi).
+    // Preferisci Telegram live; se ne ha meno di 4, completa con Blogger (stessa UI a 4 card).
+    // Solo offerte con anteprima reale (no riquadri bianchi / unsplash placeholder).
+    const bloggerPicked =
+      telegramDeals.length >= 4
+        ? []
+        : await pickDealsWithPreviewImages(bloggerDeals, 8, 20);
     const sourceDeals =
       telegramDeals.length > 0
-        ? telegramDeals
-        : await pickDealsWithPreviewImages(bloggerDeals, 8, 20);
+        ? [...telegramDeals, ...bloggerPicked]
+        : bloggerPicked.length > 0
+          ? bloggerPicked
+          : await pickDealsWithPreviewImages(bloggerDeals, 8, 20);
 
     const seen = new Set<string>();
     const allDeals: Deal[] = [];
