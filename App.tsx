@@ -60,7 +60,17 @@ const App: React.FC = () => {
   });
 
   const [articles, setArticles] = useState<Article[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
+  // Offerte: mostra subito la cache (se c'è) così il banner non aspetta 10–20s
+  const [deals, setDeals] = useState<Deal[]>(() => {
+    try {
+      const raw = sessionStorage.getItem('txa_home_deals_v1');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Deal[];
+      return Array.isArray(parsed) ? parsed.slice(0, 4) : [];
+    } catch {
+      return [];
+    }
+  });
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
   /** Filtro budget Offerte (prezzo estratto dai post). null = nessun tetto. */
@@ -287,31 +297,40 @@ const App: React.FC = () => {
     setMeta('twitter:description', desc);
   }, [activeCategory, searchQuery, isSearch]);
 
-  // Load Content - SEPARATED FETCHING
+  // Load Content: articoli e offerte IN PARALLELO (il banner non aspetta i post)
   useEffect(() => {
     const init = async () => {
-      // 1. Fetch Articles FIRST (Critical for UI)
       setIsArticlesLoading(true);
-      try {
-         const posts = await fetchBloggerPosts();
-         const finalPosts = posts.length > 0 ? posts : MOCK_ARTICLES;
-         setArticles(finalPosts);
-         setFilteredArticles(finalPosts);
-      } catch (e) {
-         setArticles(MOCK_ARTICLES);
-         setFilteredArticles(MOCK_ARTICLES);
-      } finally {
-         setIsArticlesLoading(false);
-      }
 
-      // 2. Fetch Deals SECOND (Background - doesn't block UI)
-      // Prefer real Telegram channel offers, then Blogger. No mock products.
-      try {
-         const dealsData = await fetchBloggerDeals();
-         setDeals(dealsData.length > 0 ? dealsData : []);
-      } catch (e) {
-         setDeals([]);
-      }
+      const postsPromise = (async () => {
+        try {
+          const posts = await fetchBloggerPosts();
+          const finalPosts = posts.length > 0 ? posts : MOCK_ARTICLES;
+          setArticles(finalPosts);
+          setFilteredArticles(finalPosts);
+        } catch {
+          setArticles(MOCK_ARTICLES);
+          setFilteredArticles(MOCK_ARTICLES);
+        } finally {
+          setIsArticlesLoading(false);
+        }
+      })();
+
+      const dealsPromise = (async () => {
+        try {
+          const dealsData = await fetchBloggerDeals();
+          if (dealsData.length > 0) {
+            setDeals(dealsData.slice(0, 4));
+            try {
+              sessionStorage.setItem('txa_home_deals_v1', JSON.stringify(dealsData.slice(0, 4)));
+            } catch { /* private mode */ }
+          }
+        } catch {
+          /* mantieni cache se c'era */
+        }
+      })();
+
+      await Promise.all([postsPromise, dealsPromise]);
     };
 
     init();

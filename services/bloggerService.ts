@@ -1629,11 +1629,10 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       rawPool.push(deal);
     }
 
-    // Solo offerte con foto prodotto reale (no riquadri bianchi Amazon P/)
-    let allDeals = await pickDealsWithPreviewImages(rawPool, 8, 48);
-    allDeals = await softFillDealsToCount(allDeals, rawPool, 4);
+    // Solo 4 offerte con foto ok — pool ridotto = meno attesa sul banner
+    let allDeals = await pickDealsWithPreviewImages(rawPool, 4, 16);
     if (allDeals.length < 4) {
-      allDeals = await softFillDealsToCount(allDeals, bloggerDeals, 4);
+      allDeals = await softFillDealsToCount(allDeals, rawPool, 4);
     }
     allDeals = allDeals.slice(0, 4);
 
@@ -1848,11 +1847,15 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
     return url;
   };
 
-  // 1) microlink (OG image — affidabile)
+  // 1) Widget ads-system PRIMA (veloce, niente API esterne — banner offerte più snello)
+  const widget = amazonImageCandidates(link).find((u) => /amazon-adsystem/i.test(u));
+  if (widget && (await probeImageLoads(widget, 3500))) return remember(widget);
+
+  // 2) microlink (OG image) — timeout ridotto
   try {
     const r = await fetchWithTimeout(
       `https://api.microlink.io/?url=${encodeURIComponent(productUrl)}`,
-      9000
+      5000
     );
     if (r.ok) {
       const j = await r.json();
@@ -1863,33 +1866,15 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
     }
   } catch { /* next */ }
 
-  // 2) jina reader sulla scheda prodotto
+  // 3) jina solo se ancora serve
   try {
-    const r = await fetchWithTimeout(`https://r.jina.ai/${productUrl}`, 12000);
+    const r = await fetchWithTimeout(`https://r.jina.ai/${productUrl}`, 7000);
     if (r.ok) {
       const text = await r.text();
       const url = extractFromText(text);
       if (url && !isAmazonPlaceholderPath(url)) return remember(url);
     }
   } catch { /* next */ }
-
-  // 3) HTML grezzo via proxy (og:image)
-  for (const proxy of [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(productUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(productUrl)}`,
-  ]) {
-    try {
-      const r = await fetchWithTimeout(proxy, 10000);
-      if (!r.ok) continue;
-      const html = await r.text();
-      const url = extractFromText(html);
-      if (url && !isAmazonPlaceholderPath(url)) return remember(url);
-    } catch { /* next */ }
-  }
-
-  // 4) Widget ads-system (foto prodotto, non path P/)
-  const widget = amazonImageCandidates(link).find((u) => /amazon-adsystem/i.test(u));
-  if (widget && (await probeImageLoads(widget))) return remember(widget);
 
   return null;
 };
@@ -1913,16 +1898,25 @@ export const pickDealsWithPreviewImages = async (
   const ensurePreview = async (deal: Deal): Promise<Deal | null> => {
     const d = { ...deal };
 
-    // 1) Foto già buona (Telegram /images/I/ / widget) + probe
+    // 1) Foto già buona (Telegram /images/I/) — probe rapido
     if (
       looksLikeDealPreviewUrl(d.imageUrl) &&
       !isAmazonPlaceholderPath(d.imageUrl) &&
-      (await probeImageLoads(d.imageUrl))
+      (await probeImageLoads(d.imageUrl, 3000))
     ) {
       return d;
     }
 
-    // 2) Risoluzione ASIN → foto prodotto reale (og:image /images/I/ o widget)
+    // 2) Widget Amazon ads-system (subito, senza microlink/jina)
+    for (const candidate of amazonImageCandidates(d.link)) {
+      if (isAmazonPlaceholderPath(candidate)) continue;
+      if (await probeImageLoads(candidate, 3000)) {
+        d.imageUrl = candidate;
+        return d;
+      }
+    }
+
+    // 3) Risoluzione ASIN (più lenta) solo se serve ancora
     try {
       const resolved = await resolveAmazonProductImage(d.link);
       if (resolved && !isAmazonPlaceholderPath(resolved)) {
@@ -1931,21 +1925,13 @@ export const pickDealsWithPreviewImages = async (
       }
     } catch { /* next */ }
 
-    // 3) Solo candidati non-placeholder (ads-system), mai path P/ bianchi
-    for (const candidate of amazonImageCandidates(d.link)) {
-      if (isAmazonPlaceholderPath(candidate)) continue;
-      if (await probeImageLoads(candidate)) {
-        d.imageUrl = candidate;
-        return d;
-      }
-    }
-
-    // Nessuna foto prodotto usabile → scarta (meglio meno card che riquadri bianchi)
     return null;
   };
 
-  for (let i = 0; i < pool.length && selected.length < targetCount; i += concurrency) {
-    const batch = pool.slice(i, i + concurrency);
+  // Più parallelo = banner Offerte del Giorno prima
+  const batchSize = Math.max(concurrency, 4);
+  for (let i = 0; i < pool.length && selected.length < targetCount; i += batchSize) {
+    const batch = pool.slice(i, i + batchSize);
     const results = await Promise.all(batch.map((d) => ensurePreview(d)));
     for (const r of results) {
       if (r && selected.length < targetCount) selected.push(r);
@@ -2213,7 +2199,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
   const CACHE_KEY = 'txa_telegram_deals_v7';
   const CACHE_TIME_KEY = 'txa_telegram_deals_v7_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
-  const TARGET_WITH_IMG = 12;
+  const TARGET_WITH_IMG = 6;
   const MIN_DEALS = 4;
 
   const hasRealPreview = (d: Deal) =>

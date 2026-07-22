@@ -241,11 +241,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return /(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli)/i.test(hay);
   }, [article]);
 
-  // Check if content appears truncated
+  /**
+   * "Continua a leggere" solo se il testo è davvero incompleto.
+   * NON basarsi su <a name="more">: l'autoposter lo lascia nel body anche
+   * quando l'articolo è già intero (falso positivo → bottone inutile).
+   */
   const isTruncated = useMemo(() => {
-     const hasMoreTag = fullContent?.includes('<!--more-->') || fullContent?.includes('name="more"');
-     return ((!fullContent || fullContent.length < 600) || hasMoreTag) && article.url;
-  }, [fullContent, article.url]);
+    if (!article.url) return false;
+    const html = fullContent || '';
+    // Contenuto già sostanzioso: mostra tutto, mai il CTA "Leggi tutto"
+    if (html.length >= 700) return false;
+    // Ancora in caricamento del body completo
+    if (isUpdating && html.length < 700) return true;
+    return html.length < 400;
+  }, [fullContent, article.url, isUpdating]);
 
   const catColor = 
     article.category === 'Smartphone' ? 'text-blue-600' : 
@@ -273,6 +282,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
   const sanitizeArticleHtml = (html: string): string => {
     let out = stripJsonArtifactsFromHtml(html);
+    // Ancora Blogger "jump link" — inutile in SPA e confonde il fallback troncato
+    out = out.replace(/<a\s+name=["']more["']\s*>\s*<\/a>/gi, '');
+    out = out.replace(/<!--\s*more\s*-->/gi, '');
     out = out.replace(/<div[^>]*\bclass=["'][^"']*txa-img[^"']*["'][^>]*>\s*<\/div>/gi, '');
     const navMatch = out.match(
       /<nav[^>]*\bclass=["'][^"']*txa-toc[^"']*["'][^>]*>[\s\S]*?<\/nav>/i
@@ -1709,11 +1721,21 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                         portalNodes.readAlso2
                     )}
                     
-                    {/* TRUNCATION FALLBACK */}
+                    {/* Solo se il body è davvero incompleto (non per name=more spurio) */}
                     {isTruncated && (
                         <div className="not-prose my-6 p-6 bg-gray-50 rounded-xl text-center border-2 border-dashed border-gray-200">
-                        <h4 className="font-condensed text-xl font-black uppercase mb-2 text-gray-400">Continua a leggere...</h4>
-                        <button onClick={handleForceNativeLoad} className="bg-[#e31b23] text-white px-6 py-3 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-black transition-colors shadow-lg">Leggi Tutto</button>
+                        <h4 className="font-condensed text-xl font-black uppercase mb-2 text-gray-400">
+                          {isUpdating ? 'Caricamento articolo…' : 'Continua a leggere…'}
+                        </h4>
+                        {!isUpdating && (
+                          <button
+                            type="button"
+                            onClick={handleForceNativeLoad}
+                            className="bg-[#e31b23] text-white px-6 py-3 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-black transition-colors shadow-lg"
+                          >
+                            Leggi tutto
+                          </button>
+                        )}
                         </div>
                     )}
                 </div>
