@@ -233,10 +233,17 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
   // Check if article is deals related (categoria, deal box, o segnali prezzo/Amazon)
   const isDealCategory = useMemo(() => {
-    if (article.category === 'Offerte') return true;
-    if (article.dealData?.link) return true;
+    const cat = String(article.category || '').toLowerCase().trim();
+    if (cat === 'offerte' || cat === 'offerteimperdibili' || cat === 'offerta') return true;
+    if (article.dealData?.link || article.dealData?.newPrice) return true;
     const tags = (article.tags || []).map((t) => t.toLowerCase().trim());
-    if (tags.some((t) => /offert|amazon|sconto|coupon|promo|deal/i.test(t))) return true;
+    if (
+      tags.some((t) =>
+        /offert|amazon|sconto|coupon|promo|deal|imperdibil/i.test(t)
+      )
+    ) {
+      return true;
+    }
     const hay = `${article.title} ${article.excerpt || ''}`.toLowerCase();
     return /(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli)/i.test(hay);
   }, [article]);
@@ -544,7 +551,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       ) ||
       html.match(/Fonte:\s*(?:<[^>]+>\s*)*href=["'](https?:\/\/[^"']+)["']/i) ||
       html.match(
-        /href=["'](https?:\/\/(?:www\.)?(?:tuttoandroid\.net|androidworld\.it|hdblog\.it|mobileworld\.it)[^"']+)["']/i
+        /href=["'](https?:\/\/(?:www\.)?(?:tuttoandroid\.net|androidworld\.it|hdblog\.it|mobileworld\.it|mondomobileweb\.it|androidphoria\.com)[^"']+)["']/i
       );
     return m?.[1]?.trim() || null;
   };
@@ -926,7 +933,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       return;
     }
     const fonte = extractFonteUrl(html);
-    if (!fonte || !/tuttoandroid\.net|androidworld\.it|hdblog\.it|mobileworld\.it/i.test(fonte)) {
+    if (
+      !fonte ||
+      !/tuttoandroid\.net|androidworld\.it|hdblog\.it|mobileworld\.it|mondomobileweb\.it|androidphoria\.com/i.test(
+        fonte
+      )
+    ) {
       return;
     }
 
@@ -1040,13 +1052,29 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   }, [article.id, fullContent, proseBody]);
 
   // --- HYDRATION & LINK FIXER LOGIC ---
+  // Dipende da proseBody: quando cambiano foto mid-articolo / ridistribuzione,
+  // React riscrive dangerouslySetInnerHTML e stacca i nodi portal → reiniettare.
   useEffect(() => {
-    if (!contentRef.current || !fullContent) return;
+    if (!contentRef.current || !proseBody) return;
     const container = contentRef.current;
-    try {
+    let dealsNode: HTMLDivElement | null = null;
+    let inArticleAdNode: HTMLDivElement | null = null;
+    let newsletterNode: HTMLDivElement | null = null;
+    let readAlso1Node: HTMLDivElement | null = null;
+    let readAlso2Node: HTMLDivElement | null = null;
+    let expandableRows: NodeListOf<Element> | null = null;
+    let handleRowClick: ((this: HTMLElement, e: Event) => void) | null = null;
+    let handleTocNavClick: ((e: Event) => void) | null = null;
+    let cancelled = false;
+
+    // Dopo commit React del nuovo __html (altrimenti querySelector lavora sul DOM vecchio)
+    const raf = window.requestAnimationFrame(() => {
+      if (cancelled || !contentRef.current) return;
+      const root = contentRef.current;
+      try {
 
     // Ripara indice: solo titolo + ul dentro nav; sposta il resto fuori
-    const navToc = container.querySelector('nav.txa-toc');
+    const navToc = root.querySelector('nav.txa-toc');
     if (navToc) {
       Array.from(navToc.children).forEach((child) => {
         const el = child as HTMLElement;
@@ -1062,11 +1090,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       toMove.forEach(node => navToc.after(node));
     }
 
-    ensureHeadingAnchors(container);
+    ensureHeadingAnchors(root);
 
-    const handleTocNavClick = (e: Event) => {
+    handleTocNavClick = (e: Event) => {
       const a = (e.target as Element).closest('a');
-      if (!a || !container.contains(a) || !isTocLinkEl(a)) return;
+      if (!a || !root.contains(a) || !isTocLinkEl(a)) return;
       const hash = extractTocHash(a.getAttribute('href') || '');
       if (!hash) return;
       e.preventDefault();
@@ -1074,9 +1102,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       scrollToTocHash(hash);
     };
 
-    container.addEventListener('click', handleTocNavClick, true);
+    root.addEventListener('click', handleTocNavClick, true);
 
-    const links = container.querySelectorAll('a');
+    const links = root.querySelectorAll('a');
     links.forEach(link => {
       const href = link.getAttribute('href') || '';
       const hash = extractTocHash(href);
@@ -1134,11 +1162,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       else img.addEventListener('load', sync, { once: true });
     };
 
-    container.querySelectorAll('img').forEach((node) => applyWatermarkCrop(node as HTMLImageElement));
+    root.querySelectorAll('img').forEach((node) => applyWatermarkCrop(node as HTMLImageElement));
 
     // 2. Expandable Rows
-    const expandableRows = container.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
-    const handleRowClick = function(this: HTMLElement, e: Event) {
+    expandableRows = root.querySelectorAll('tr.expandable-row, div.expandable-row, .expandable-row');
+    handleRowClick = function(this: HTMLElement, e: Event) {
       e.stopPropagation(); e.preventDefault();
       this.classList.toggle('expanded');
     };
@@ -1148,26 +1176,39 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     });
 
     // 3. Inject Portal Nodes — mai dentro nav.txa-toc
-    const paragraphs = Array.from(container.querySelectorAll('p')).filter(
+    // Preferisci <p>; se l'articolo offerte ha pochi paragrafi (widget Amazon),
+    // usa h2/div/blocco dopo TOC così il banner Offerte del Giorno resta a metà pezzo.
+    const paragraphs = Array.from(root.querySelectorAll('p')).filter(
       (p) => !p.closest('nav.txa-toc')
     );
-    let dealsNode = null;
-    let inArticleAdNode = null;
-    let newsletterNode = null;
-    let readAlso1Node = null;
-    let readAlso2Node = null;
+    const blockAnchors = Array.from(
+      root.querySelectorAll(
+        'p, h2, h3, .amz-safe-card, .separator, figure, .txa-mid-photo'
+      )
+    ).filter((el) => !el.closest('nav.txa-toc')) as HTMLElement[];
 
-    const tocEl = container.querySelector('nav.txa-toc');
+    const tocEl = root.querySelector('nav.txa-toc');
     setHasToc(!!tocEl);
 
-    if (paragraphs.length >= 2) {
+    const pickAnchor = (preferIdx: number): HTMLElement | null => {
+      if (paragraphs.length > preferIdx) return paragraphs[preferIdx] as HTMLElement;
+      if (paragraphs.length > 0) return paragraphs[paragraphs.length - 1] as HTMLElement;
+      if (blockAnchors.length > preferIdx) return blockAnchors[preferIdx];
+      if (blockAnchors.length > 0) return blockAnchors[Math.min(1, blockAnchors.length - 1)];
+      if (tocEl) return tocEl as HTMLElement;
+      const htmlHost = root.querySelector(':scope > div') as HTMLElement | null;
+      return htmlHost || (root.lastElementChild as HTMLElement | null);
+    };
+
+    const midAnchor = pickAnchor(1);
+    if (midAnchor) {
       dealsNode = document.createElement('div');
       dealsNode.className = 'injected-deals my-8 not-prose';
-      (paragraphs[1] as HTMLElement).after(dealsNode);
+      midAnchor.after(dealsNode);
 
       readAlso1Node = document.createElement('div');
       readAlso1Node.className = 'injected-read-also my-8 not-prose';
-      (paragraphs[1] as HTMLElement).after(readAlso1Node);
+      midAnchor.after(readAlso1Node);
     }
 
     const adInsertIdx = Math.max(1, Math.floor(paragraphs.length / 2));
@@ -1175,6 +1216,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       inArticleAdNode = document.createElement('div');
       inArticleAdNode.className = 'injected-in-article-ad not-prose';
       (paragraphs[adInsertIdx] as HTMLElement).after(inArticleAdNode);
+    } else {
+      const adAnchor = pickAnchor(Math.min(2, Math.max(0, blockAnchors.length - 1)));
+      if (adAnchor && adAnchor !== midAnchor) {
+        inArticleAdNode = document.createElement('div');
+        inArticleAdNode.className = 'injected-in-article-ad not-prose';
+        adAnchor.after(inArticleAdNode);
+      }
     }
 
     // Slot newsletter a metà articolo (visibile solo ogni 3 pagine consultate)
@@ -1183,6 +1231,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       newsletterNode = document.createElement('div');
       newsletterNode.className = 'injected-newsletter my-10 not-prose';
       (paragraphs[nlIdx] as HTMLElement).after(newsletterNode);
+    } else {
+      const nlAnchor = pickAnchor(Math.min(2, Math.max(0, blockAnchors.length - 1)));
+      if (nlAnchor) {
+        newsletterNode = document.createElement('div');
+        newsletterNode.className = 'injected-newsletter my-10 not-prose';
+        nlAnchor.after(newsletterNode);
+      }
     }
 
     if (paragraphs.length >= 6) {
@@ -1192,18 +1247,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     }
 
     // Custom Placeholders
-    const summaryNodes = Array.from(container.querySelectorAll('.interactive-summary-placeholder'));
-    const gpsPromoNodes = Array.from(container.querySelectorAll('.gps-promo-placeholder'));
+    const summaryNodes = Array.from(root.querySelectorAll('.interactive-summary-placeholder'));
+    const gpsPromoNodes = Array.from(root.querySelectorAll('.gps-promo-placeholder'));
 
-    setPortalNodes({
-      deals: dealsNode,
-      inArticleAd: inArticleAdNode,
-      newsletter: newsletterNode,
-      readAlso1: readAlso1Node,
-      readAlso2: readAlso2Node,
-      summaries: summaryNodes,
-      gpsPromos: gpsPromoNodes,
-    });
+    if (!cancelled) {
+      setPortalNodes({
+        deals: dealsNode,
+        inArticleAd: inArticleAdNode,
+        newsletter: newsletterNode,
+        readAlso1: readAlso1Node,
+        readAlso2: readAlso2Node,
+        summaries: summaryNodes,
+        gpsPromos: gpsPromoNodes,
+      });
+    }
 
     // 4. Disqus Injection
     // ... (keep disqus logic)
@@ -1241,19 +1298,39 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         }
     }
 
+      } catch (e) {
+        console.warn('Article content hydration non-fatal error (safe fallback active)', e);
+      }
+    });
+
     return () => {
-      container.removeEventListener('click', handleTocNavClick, true);
-      expandableRows.forEach(row => row.removeEventListener('click', handleRowClick as EventListener));
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+      if (handleTocNavClick && contentRef.current) {
+        contentRef.current.removeEventListener('click', handleTocNavClick, true);
+      }
+      if (expandableRows && handleRowClick) {
+        expandableRows.forEach(row =>
+          row.removeEventListener('click', handleRowClick as EventListener)
+        );
+      }
       if (dealsNode) dealsNode.remove();
       if (inArticleAdNode) inArticleAdNode.remove();
       if (newsletterNode) newsletterNode.remove();
       if (readAlso1Node) readAlso1Node.remove();
       if (readAlso2Node) readAlso2Node.remove();
+      // Evita createPortal su nodi staccati dopo rewrite di proseBody
+      setPortalNodes({
+        deals: null,
+        inArticleAd: null,
+        newsletter: null,
+        readAlso1: null,
+        readAlso2: null,
+        summaries: [],
+        gpsPromos: [],
+      });
     };
-  } catch (e) {
-      console.warn('Article content hydration non-fatal error (safe fallback active)', e);
-    }
-  }, [article.id, fullContent]); 
+  }, [article.id, article.url, article.title, proseBody]);
 
   const handleSuggestedClick = (art: Article) => {
     if (onArticleClick) onArticleClick(art);
