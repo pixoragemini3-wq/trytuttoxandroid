@@ -1510,11 +1510,11 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
   try {
     const bloggerPromise = (async () => {
         try {
-            const labels = ['offerte', 'offerteimperdibili'];
+            const labels = ['offerte', 'offerteimperdibili', 'amazon', 'sconti'];
             let entries: any[] = [];
             const seen = new Set<string>();
             for (const label of labels) {
-              const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=20`;
+              const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=30`;
               const response = await fetchWithProxyFallback(targetUrl, 5000);
               if (!response.ok) continue;
               const data = await response.json();
@@ -1566,28 +1566,25 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const telegramPromise = fetchTelegramDeals();
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
 
-    // Telegram live + Blogger: unisci sempre per avere almeno 4 offerte prodotto reali
-    // (niente card CTA “Apri canale”: il bottone Offerte Italy è già in header).
-    const bloggerPicked = await pickDealsWithPreviewImages(bloggerDeals, 12, 28);
-    const sourceDeals = [...telegramDeals, ...bloggerPicked];
-
-    const seen = new Set<string>();
-    const allDeals: Deal[] = [];
-    for (const deal of sourceDeals) {
-      const key = (deal.link || deal.product || '').toLowerCase();
-      if (!key || seen.has(key)) continue;
-      if (!deal.imageUrl || /unsplash\.com/i.test(deal.imageUrl)) continue;
-      // Dedup anche per ASIN Amazon se presente nel link
-      const asin = (deal.link || '').match(/(?:dp|gp\/product|d)\/([A-Z0-9]{10})/i)?.[1];
-      if (asin) {
-        const asinKey = `asin:${asin.toUpperCase()}`;
-        if (seen.has(asinKey)) continue;
-        seen.add(asinKey);
-      }
-      seen.add(key);
-      allDeals.push(deal);
-      if (allDeals.length >= 12) break;
+    // Pool grezzo ampio (TG + Blogger), poi anteprime verificate, poi soft-fill → sempre ≥4 prodotti.
+    // Niente card CTA Telegram: il bottone «Offerte Italy» è già in header.
+    const rawPool: Deal[] = [];
+    const rawSeen = new Set<string>();
+    for (const deal of [...telegramDeals, ...bloggerDeals]) {
+      const key = dealDedupeKey(deal);
+      if (!key || rawSeen.has(key)) continue;
+      rawSeen.add(key);
+      rawPool.push(deal);
     }
+
+    let allDeals = await pickDealsWithPreviewImages(rawPool, 12, 48);
+    // Se il probe lascia solo 3 (tipico: poche foto TG verificate), completa a 4+ da pool grezzo
+    allDeals = softFillDealsToCount(allDeals, rawPool, 4);
+    if (allDeals.length < 4) {
+      // Secondo passaggio: Blogger grezzo con immagini Amazon best-effort
+      allDeals = softFillDealsToCount(allDeals, bloggerDeals, 4);
+    }
+    allDeals = allDeals.slice(0, 12);
 
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
     return allDeals.map((deal, idx) => ({
@@ -1820,6 +1817,46 @@ export const pickDealsWithPreviewImages = async (
 export const enrichDealImages = async (deals: Deal[], limit = 8): Promise<Deal[]> =>
   pickDealsWithPreviewImages(deals, limit, Math.max(limit * 3, 16));
 
+/** Chiave dedup offerta (link / ASIN / titolo). */
+const dealDedupeKey = (deal: Deal): string => {
+  const asin = extractAmazonAsin(deal.link || '');
+  if (asin) return `asin:${asin}`;
+  const link = (deal.link || '').toLowerCase().replace(/[?#].*$/, '');
+  if (link) return `link:${link}`;
+  return `p:${(deal.product || '').toLowerCase().slice(0, 80)}`;
+};
+
+/**
+ * Completa fino a `minCount` offerte prodotto reali (niente CTA Telegram).
+ * Usa immagini best-effort (candidati Amazon) se il probe strict non ha bastato.
+ */
+const softFillDealsToCount = (selected: Deal[], pool: Deal[], minCount: number): Deal[] => {
+  if (selected.length >= minCount) return selected.slice(0, Math.max(minCount, selected.length));
+  const out = [...selected];
+  const seen = new Set(out.map(dealDedupeKey));
+  for (const deal of pool) {
+    if (out.length >= minCount) break;
+    const key = dealDedupeKey(deal);
+    if (!key || seen.has(key)) continue;
+    // Solo link prodotto (Amazon o post offerta con prezzo), mai CTA canale
+    const link = deal.link || '';
+    if (!link || /t\.me\/|telegram\.me/i.test(link)) continue;
+    if (!/amazon\.|amzn\./i.test(link) && !deal.newPrice) continue;
+
+    const soft: Deal = { ...deal };
+    if (!soft.imageUrl || /unsplash\.com/i.test(soft.imageUrl)) {
+      soft.imageUrl = amazonImageFromLink(soft.link) || soft.imageUrl || DEAL_IMG_FALLBACK;
+    }
+    // Preferisci comunque un URL prodotto Amazon se c'è ASIN
+    if (extractAmazonAsin(soft.link) && /unsplash\.com/i.test(soft.imageUrl || '')) {
+      soft.imageUrl = amazonImageFromLink(soft.link);
+    }
+    seen.add(key);
+    out.push(soft);
+  }
+  return out;
+};
+
 /** Immagini da markdown jina / testo Telegram (telesco.pe, cdn). */
 const extractMediaUrlsFromText = (raw: string): string[] => {
   const out: string[] = [];
@@ -1996,11 +2033,12 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  // v4: solo offerte con anteprima verificata (probe load)
-  const CACHE_KEY = 'txa_telegram_deals_v4';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v4_time';
+  // v5: anteprime verificate + soft-fill a ≥4 offerte prodotto
+  const CACHE_KEY = 'txa_telegram_deals_v5';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v5_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
-  const TARGET_WITH_IMG = 8;
+  const TARGET_WITH_IMG = 12;
+  const MIN_DEALS = 4;
 
   let cachedData: string | null = null;
   let cachedTime: string | null = null;
@@ -2013,13 +2051,16 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     try {
       const cached = JSON.parse(cachedData) as Deal[];
       if (Array.isArray(cached) && cached.length > 0) {
-        // Cache valida solo se le anteprime sono ancora “reali”
-        const allHavePreview = cached.every(
-          (d) => looksLikeDealPreviewUrl(d.imageUrl) || isResolvedAmazonImage(d.imageUrl)
-        );
+        const allHavePreview =
+          cached.length >= MIN_DEALS &&
+          cached.every(
+            (d) => looksLikeDealPreviewUrl(d.imageUrl) || isResolvedAmazonImage(d.imageUrl)
+          );
         if (allHavePreview) return cached;
-        const fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 28);
-        if (fixed.length > 0) {
+        let fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 40);
+        // Pool ampio (fino a 16) per merge home; UI ne mostra 4
+        fixed = softFillDealsToCount(fixed, cached, Math.max(MIN_DEALS, Math.min(16, cached.length)));
+        if (fixed.length >= MIN_DEALS || fixed.length > 0) {
           try {
             sessionStorage.setItem(CACHE_KEY, JSON.stringify(fixed));
             sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
@@ -2049,8 +2090,13 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
       if (!body || body.length < 200) continue;
       const raw = parseDealsFromHtml(body);
       if (raw.length > 0) {
-        // Solo offerte con foto prodotto che si carica davvero
-        const deals = await pickDealsWithPreviewImages(raw, TARGET_WITH_IMG, 28);
+        let deals = await pickDealsWithPreviewImages(raw, TARGET_WITH_IMG, 40);
+        // Verificate + soft-fill: almeno 4, fino a 16 candidati per il banner
+        deals = softFillDealsToCount(
+          deals,
+          raw,
+          Math.max(MIN_DEALS, Math.min(16, raw.length))
+        );
         if (deals.length > 0) {
           try {
             sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
@@ -2067,7 +2113,9 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
   if (cachedData) {
     try {
       const stale = JSON.parse(cachedData) as Deal[];
-      if (Array.isArray(stale) && stale.length > 0) return stale;
+      if (Array.isArray(stale) && stale.length > 0) {
+        return softFillDealsToCount(stale, stale, MIN_DEALS);
+      }
     } catch { /* ignore */ }
   }
 

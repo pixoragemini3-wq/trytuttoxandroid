@@ -1084,15 +1084,17 @@ const App: React.FC = () => {
             {dealCards.map((deal) => dealCard(deal, true))}
           </div>
 
-          {/* Desktop: griglia 4 colonne (home) / fino a 8 (Offerte) — solo offerte prodotto */}
+          {/* Desktop: home = 4 colonne fisse; categoria Offerte = fino a 8 */}
           <div
-            className={`hidden lg:grid gap-2.5 xl:gap-3 ${
-              dealCards.length >= 4
+            className={`hidden lg:grid gap-2.5 xl:gap-3 items-stretch ${
+              activeCategory === 'Offerte' && dealCards.length > 4
                 ? 'grid-cols-4'
-                : dealCards.length === 3
-                  ? 'grid-cols-3'
-                  : 'grid-cols-2'
-            } items-stretch`}
+                : dealCards.length >= 4
+                  ? 'grid-cols-4'
+                  : dealCards.length === 3
+                    ? 'grid-cols-3'
+                    : 'grid-cols-2'
+            }`}
           >
             {dealCards.map((deal) => dealCard(deal, false))}
           </div>
