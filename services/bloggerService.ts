@@ -1629,14 +1629,13 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       rawPool.push(deal);
     }
 
-    let allDeals = await pickDealsWithPreviewImages(rawPool, 12, 48);
-    // Se il probe lascia solo 3 (tipico: poche foto TG verificate), completa a 4+ da pool grezzo
-    allDeals = softFillDealsToCount(allDeals, rawPool, 4);
+    // Solo offerte con foto prodotto reale (no riquadri bianchi Amazon P/)
+    let allDeals = await pickDealsWithPreviewImages(rawPool, 8, 48);
+    allDeals = await softFillDealsToCount(allDeals, rawPool, 4);
     if (allDeals.length < 4) {
-      // Secondo passaggio: Blogger grezzo con immagini Amazon best-effort
-      allDeals = softFillDealsToCount(allDeals, bloggerDeals, 4);
+      allDeals = await softFillDealsToCount(allDeals, bloggerDeals, 4);
     }
-    allDeals = allDeals.slice(0, 12);
+    allDeals = allDeals.slice(0, 4);
 
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
     return allDeals.map((deal, idx) => ({
@@ -1682,43 +1681,85 @@ export const extractAmazonAsin = (link: string): string | null => {
   return null;
 };
 
+/** Path /images/P/ASIN: spesso GIF/bianco con barretta — NON usare come foto prodotto. */
+export const isAmazonPlaceholderPath = (url?: string): boolean =>
+  !!url &&
+  (/media-amazon\.com\/images\/P\//i.test(url) ||
+    /ssl-images-amazon\.com\/images\/P\//i.test(url) ||
+    /unsplash\.com/i.test(url));
+
 /**
  * Candidati immagine prodotto Amazon (in ordine).
- * Nota: molti URL /images/P/ASIN rispondono 200 con GIF 1×1 (43 byte) → bianco in UI.
- * Serve resolveAmazonProductImage / blank-detection in DealImage.
+ * Preferisci widget ads-system (foto reale) e /images/I/ da resolveAmazonProductImage.
+ * I path /images/P/ASIN sono ultimi e spesso bianchi.
  */
 export const amazonImageCandidates = (link: string): string[] => {
   const asin = extractAmazonAsin(link);
-  if (!asin) return [DEAL_IMG_FALLBACK];
+  if (!asin) return [];
   return [
+    // Widget ufficiale: di solito restituisce la copertina prodotto corretta
+    `https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=IT&ASIN=${asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=_SL300_`,
+    `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=IT&ASIN=${asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=_SL300_`,
+    // Fallback P/ (spesso vuoto — DealImage li scarta se blank)
     `https://m.media-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX300_.jpg`,
-    `https://m.media-amazon.com/images/P/${asin}._AC_SL300_.jpg`,
     `https://images-eu.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`,
-    `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SX300_SY300_QL70_ML2_.jpg`,
-    DEAL_IMG_FALLBACK,
   ];
 };
 
-const amazonImageFromLink = (link: string): string => amazonImageCandidates(link)[0];
+const amazonImageFromLink = (link: string): string => amazonImageCandidates(link)[0] || DEAL_IMG_FALLBACK;
 
-const ASIN_IMG_CACHE_PREFIX = 'txa_asin_img_v3_';
+const ASIN_IMG_CACHE_PREFIX = 'txa_asin_img_v4_';
 
 /** True se l'URL è un'immagine prodotto reale (/images/I/...) non il placeholder P/ASIN. */
 export const isResolvedAmazonImage = (url?: string): boolean =>
-  !!url && /m\.media-amazon\.com\/images\/I\//i.test(url);
+  !!url && /media-amazon\.com\/images\/I\//i.test(url);
 
 /** URL che *potrebbe* essere un'anteprima usabile (prima del probe load). */
 export const looksLikeDealPreviewUrl = (url?: string): boolean => {
   if (!url || !/^https?:\/\//i.test(url)) return false;
-  if (/unsplash\.com/i.test(url)) return false;
-  // Path P/ASIN Amazon: spesso GIF 1×1 — non contare come anteprima finché non passa il probe
-  if (/media-amazon\.com\/images\/P\//i.test(url) || /ssl-images-amazon\.com\/images\/P\//i.test(url)) {
-    return false;
-  }
+  if (isAmazonPlaceholderPath(url)) return false;
   if (isResolvedAmazonImage(url)) return true;
+  // Widget ads-system = foto prodotto
+  if (/amazon-adsystem\.com\/widgets/i.test(url) && /ASIN=/i.test(url)) return true;
   if (/telesco\.pe|telegram-cdn\.org/i.test(url) && !/Q2dx|FGGwFKd/i.test(url)) return true;
   if (/googleusercontent|bp\.blogspot|imgur\.com|cdn\.shopify/i.test(url)) return true;
   if (/media-amazon\.com\/images\/I\//i.test(url)) return true;
+  return false;
+};
+
+/** True se l'immagine caricata è un placeholder (1×1, barretta, quasi tutta bianca). */
+export const isLoadedImageBlank = (img: HTMLImageElement): boolean => {
+  const w = img.naturalWidth || 0;
+  const h = img.naturalHeight || 0;
+  if (w <= 2 || h <= 2) return true;
+  if (w * h < 400) return true;
+  // Barretta orizzontale/verticale (tipico placeholder Amazon)
+  if (w / Math.max(h, 1) > 8 || h / Math.max(w, 1) > 8) return true;
+  // Campione pixel se CORS lo consente
+  try {
+    const size = 24;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(img, 0, 0, size, size);
+    const data = ctx.getImageData(0, 0, size, size).data;
+    let whiteish = 0;
+    let total = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a < 12) continue;
+      total++;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      if (r > 242 && g > 242 && b > 242) whiteish++;
+    }
+    if (total >= 20 && whiteish / total > 0.9) return true;
+  } catch {
+    /* canvas tainted — ok, usiamo solo dimensioni */
+  }
   return false;
 };
 
@@ -1729,8 +1770,14 @@ export const probeImageLoads = (url: string, timeoutMs = 7000): Promise<boolean>
       resolve(false);
       return;
     }
+    // Non accettare mai i path P/ come “ok” senza risoluzione
+    if (isAmazonPlaceholderPath(url)) {
+      resolve(false);
+      return;
+    }
     const img = new Image();
     img.referrerPolicy = 'no-referrer';
+    img.crossOrigin = 'anonymous';
     let done = false;
     const finish = (ok: boolean) => {
       if (done) return;
@@ -1739,12 +1786,15 @@ export const probeImageLoads = (url: string, timeoutMs = 7000): Promise<boolean>
       resolve(ok);
     };
     const timer = window.setTimeout(() => finish(false), timeoutMs);
-    img.onload = () => {
-      const w = img.naturalWidth || 0;
-      const h = img.naturalHeight || 0;
-      finish(w > 2 && h > 2 && w * h >= 400);
+    img.onload = () => finish(!isLoadedImageBlank(img));
+    img.onerror = () => {
+      // Retry senza crossOrigin (molti CDN Amazon non inviano CORS)
+      const img2 = new Image();
+      img2.referrerPolicy = 'no-referrer';
+      img2.onload = () => finish(!isLoadedImageBlank(img2));
+      img2.onerror = () => finish(false);
+      img2.src = url;
     };
-    img.onerror = () => finish(false);
     img.src = url;
   });
 
@@ -1759,23 +1809,43 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
   const cacheKey = `${ASIN_IMG_CACHE_PREFIX}${asin}`;
   try {
     const cached = sessionStorage.getItem(cacheKey);
-    if (cached && isResolvedAmazonImage(cached)) return cached;
+    if (cached && (isResolvedAmazonImage(cached) || /amazon-adsystem\.com/i.test(cached))) {
+      return cached;
+    }
   } catch { /* private mode */ }
 
   const productUrl = `https://www.amazon.it/dp/${asin}`;
   const extractFromText = (text: string): string | null => {
     if (!text) return null;
+    // og:image
+    const og =
+      text.match(/property=["']og:image["'][^>]*content=["']([^"']+)/i) ||
+      text.match(/content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    if (og?.[1]) {
+      const cleanOg = og[1].replace(/&amp;/g, '&').trim();
+      if (/amazon/i.test(cleanOg) && !isAmazonPlaceholderPath(cleanOg)) return cleanOg;
+    }
+
     const patterns = [
       /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._AC_SL\d{3,4}_\.jpg/i,
       /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._SL\d{3,4}_\.jpg/i,
       /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._AC_SX\d{3,4}_\.jpg/i,
+      /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\._AC_UL\d{3,4}_\.jpg/i,
       /https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]{8,}?\.(?:jpg|jpeg|png)/i,
+      /https:\/\/images-eu\.ssl-images-amazon\.com\/images\/I\/[A-Za-z0-9+%.,_-]+?\.(?:jpg|jpeg)/i,
     ];
     for (const re of patterns) {
       const m = text.match(re);
-      if (m?.[0] && !/US40|SS40|_AC_US\d/i.test(m[0])) return m[0];
+      if (m?.[0] && !/US40|SS40|_AC_US\d|sprite|transparent-pixel/i.test(m[0])) return m[0];
     }
     return null;
+  };
+
+  const remember = (url: string) => {
+    try {
+      sessionStorage.setItem(cacheKey, url);
+    } catch { /* */ }
+    return url;
   };
 
   // 1) microlink (OG image — affidabile)
@@ -1787,9 +1857,8 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
     if (r.ok) {
       const j = await r.json();
       const url = j?.data?.image?.url as string | undefined;
-      if (url && /media-amazon\.com|ssl-images-amazon/i.test(url)) {
-        try { sessionStorage.setItem(cacheKey, url); } catch { /* */ }
-        return url;
+      if (url && /media-amazon\.com|ssl-images-amazon/i.test(url) && !isAmazonPlaceholderPath(url)) {
+        return remember(url);
       }
     }
   } catch { /* next */ }
@@ -1800,12 +1869,27 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
     if (r.ok) {
       const text = await r.text();
       const url = extractFromText(text);
-      if (url) {
-        try { sessionStorage.setItem(cacheKey, url); } catch { /* */ }
-        return url;
-      }
+      if (url && !isAmazonPlaceholderPath(url)) return remember(url);
     }
   } catch { /* next */ }
+
+  // 3) HTML grezzo via proxy (og:image)
+  for (const proxy of [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(productUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(productUrl)}`,
+  ]) {
+    try {
+      const r = await fetchWithTimeout(proxy, 10000);
+      if (!r.ok) continue;
+      const html = await r.text();
+      const url = extractFromText(html);
+      if (url && !isAmazonPlaceholderPath(url)) return remember(url);
+    } catch { /* next */ }
+  }
+
+  // 4) Widget ads-system (foto prodotto, non path P/)
+  const widget = amazonImageCandidates(link).find((u) => /amazon-adsystem/i.test(u));
+  if (widget && (await probeImageLoads(widget))) return remember(widget);
 
   return null;
 };
@@ -1829,30 +1913,34 @@ export const pickDealsWithPreviewImages = async (
   const ensurePreview = async (deal: Deal): Promise<Deal | null> => {
     const d = { ...deal };
 
-    // 1) URL già "buono" + probe load
-    if (looksLikeDealPreviewUrl(d.imageUrl) && (await probeImageLoads(d.imageUrl))) {
+    // 1) Foto già buona (Telegram /images/I/ / widget) + probe
+    if (
+      looksLikeDealPreviewUrl(d.imageUrl) &&
+      !isAmazonPlaceholderPath(d.imageUrl) &&
+      (await probeImageLoads(d.imageUrl))
+    ) {
       return d;
     }
 
-    // 2) Risoluzione ASIN → /images/I/
+    // 2) Risoluzione ASIN → foto prodotto reale (og:image /images/I/ o widget)
     try {
       const resolved = await resolveAmazonProductImage(d.link);
-      if (resolved && (await probeImageLoads(resolved))) {
+      if (resolved && !isAmazonPlaceholderPath(resolved)) {
         d.imageUrl = resolved;
         return d;
       }
     } catch { /* next */ }
 
-    // 3) Prova candidati P/ASIN (qualcuno funziona, es. B0F29QNQ4P)
+    // 3) Solo candidati non-placeholder (ads-system), mai path P/ bianchi
     for (const candidate of amazonImageCandidates(d.link)) {
-      if (/unsplash\.com/i.test(candidate)) continue;
+      if (isAmazonPlaceholderPath(candidate)) continue;
       if (await probeImageLoads(candidate)) {
         d.imageUrl = candidate;
         return d;
       }
     }
 
-    // Nessuna anteprima usabile → scarta
+    // Nessuna foto prodotto usabile → scarta (meglio meno card che riquadri bianchi)
     return null;
   };
 
@@ -1881,10 +1969,13 @@ const dealDedupeKey = (deal: Deal): string => {
 };
 
 /**
- * Completa fino a `minCount` offerte prodotto reali (niente CTA Telegram).
- * Usa immagini best-effort (candidati Amazon) se il probe strict non ha bastato.
+ * Completa fino a `minCount` offerte con foto prodotto REALE (mai placeholder P/ bianchi).
  */
-const softFillDealsToCount = (selected: Deal[], pool: Deal[], minCount: number): Deal[] => {
+const softFillDealsToCount = async (
+  selected: Deal[],
+  pool: Deal[],
+  minCount: number
+): Promise<Deal[]> => {
   if (selected.length >= minCount) return selected.slice(0, Math.max(minCount, selected.length));
   const out = [...selected];
   const seen = new Set(out.map(dealDedupeKey));
@@ -1892,7 +1983,6 @@ const softFillDealsToCount = (selected: Deal[], pool: Deal[], minCount: number):
     if (out.length >= minCount) break;
     const key = dealDedupeKey(deal);
     if (!key || seen.has(key)) continue;
-    // Solo link prodotto (Amazon o post offerta con prezzo), mai CTA canale
     const link = deal.link || '';
     if (!link || /t\.me\/|telegram\.me/i.test(link)) continue;
     if (!/amazon\.|amzn\./i.test(link) && !deal.newPrice) continue;
@@ -1901,15 +1991,39 @@ const softFillDealsToCount = (selected: Deal[], pool: Deal[], minCount: number):
       ...deal,
       product: formatDealProductTitle(deal.product),
     };
-    if (!soft.imageUrl || /unsplash\.com/i.test(soft.imageUrl)) {
-      soft.imageUrl = amazonImageFromLink(soft.link) || soft.imageUrl || DEAL_IMG_FALLBACK;
+
+    // Foto TG / già buona
+    if (
+      looksLikeDealPreviewUrl(soft.imageUrl) &&
+      !isAmazonPlaceholderPath(soft.imageUrl) &&
+      (await probeImageLoads(soft.imageUrl!))
+    ) {
+      seen.add(key);
+      out.push(soft);
+      continue;
     }
-    // Preferisci comunque un URL prodotto Amazon se c'è ASIN
-    if (extractAmazonAsin(soft.link) && /unsplash\.com/i.test(soft.imageUrl || '')) {
-      soft.imageUrl = amazonImageFromLink(soft.link);
+
+    // Risolvi copertina Amazon vera
+    try {
+      const resolved = await resolveAmazonProductImage(soft.link);
+      if (resolved && !isAmazonPlaceholderPath(resolved)) {
+        soft.imageUrl = resolved;
+        seen.add(key);
+        out.push(soft);
+        continue;
+      }
+    } catch { /* next */ }
+
+    // Widget ads-system
+    for (const candidate of amazonImageCandidates(soft.link)) {
+      if (isAmazonPlaceholderPath(candidate)) continue;
+      if (await probeImageLoads(candidate)) {
+        soft.imageUrl = candidate;
+        seen.add(key);
+        out.push(soft);
+        break;
+      }
     }
-    seen.add(key);
-    out.push(soft);
   }
   return out;
 };
@@ -1975,12 +2089,14 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
     if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) return false;
     seenLinks.add(link);
     const { newPrice, oldPrice } = extractPricesFromText(priceText);
-    const asin = extractAmazonAsin(link);
-    // Con ASIN usa sempre immagine Amazon (le "foto" TG da jina sono spesso l'avatar del canale)
-    const tgImg = asin ? null : nextMedia();
-    const imageUrl = asin
-      ? amazonImageFromLink(link)
-      : (tgImg || amazonImageFromLink(link) || DEAL_IMG_FALLBACK);
+    // Preferisci foto del post Telegram (è la copertina offerta corretta);
+    // i path Amazon /images/P/ sono spesso riquadri bianchi.
+    const tgImg = nextMedia();
+    const imageUrl =
+      (tgImg && !/Q2dx|FGGwFKd/i.test(tgImg) ? tgImg : null) ||
+      amazonImageCandidates(link).find((u) => /amazon-adsystem/i.test(u)) ||
+      amazonImageFromLink(link) ||
+      DEAL_IMG_FALLBACK;
     let cleanProduct = formatDealProductTitle(product);
     if (cleanProduct === 'Offerta Amazon') {
       cleanProduct = extractProductNameFromContext(priceText);
@@ -2067,13 +2183,18 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
         if (seenLinks.has(deal.link)) continue;
         seenLinks.add(deal.link);
 
-        // Foto TG solo se non abbiamo ASIN (altrimenti arricchimento ASIN → /images/I/)
-        const hasAsin = !!extractAmazonAsin(deal.link);
-        if (!hasAsin && photoUrls.length > 0) {
+        // Foto del messaggio TG = copertina offerta (anche con ASIN: meglio del path P/ bianco)
+        if (photoUrls.length > 0) {
           deal.imageUrl = photoUrls[Math.min(photoIdx, photoUrls.length - 1)];
           photoIdx++;
-        } else if (!deal.imageUrl || /unsplash\.com|telesco\.pe/i.test(deal.imageUrl)) {
-          deal.imageUrl = amazonImageFromLink(deal.link);
+        } else if (
+          !deal.imageUrl ||
+          isAmazonPlaceholderPath(deal.imageUrl) ||
+          /unsplash\.com/i.test(deal.imageUrl)
+        ) {
+          deal.imageUrl =
+            amazonImageCandidates(deal.link).find((u) => /amazon-adsystem/i.test(u)) ||
+            amazonImageFromLink(deal.link);
         }
 
         deals.push({ ...deal, id: `tg-h-${i}-${deals.length}` });
@@ -2088,12 +2209,17 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
 };
 
 export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  // v6: titoli solo descrizione (no URL) + soft-fill ≥4
-  const CACHE_KEY = 'txa_telegram_deals_v6';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v6_time';
+  // v7: solo foto prodotto reali (no placeholder Amazon bianchi)
+  const CACHE_KEY = 'txa_telegram_deals_v7';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v7_time';
   const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
   const TARGET_WITH_IMG = 12;
   const MIN_DEALS = 4;
+
+  const hasRealPreview = (d: Deal) =>
+    !!d.imageUrl &&
+    !isAmazonPlaceholderPath(d.imageUrl) &&
+    (looksLikeDealPreviewUrl(d.imageUrl) || isResolvedAmazonImage(d.imageUrl));
 
   let cachedData: string | null = null;
   let cachedTime: string | null = null;
@@ -2106,16 +2232,15 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     try {
       const cached = JSON.parse(cachedData) as Deal[];
       if (Array.isArray(cached) && cached.length > 0) {
-        const allHavePreview =
-          cached.length >= MIN_DEALS &&
-          cached.every(
-            (d) => looksLikeDealPreviewUrl(d.imageUrl) || isResolvedAmazonImage(d.imageUrl)
-          );
+        const allHavePreview = cached.length >= MIN_DEALS && cached.every(hasRealPreview);
         if (allHavePreview) return cached;
         let fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 40);
-        // Pool ampio (fino a 16) per merge home; UI ne mostra 4
-        fixed = softFillDealsToCount(fixed, cached, Math.max(MIN_DEALS, Math.min(16, cached.length)));
-        if (fixed.length >= MIN_DEALS || fixed.length > 0) {
+        fixed = await softFillDealsToCount(
+          fixed,
+          cached,
+          Math.max(MIN_DEALS, Math.min(16, cached.length))
+        );
+        if (fixed.length > 0) {
           try {
             sessionStorage.setItem(CACHE_KEY, JSON.stringify(fixed));
             sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
@@ -2128,13 +2253,12 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
 
   const telegramUrl = 'https://t.me/s/tuttoxandroid';
 
-  // jina.ai first (works from browser, returns markdown with amazon links)
-  // then classic CORS proxies for raw HTML
+  // Preferisci HTML grezzo (foto post TG) prima di jina markdown
   const fetchTargets = [
-    `https://r.jina.ai/${telegramUrl}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
     `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(telegramUrl)}`,
+    `https://r.jina.ai/${telegramUrl}`,
   ];
 
   for (const proxyUrl of fetchTargets) {
@@ -2146,8 +2270,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
       const raw = parseDealsFromHtml(body);
       if (raw.length > 0) {
         let deals = await pickDealsWithPreviewImages(raw, TARGET_WITH_IMG, 40);
-        // Verificate + soft-fill: almeno 4, fino a 16 candidati per il banner
-        deals = softFillDealsToCount(
+        deals = await softFillDealsToCount(
           deals,
           raw,
           Math.max(MIN_DEALS, Math.min(16, raw.length))
@@ -2169,7 +2292,7 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
     try {
       const stale = JSON.parse(cachedData) as Deal[];
       if (Array.isArray(stale) && stale.length > 0) {
-        return softFillDealsToCount(stale, stale, MIN_DEALS);
+        return await softFillDealsToCount(stale, stale, MIN_DEALS);
       }
     } catch { /* ignore */ }
   }
