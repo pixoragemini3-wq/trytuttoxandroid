@@ -4,7 +4,15 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Article, Deal } from '../types';
 import AdUnit from './AdUnit';
-import { AMAZON_AFFILIATE_TAG, fetchArticleById, getQuoteLeadText, truncateLeadForQuote, hydrateArticle, stripJsonArtifactsFromHtml } from '../services/bloggerService';
+import {
+  AMAZON_AFFILIATE_TAG,
+  fetchArticleById,
+  fetchBloggerDeals,
+  getQuoteLeadText,
+  truncateLeadForQuote,
+  hydrateArticle,
+  stripJsonArtifactsFromHtml,
+} from '../services/bloggerService';
 import SocialSidebar from './SocialSidebar';
 import NewsletterForm from './NewsletterForm';
 import DealImage from './DealImage';
@@ -64,6 +72,30 @@ const GPSPromo = () => (
   </div>
 );
 
+/** Spezza l'HTML a ~metà pezzo (dopo 2° paragrafo / H2) per inserire il banner offerte in React. */
+const splitHtmlForMidDeals = (html: string): { before: string; after: string } => {
+  if (!html) return { before: '', after: '' };
+  const ends: number[] = [];
+  const re = /<\/p>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) ends.push(m.index + m[0].length);
+  if (ends.length >= 2) {
+    return { before: html.slice(0, ends[1]), after: html.slice(ends[1]) };
+  }
+  if (ends.length === 1) {
+    return { before: html.slice(0, ends[0]), after: html.slice(ends[0]) };
+  }
+  const h2 = /<\/h2>/i.exec(html);
+  if (h2 && h2.index != null && h2.index > 80) {
+    const at = h2.index + h2[0].length;
+    return { before: html.slice(0, at), after: html.slice(at) };
+  }
+  const mid = Math.floor(html.length * 0.38);
+  const gt = html.indexOf('>', mid);
+  const at = gt > mid ? gt + 1 : mid;
+  return { before: html.slice(0, at), after: html.slice(at) };
+};
+
 const ArticleDetail: React.FC<ArticleDetailProps> = ({
   article,
   relatedArticle,
@@ -79,6 +111,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   /** Foto extra dalla fonte (es. tuttoandroid) se il post Blogger ne ha poche */
   const [sourceExtraImages, setSourceExtraImages] = useState<string[]>([]);
+  /** Offerte del giorno: props home + fetch locale se vuote (deep link articolo) */
+  const [liveDeals, setLiveDeals] = useState<Deal[]>(() => (deals?.length ? deals.slice(0, 4) : []));
   const contentRef = useRef<HTMLDivElement>(null);
   const [portalNodes, setPortalNodes] = useState<{
     deals: Element | null,
@@ -247,6 +281,29 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     const hay = `${article.title} ${article.excerpt || ''}`.toLowerCase();
     return /(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli)/i.test(hay);
   }, [article]);
+
+  // Sync da home + auto-fetch se l'articolo Offerte apre senza pool deals
+  useEffect(() => {
+    if (deals?.length) setLiveDeals(deals.slice(0, 4));
+  }, [deals]);
+
+  useEffect(() => {
+    if (!isDealCategory) return;
+    if (liveDeals.length >= 2) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let list = await fetchBloggerDeals({ fast: true });
+        if (!list.length) list = await fetchBloggerDeals({ fast: false });
+        if (!cancelled && list.length) setLiveDeals(list.slice(0, 4));
+      } catch {
+        /* resta vuoto → CTA Telegram */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [article.id, isDealCategory, liveDeals.length]);
 
   /**
    * "Continua a leggere" solo se il testo è davvero incompleto.
@@ -900,6 +957,18 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return { featuredImages: picked.slice(0, 1), proseBody: cleaned };
   }, [displayBody, article.imageUrl, article.title, sourceExtraImages]);
 
+  /** Body spezzato: banner Offerte del Giorno come nodo React (non portal nel DOM). */
+  const { proseBeforeDeals, proseAfterDeals } = useMemo(() => {
+    if (!isDealCategory || !proseBody) {
+      return { proseBeforeDeals: proseBody, proseAfterDeals: '' };
+    }
+    const { before, after } = splitHtmlForMidDeals(proseBody);
+    if (!before || !after) {
+      return { proseBeforeDeals: proseBody, proseAfterDeals: '' };
+    }
+    return { proseBeforeDeals: before, proseAfterDeals: after };
+  }, [proseBody, isDealCategory]);
+
   useEffect(() => {
     setFullContent(article.content);
     setSourceExtraImages([]);
@@ -1481,7 +1550,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         .txa-offer-live-title{min-height:2.75rem;}
       `}</style>
       <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 items-stretch">
-           {[...deals, ...deals].slice(0, 10).map((deal, idx) => (
+           {[...liveDeals, ...liveDeals].slice(0, 10).map((deal, idx) => (
             <a 
               key={`${deal.id}-${idx}`} 
               href={deal.link} 
@@ -1565,7 +1634,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
           }
         `}</style>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
-           {deals.slice(0, 4).map(deal => (
+           {liveDeals.slice(0, 4).map(deal => (
               <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group h-full min-h-[200px]" style={{ color: '#ffffff' }}>
                  <div className="txa-deal-desk-img">
                     <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="" />
@@ -1743,8 +1812,46 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                 {/* Content Body */}
                 <div ref={contentRef} className="prose prose-lg md:prose-xl max-w-none text-gray-800 leading-relaxed text-justify hyphens-auto marker:text-gray-800 prose-a:text-[#e31b23] prose-a:font-bold prose-a:underline">
                     
-                    {/* Full Content */}
-                    <div dangerouslySetInnerHTML={{ __html: proseBody }} />
+                    {/* Prima metà corpo (articoli Offerte) oppure body intero */}
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: isDealCategory && proseAfterDeals ? proseBeforeDeals : proseBody,
+                      }}
+                    />
+
+                    {/* Banner Offerte del Giorno — React nativo a metà pezzo (no portal) */}
+                    {isDealCategory && (
+                      <div className="not-prose my-8" data-txa-mid-deals="1">
+                        {liveDeals.length > 0 ? (
+                          <>
+                            <MobileDealsCarousel />
+                            <DesktopDealsBanner />
+                          </>
+                        ) : (
+                          <div className="my-8 rounded-2xl border-2 border-[#e31b23]/30 bg-gradient-to-r from-gray-900 to-[#e31b23] p-6 text-center text-white">
+                            <p className="font-condensed text-2xl font-black uppercase italic text-[#e8ff00] mb-2">
+                              Offerte del Giorno
+                            </p>
+                            <p className="text-sm text-white/90 mb-4">
+                              Caricamento offerte… oppure aprile sul canale Telegram.
+                            </p>
+                            <a
+                              href="https://t.me/tuttoxandroid"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-white text-gray-900 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest no-underline"
+                            >
+                              Vedi su Telegram
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Seconda metà corpo (solo se spezzato per Offerte) */}
+                    {isDealCategory && proseAfterDeals ? (
+                      <div dangerouslySetInnerHTML={{ __html: proseAfterDeals }} />
+                    ) : null}
 
                     {/* --- INJECTED PORTALS --- */}
                     {portalNodes.summaries.map((node, idx) => {
@@ -1770,14 +1877,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                     {portalNodes.gpsPromos.map((node, idx) => (
                       createPortal(<GPSPromo key={idx} />, node)
                     ))}
-
-                    {portalNodes.deals && isDealCategory && deals.length > 0 && createPortal(
-                        <>
-                           <MobileDealsCarousel />
-                           <DesktopDealsBanner />
-                        </>,
-                        portalNodes.deals
-                    )}
 
                     {portalNodes.inArticleAd && createPortal(
                         <AdUnit
