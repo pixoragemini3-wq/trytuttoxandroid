@@ -1566,18 +1566,10 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
     const telegramPromise = fetchTelegramDeals();
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
 
-    // Preferisci Telegram live; se ne ha meno di 4, completa con Blogger (stessa UI a 4 card).
-    // Solo offerte con anteprima reale (no riquadri bianchi / unsplash placeholder).
-    const bloggerPicked =
-      telegramDeals.length >= 4
-        ? []
-        : await pickDealsWithPreviewImages(bloggerDeals, 8, 20);
-    const sourceDeals =
-      telegramDeals.length > 0
-        ? [...telegramDeals, ...bloggerPicked]
-        : bloggerPicked.length > 0
-          ? bloggerPicked
-          : await pickDealsWithPreviewImages(bloggerDeals, 8, 20);
+    // Telegram live + Blogger: unisci sempre per avere almeno 4 offerte prodotto reali
+    // (niente card CTA “Apri canale”: il bottone Offerte Italy è già in header).
+    const bloggerPicked = await pickDealsWithPreviewImages(bloggerDeals, 12, 28);
+    const sourceDeals = [...telegramDeals, ...bloggerPicked];
 
     const seen = new Set<string>();
     const allDeals: Deal[] = [];
@@ -1585,6 +1577,13 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       const key = (deal.link || deal.product || '').toLowerCase();
       if (!key || seen.has(key)) continue;
       if (!deal.imageUrl || /unsplash\.com/i.test(deal.imageUrl)) continue;
+      // Dedup anche per ASIN Amazon se presente nel link
+      const asin = (deal.link || '').match(/(?:dp|gp\/product|d)\/([A-Z0-9]{10})/i)?.[1];
+      if (asin) {
+        const asinKey = `asin:${asin.toUpperCase()}`;
+        if (seen.has(asinKey)) continue;
+        seen.add(asinKey);
+      }
       seen.add(key);
       allDeals.push(deal);
       if (allDeals.length >= 12) break;

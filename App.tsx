@@ -920,17 +920,11 @@ const App: React.FC = () => {
       });
       pool = under.length > 0 ? under : deals;
     }
-    // Home: sempre 4 slot; Offerte: fino a 8
+    // Home: 4 offerte prodotto; Offerte: fino a 8 (solo deal reali, no card CTA)
     const dealsToShow = activeCategory === 'Offerte' ? 8 : 4;
     const dealCards = pool.slice(0, dealsToShow);
 
     if (dealCards.length === 0) return null;
-
-    // Riempie la griglia a 4 colonne se il feed ne ha meno (slot CTA Telegram)
-    const needFillSlots =
-      activeCategory !== 'Offerte' && dealCards.length > 0 && dealCards.length < 4
-        ? 4 - dealCards.length
-        : 0;
 
     const dealCard = (deal: (typeof deals)[0], compact: boolean) => (
       <a
@@ -986,30 +980,6 @@ const App: React.FC = () => {
             )}
           </div>
         </div>
-      </a>
-    );
-
-    const telegramFillCard = (idx: number, compact: boolean) => (
-      <a
-        key={`tg-fill-${idx}`}
-        href="https://t.me/tuttoxandroid"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={
-          compact
-            ? 'txa-deal-card shrink-0 w-[148px] snap-start bg-[#24A1DE]/25 backdrop-blur-md rounded-xl border border-white/20 shadow-md flex flex-col items-center justify-center gap-2 p-2.5 text-center'
-            : 'bg-[#24A1DE]/20 backdrop-blur-md rounded-xl border border-white/20 shadow-lg hover:bg-[#24A1DE]/35 transition-all group flex flex-col items-center justify-center gap-2 p-3.5 hover:-translate-y-1 duration-300 min-h-[160px] h-full text-center'
-        }
-        style={{ color: '#ffffff' }}
-        aria-label="Altre offerte su Telegram Offerte Italy"
-      >
-        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center p-1 shadow-md">
-          <img src="https://i.imgur.com/Ux19qMB.png" className="w-full h-full object-cover rounded-full" alt="" />
-        </div>
-        <span className="text-[11px] font-black uppercase tracking-wide leading-snug px-1">
-          Altre offerte su Telegram
-        </span>
-        <span className="text-[10px] font-bold text-yellow-300">Apri canale →</span>
       </a>
     );
 
@@ -1112,21 +1082,19 @@ const App: React.FC = () => {
           {/* Mobile: scroll orizzontale */}
           <div className="txa-deals-scroll flex lg:hidden gap-2.5 overflow-x-auto pb-0.5 snap-x snap-mandatory">
             {dealCards.map((deal) => dealCard(deal, true))}
-            {needFillSlots > 0 &&
-              Array.from({ length: needFillSlots }).map((_, i) => telegramFillCard(i, true))}
           </div>
 
-          {/* Desktop: griglia 4 colonne (home) / fino a 8 (Offerte) */}
+          {/* Desktop: griglia 4 colonne (home) / fino a 8 (Offerte) — solo offerte prodotto */}
           <div
             className={`hidden lg:grid gap-2.5 xl:gap-3 ${
-              dealsToShow > 4
-                ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
-                : 'grid-cols-4'
+              dealCards.length >= 4
+                ? 'grid-cols-4'
+                : dealCards.length === 3
+                  ? 'grid-cols-3'
+                  : 'grid-cols-2'
             } items-stretch`}
           >
             {dealCards.map((deal) => dealCard(deal, false))}
-            {needFillSlots > 0 &&
-              Array.from({ length: needFillSlots }).map((_, i) => telegramFillCard(i, false))}
           </div>
         </div>
       </section>
