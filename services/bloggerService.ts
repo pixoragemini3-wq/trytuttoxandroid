@@ -1558,68 +1558,89 @@ const extractProductNameFromContext = (context: string): string => {
   return formatDealProductTitle(scored[0].l.replace(/^\d+\.\s*/, '').replace(/^a soli\s+/i, ''));
 };
 
-export const fetchBloggerDeals = async (): Promise<Deal[]> => {
+export type FetchDealsOptions = {
+  /** true = priorità velocità (home): niente jina/microlink a catena, proxy TG ridotti */
+  fast?: boolean;
+};
+
+export const fetchBloggerDeals = async (opts: FetchDealsOptions = {}): Promise<Deal[]> => {
+  const fast = opts.fast !== false; // default: veloce (home banner)
   try {
     const bloggerPromise = (async () => {
-        try {
-            const labels = ['offerte', 'offerteimperdibili', 'amazon', 'sconti'];
-            let entries: any[] = [];
-            const seen = new Set<string>();
-            for (const label of labels) {
-              const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=30`;
-              const response = await fetchWithProxyFallback(targetUrl, 5000);
-              if (!response.ok) continue;
+      try {
+        const labels = fast
+          ? ['offerte', 'offerteimperdibili']
+          : ['offerte', 'offerteimperdibili', 'amazon', 'sconti'];
+        // Feed label in parallelo (prima erano sequenziali → lenti)
+        const results = await Promise.all(
+          labels.map(async (label) => {
+            try {
+              const targetUrl = `${TARGET_DOMAIN}/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=${fast ? 12 : 30}`;
+              const response = await fetchWithProxyFallback(targetUrl, fast ? 4000 : 5000);
+              if (!response.ok) return [] as any[];
               const data = await response.json();
-              for (const entry of data.feed.entry || []) {
-                const entryId = entry.id?.$t;
-                if (entryId && !seen.has(entryId)) {
-                  seen.add(entryId);
-                  entries.push(entry);
-                }
-              }
+              return (data.feed?.entry || []) as any[];
+            } catch {
+              return [] as any[];
             }
-            if (!entries.length) {
-              const fallbackUrl = `${TARGET_DOMAIN}/feeds/posts/default?alt=json&max-results=40`;
-              const fallbackRes = await fetchWithProxyFallback(fallbackUrl, 5000);
-              if (fallbackRes.ok) {
-                const fallbackData = await fallbackRes.json();
-                entries = (fallbackData.feed.entry || []).filter((entry: any) => {
-                  const content = entry.content?.$t || entry.summary?.$t || '';
-                  const title = stripHtml(entry.title?.$t || '');
-                  return /amazon\.|amzn\.|amz-safe|offerta|offerte|sconto/i.test(`${content} ${title}`);
-                });
-              }
+          })
+        );
+        let entries: any[] = [];
+        const seen = new Set<string>();
+        for (const batch of results) {
+          for (const entry of batch) {
+            const entryId = entry.id?.$t;
+            if (entryId && !seen.has(entryId)) {
+              seen.add(entryId);
+              entries.push(entry);
             }
-            if (!entries.length) return [];
-            const generatedDeals: Deal[] = [];
-            
-            entries.forEach((entry: any, index: number) => {
-                const content = entry.content ? entry.content.$t : (entry.summary ? entry.summary.$t : '');
-                const title = stripHtml(entry.title.$t); 
-                const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
-                const id = entry.id.$t;
-                
-                let imageUrl = '';
-                if (entry.media$thumbnail) imageUrl = entry.media$thumbnail.url;
-                else {
-                    const extracted = getFirstImageFromContent(content);
-                    if(extracted) imageUrl = extracted;
-                }
-                if(!imageUrl) imageUrl = 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400';
-
-                let deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
-                if (!deal) deal = extractAmazonOfferFromPost(content, postUrl, title, imageUrl, id);
-                if (deal) generatedDeals.push(deal);
+          }
+        }
+        if (!entries.length && !fast) {
+          const fallbackUrl = `${TARGET_DOMAIN}/feeds/posts/default?alt=json&max-results=40`;
+          const fallbackRes = await fetchWithProxyFallback(fallbackUrl, 5000);
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            entries = (fallbackData.feed.entry || []).filter((entry: any) => {
+              const content = entry.content?.$t || entry.summary?.$t || '';
+              const title = stripHtml(entry.title?.$t || '');
+              return /amazon\.|amzn\.|amz-safe|offerta|offerte|sconto/i.test(`${content} ${title}`);
             });
-            return generatedDeals;
-        } catch(e) { return []; }
+          }
+        }
+        if (!entries.length) return [];
+        const generatedDeals: Deal[] = [];
+
+        entries.forEach((entry: any) => {
+          const content = entry.content ? entry.content.$t : entry.summary ? entry.summary.$t : '';
+          const title = stripHtml(entry.title.$t);
+          const postUrl = entry.link.find((l: any) => l.rel === 'alternate')?.href || '';
+          const id = entry.id.$t;
+
+          let imageUrl = '';
+          if (entry.media$thumbnail) imageUrl = entry.media$thumbnail.url;
+          else {
+            const extracted = getFirstImageFromContent(content);
+            if (extracted) imageUrl = extracted;
+          }
+          if (!imageUrl) {
+            imageUrl =
+              'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400';
+          }
+
+          let deal = extractDealWidgetData(content, postUrl, title, imageUrl, id);
+          if (!deal) deal = extractAmazonOfferFromPost(content, postUrl, title, imageUrl, id);
+          if (deal) generatedDeals.push(deal);
+        });
+        return generatedDeals;
+      } catch {
+        return [];
+      }
     })();
 
-    const telegramPromise = fetchTelegramDeals();
+    const telegramPromise = fetchTelegramDeals({ fast });
     const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
 
-    // Pool grezzo ampio (TG + Blogger), poi anteprime verificate, poi soft-fill → sempre ≥4 prodotti.
-    // Niente card CTA Telegram: il bottone «Offerte Italy» è già in header.
     const rawPool: Deal[] = [];
     const rawSeen = new Set<string>();
     for (const deal of [...telegramDeals, ...bloggerDeals]) {
@@ -1629,22 +1650,25 @@ export const fetchBloggerDeals = async (): Promise<Deal[]> => {
       rawPool.push(deal);
     }
 
-    // Solo 4 offerte con foto ok — pool ridotto = meno attesa sul banner
-    let allDeals = await pickDealsWithPreviewImages(rawPool, 4, 16);
-    if (allDeals.length < 4) {
+    // Fast: accetta foto TG/widget senza microlink/jina (DealImage risolve in lazy se serve)
+    let allDeals = await pickDealsWithPreviewImages(rawPool, 4, fast ? 10 : 16, {
+      fast,
+    });
+    if (!fast && allDeals.length < 4) {
       allDeals = await softFillDealsToCount(allDeals, rawPool, 4);
+    } else if (fast && allDeals.length < 4) {
+      // Soft fill leggero: solo widget ads-system, niente rete extra
+      allDeals = await softFillDealsToCount(allDeals, rawPool, 4, { fast: true });
     }
     allDeals = allDeals.slice(0, 4);
 
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
     return allDeals.map((deal, idx) => ({
-        ...deal,
-        // Mai pubblicare link grezzi come titolo card
-        product: formatDealProductTitle(deal.product),
-        brandColor: dealColors[idx % dealColors.length]
+      ...deal,
+      product: formatDealProductTitle(deal.product),
+      brandColor: dealColors[idx % dealColors.length],
     }));
-    
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -1887,36 +1911,48 @@ export const resolveAmazonProductImage = async (link: string): Promise<string | 
 export const pickDealsWithPreviewImages = async (
   deals: Deal[],
   targetCount = 8,
-  maxScan = 28
+  maxScan = 28,
+  opts: { fast?: boolean } = {}
 ): Promise<Deal[]> => {
   if (!deals.length) return [];
+  const fast = !!opts.fast;
 
   const pool = deals.slice(0, maxScan);
   const selected: Deal[] = [];
-  const concurrency = 3;
 
   const ensurePreview = async (deal: Deal): Promise<Deal | null> => {
     const d = { ...deal };
 
-    // 1) Foto già buona (Telegram /images/I/) — probe rapido
-    if (
-      looksLikeDealPreviewUrl(d.imageUrl) &&
-      !isAmazonPlaceholderPath(d.imageUrl) &&
-      (await probeImageLoads(d.imageUrl, 3000))
-    ) {
-      return d;
+    // 1) Foto già buona (Telegram /images/I/)
+    if (looksLikeDealPreviewUrl(d.imageUrl) && !isAmazonPlaceholderPath(d.imageUrl)) {
+      if (fast) return d; // niente probe: risparmia secondi
+      if (await probeImageLoads(d.imageUrl, 2000)) return d;
     }
 
-    // 2) Widget Amazon ads-system (subito, senza microlink/jina)
-    for (const candidate of amazonImageCandidates(d.link)) {
-      if (isAmazonPlaceholderPath(candidate)) continue;
-      if (await probeImageLoads(candidate, 3000)) {
-        d.imageUrl = candidate;
+    // 2) Widget Amazon ads-system
+    const widget = amazonImageCandidates(d.link).find((u) => /amazon-adsystem/i.test(u));
+    if (widget && !isAmazonPlaceholderPath(widget)) {
+      if (fast) {
+        d.imageUrl = widget;
+        return d;
+      }
+      if (await probeImageLoads(widget, 2000)) {
+        d.imageUrl = widget;
         return d;
       }
     }
 
-    // 3) Risoluzione ASIN (più lenta) solo se serve ancora
+    if (fast) {
+      // Fast: altri candidati statici senza rete
+      for (const candidate of amazonImageCandidates(d.link)) {
+        if (isAmazonPlaceholderPath(candidate)) continue;
+        d.imageUrl = candidate;
+        return d;
+      }
+      return null;
+    }
+
+    // 3) Risoluzione ASIN (lenta) — solo modalità non-fast
     try {
       const resolved = await resolveAmazonProductImage(d.link);
       if (resolved && !isAmazonPlaceholderPath(resolved)) {
@@ -1928,8 +1964,7 @@ export const pickDealsWithPreviewImages = async (
     return null;
   };
 
-  // Più parallelo = banner Offerte del Giorno prima
-  const batchSize = Math.max(concurrency, 4);
+  const batchSize = fast ? 6 : 4;
   for (let i = 0; i < pool.length && selected.length < targetCount; i += batchSize) {
     const batch = pool.slice(i, i + batchSize);
     const results = await Promise.all(batch.map((d) => ensurePreview(d)));
@@ -1960,9 +1995,11 @@ const dealDedupeKey = (deal: Deal): string => {
 const softFillDealsToCount = async (
   selected: Deal[],
   pool: Deal[],
-  minCount: number
+  minCount: number,
+  opts: { fast?: boolean } = {}
 ): Promise<Deal[]> => {
   if (selected.length >= minCount) return selected.slice(0, Math.max(minCount, selected.length));
+  const fast = !!opts.fast;
   const out = [...selected];
   const seen = new Set(out.map(dealDedupeKey));
   for (const deal of pool) {
@@ -1978,32 +2015,29 @@ const softFillDealsToCount = async (
       product: formatDealProductTitle(deal.product),
     };
 
-    // Foto TG / già buona
-    if (
-      looksLikeDealPreviewUrl(soft.imageUrl) &&
-      !isAmazonPlaceholderPath(soft.imageUrl) &&
-      (await probeImageLoads(soft.imageUrl!))
-    ) {
-      seen.add(key);
-      out.push(soft);
-      continue;
-    }
-
-    // Risolvi copertina Amazon vera
-    try {
-      const resolved = await resolveAmazonProductImage(soft.link);
-      if (resolved && !isAmazonPlaceholderPath(resolved)) {
-        soft.imageUrl = resolved;
+    if (looksLikeDealPreviewUrl(soft.imageUrl) && !isAmazonPlaceholderPath(soft.imageUrl)) {
+      if (fast || (await probeImageLoads(soft.imageUrl!, 1500))) {
         seen.add(key);
         out.push(soft);
         continue;
       }
-    } catch { /* next */ }
+    }
 
-    // Widget ads-system
+    if (!fast) {
+      try {
+        const resolved = await resolveAmazonProductImage(soft.link);
+        if (resolved && !isAmazonPlaceholderPath(resolved)) {
+          soft.imageUrl = resolved;
+          seen.add(key);
+          out.push(soft);
+          continue;
+        }
+      } catch { /* next */ }
+    }
+
     for (const candidate of amazonImageCandidates(soft.link)) {
       if (isAmazonPlaceholderPath(candidate)) continue;
-      if (await probeImageLoads(candidate)) {
+      if (fast || (await probeImageLoads(candidate, 1500))) {
         soft.imageUrl = candidate;
         seen.add(key);
         out.push(soft);
@@ -2194,12 +2228,15 @@ const parseDealsFromHtml = (htmlText: string): Deal[] => {
   }
 };
 
-export const fetchTelegramDeals = async (): Promise<Deal[]> => {
-  // v7: solo foto prodotto reali (no placeholder Amazon bianchi)
-  const CACHE_KEY = 'txa_telegram_deals_v7';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v7_time';
-  const CACHE_EXPIRY = 1000 * 60 * 10; // 10 minutes
-  const TARGET_WITH_IMG = 6;
+export const fetchTelegramDeals = async (
+  opts: { fast?: boolean } = {}
+): Promise<Deal[]> => {
+  const fast = opts.fast !== false;
+  // v8: cache più lunga + fetch parallelo proxy (home veloce)
+  const CACHE_KEY = 'txa_telegram_deals_v8';
+  const CACHE_TIME_KEY = 'txa_telegram_deals_v8_time';
+  const CACHE_EXPIRY = 1000 * 60 * (fast ? 25 : 10);
+  const TARGET_WITH_IMG = fast ? 4 : 6;
   const MIN_DEALS = 4;
 
   const hasRealPreview = (d: Deal) =>
@@ -2210,75 +2247,91 @@ export const fetchTelegramDeals = async (): Promise<Deal[]> => {
   let cachedData: string | null = null;
   let cachedTime: string | null = null;
   try {
-    cachedData = sessionStorage.getItem(CACHE_KEY);
-    cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+    cachedData = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
+    cachedTime =
+      sessionStorage.getItem(CACHE_TIME_KEY) || localStorage.getItem(CACHE_TIME_KEY);
   } catch { /* blocked */ }
 
   if (cachedData && cachedTime && Date.now() - parseInt(cachedTime, 10) < CACHE_EXPIRY) {
     try {
       const cached = JSON.parse(cachedData) as Deal[];
       if (Array.isArray(cached) && cached.length > 0) {
-        const allHavePreview = cached.length >= MIN_DEALS && cached.every(hasRealPreview);
-        if (allHavePreview) return cached;
-        let fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 40);
+        if (cached.length >= MIN_DEALS && cached.every(hasRealPreview)) return cached;
+        if (fast) return cached.slice(0, TARGET_WITH_IMG);
+        let fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 24, { fast });
         fixed = await softFillDealsToCount(
           fixed,
           cached,
-          Math.max(MIN_DEALS, Math.min(16, cached.length))
+          Math.max(MIN_DEALS, Math.min(12, cached.length)),
+          { fast }
         );
-        if (fixed.length > 0) {
-          try {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify(fixed));
-            sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-          } catch { /* */ }
-          return fixed;
-        }
+        if (fixed.length > 0) return fixed;
       }
     } catch { /* ignore */ }
   }
 
   const telegramUrl = 'https://t.me/s/tuttoxandroid';
+  const fetchTargets = fast
+    ? [
+        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
+      ]
+    : [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(telegramUrl)}`,
+        `https://r.jina.ai/${telegramUrl}`,
+      ];
 
-  // Preferisci HTML grezzo (foto post TG) prima di jina markdown
-  const fetchTargets = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(telegramUrl)}`,
-    `https://r.jina.ai/${telegramUrl}`,
-  ];
-
-  for (const proxyUrl of fetchTargets) {
+  const tryProxy = async (proxyUrl: string): Promise<Deal[] | null> => {
     try {
-      const response = await fetchWithTimeout(proxyUrl, 12000);
-      if (!response.ok) continue;
+      const response = await fetchWithTimeout(proxyUrl, fast ? 5500 : 10000);
+      if (!response.ok) return null;
       const body = await response.text();
-      if (!body || body.length < 200) continue;
+      if (!body || body.length < 200) return null;
       const raw = parseDealsFromHtml(body);
-      if (raw.length > 0) {
-        let deals = await pickDealsWithPreviewImages(raw, TARGET_WITH_IMG, 40);
-        deals = await softFillDealsToCount(
-          deals,
-          raw,
-          Math.max(MIN_DEALS, Math.min(16, raw.length))
-        );
-        if (deals.length > 0) {
-          try {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify(deals));
-            sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
-          } catch { /* ignore */ }
-          return deals;
-        }
+      if (!raw.length) return null;
+      let deals = await pickDealsWithPreviewImages(raw, TARGET_WITH_IMG, fast ? 12 : 28, {
+        fast,
+      });
+      if (deals.length < MIN_DEALS) {
+        deals = await softFillDealsToCount(deals, raw, MIN_DEALS, { fast });
       }
-    } catch (e) {
-      console.warn('Telegram proxy failed', proxyUrl, e);
+      return deals.length > 0 ? deals : null;
+    } catch {
+      return null;
     }
+  };
+
+  // In fast: gareggia i 2 proxy e usa il primo valido
+  let dealsOut: Deal[] | null = null;
+  if (fast) {
+    const raced = await Promise.all(fetchTargets.map(tryProxy));
+    dealsOut = raced.find((d) => d && d.length > 0) || null;
+  } else {
+    for (const proxyUrl of fetchTargets) {
+      dealsOut = await tryProxy(proxyUrl);
+      if (dealsOut?.length) break;
+    }
+  }
+
+  if (dealsOut?.length) {
+    try {
+      const payload = JSON.stringify(dealsOut);
+      const now = Date.now().toString();
+      sessionStorage.setItem(CACHE_KEY, payload);
+      sessionStorage.setItem(CACHE_TIME_KEY, now);
+      localStorage.setItem(CACHE_KEY, payload);
+      localStorage.setItem(CACHE_TIME_KEY, now);
+    } catch { /* ignore */ }
+    return dealsOut;
   }
 
   if (cachedData) {
     try {
       const stale = JSON.parse(cachedData) as Deal[];
       if (Array.isArray(stale) && stale.length > 0) {
-        return await softFillDealsToCount(stale, stale, MIN_DEALS);
+        return fast ? stale.slice(0, MIN_DEALS) : softFillDealsToCount(stale, stale, MIN_DEALS);
       }
     } catch { /* ignore */ }
   }

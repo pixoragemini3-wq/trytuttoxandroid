@@ -60,13 +60,27 @@ const App: React.FC = () => {
   });
 
   const [articles, setArticles] = useState<Article[]>([]);
-  // Offerte: mostra subito la cache (se c'è) così il banner non aspetta 10–20s
+  // Offerte: idrata subito da cache locale (session + local, TTL lungo) — niente attesa rete
   const [deals, setDeals] = useState<Deal[]>(() => {
-    try {
-      const raw = sessionStorage.getItem('txa_home_deals_v1');
+    const read = (raw: string | null): Deal[] => {
       if (!raw) return [];
-      const parsed = JSON.parse(raw) as Deal[];
-      return Array.isArray(parsed) ? parsed.slice(0, 4) : [];
+      try {
+        const parsed = JSON.parse(raw) as Deal[] | { deals?: Deal[]; t?: number };
+        if (Array.isArray(parsed)) return parsed.slice(0, 4);
+        if (parsed && Array.isArray(parsed.deals)) {
+          // localStorage con timestamp: valido 2h
+          if (parsed.t && Date.now() - parsed.t > 2 * 60 * 60 * 1000) return [];
+          return parsed.deals.slice(0, 4);
+        }
+      } catch { /* */ }
+      return [];
+    };
+    try {
+      const fromSession = read(sessionStorage.getItem('txa_home_deals_v1'));
+      if (fromSession.length) return fromSession;
+    } catch { /* */ }
+    try {
+      return read(localStorage.getItem('txa_home_deals_v2'));
     } catch {
       return [];
     }
@@ -297,69 +311,68 @@ const App: React.FC = () => {
     setMeta('twitter:description', desc);
   }, [activeCategory, searchQuery, isSearch]);
 
-  // Load Content: articoli e offerte IN PARALLELO (il banner non aspetta i post)
+  // Articoli subito; offerte in background (non bloccano hero / In evidenza)
   useEffect(() => {
-    const init = async () => {
-      setIsArticlesLoading(true);
+    let cancelled = false;
 
-      const postsPromise = (async () => {
-        try {
-          const posts = await fetchBloggerPosts();
-          const finalPosts = posts.length > 0 ? posts : MOCK_ARTICLES;
-          setArticles(finalPosts);
-          setFilteredArticles(finalPosts);
-        } catch {
-          setArticles(MOCK_ARTICLES);
-          setFilteredArticles(MOCK_ARTICLES);
-        } finally {
-          setIsArticlesLoading(false);
-        }
-      })();
-
-      const dealsPromise = (async () => {
-        try {
-          const dealsData = await fetchBloggerDeals();
-          if (dealsData.length > 0) {
-            setDeals(dealsData.slice(0, 4));
-            try {
-              sessionStorage.setItem('txa_home_deals_v1', JSON.stringify(dealsData.slice(0, 4)));
-            } catch { /* private mode */ }
-          }
-        } catch {
-          /* mantieni cache se c'era */
-        }
-      })();
-
-      await Promise.all([postsPromise, dealsPromise]);
+    const persistDeals = (list: Deal[]) => {
+      const top = list.slice(0, 4);
+      try {
+        sessionStorage.setItem('txa_home_deals_v1', JSON.stringify(top));
+      } catch { /* */ }
+      try {
+        localStorage.setItem(
+          'txa_home_deals_v2',
+          JSON.stringify({ t: Date.now(), deals: top })
+        );
+      } catch { /* */ }
     };
 
-    init();
-
-    // Ricarica offerte Telegram ogni 10 minuti (canale aggiornato in tempo reale)
-    const dealsInterval = window.setInterval(async () => {
+    const loadPosts = async () => {
+      setIsArticlesLoading(true);
       try {
-        try {
-          sessionStorage.removeItem('txa_telegram_deals');
-          sessionStorage.removeItem('txa_telegram_deals_time');
-          sessionStorage.removeItem('txa_telegram_deals_v2');
-          sessionStorage.removeItem('txa_telegram_deals_v2_time');
-          sessionStorage.removeItem('txa_telegram_deals_v3');
-          sessionStorage.removeItem('txa_telegram_deals_v3_time');
-          sessionStorage.removeItem('txa_telegram_deals_v4');
-          sessionStorage.removeItem('txa_telegram_deals_v4_time');
-          sessionStorage.removeItem('txa_telegram_deals_v5');
-          sessionStorage.removeItem('txa_telegram_deals_v5_time');
-          sessionStorage.removeItem('txa_telegram_deals_v6');
-          sessionStorage.removeItem('txa_telegram_deals_v6_time');
-          sessionStorage.removeItem('txa_telegram_deals_v7');
-          sessionStorage.removeItem('txa_telegram_deals_v7_time');
-        } catch { /* private mode */ }
-        const dealsData = await fetchBloggerDeals();
-        if (dealsData.length > 0) setDeals(dealsData);
-      } catch { /* ignore */ }
-    }, 10 * 60 * 1000);
+        const posts = await fetchBloggerPosts();
+        if (cancelled) return;
+        const finalPosts = posts.length > 0 ? posts : MOCK_ARTICLES;
+        setArticles(finalPosts);
+        setFilteredArticles(finalPosts);
+      } catch {
+        if (!cancelled) {
+          setArticles(MOCK_ARTICLES);
+          setFilteredArticles(MOCK_ARTICLES);
+        }
+      } finally {
+        if (!cancelled) setIsArticlesLoading(false);
+      }
+    };
 
-    return () => window.clearInterval(dealsInterval);
+    const loadDeals = async () => {
+      try {
+        // Fast path: niente microlink/jina a catena — banner in pochi secondi
+        const dealsData = await fetchBloggerDeals({ fast: true });
+        if (cancelled || !dealsData.length) return;
+        setDeals(dealsData.slice(0, 4));
+        persistDeals(dealsData);
+      } catch {
+        /* mantieni cache */
+      }
+    };
+
+    void loadPosts();
+    // Offerte dopo il primo paint (non competono con il feed articoli)
+    const dealsTimer = window.setTimeout(() => {
+      void loadDeals();
+    }, 50);
+
+    const dealsInterval = window.setInterval(() => {
+      void loadDeals();
+    }, 15 * 60 * 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(dealsTimer);
+      window.clearInterval(dealsInterval);
+    };
   }, []);
 
   // Pulisce l'injection SSR quando l'URL cambia (fix browser Facebook / navigazione SPA)
@@ -2229,17 +2242,7 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Banner Offerte del Giorno — subito dopo hero in home (visibile senza scroll lungo) */}
-                {isHome &&
-                  !isSearch &&
-                  deals.length > 0 &&
-                  activeCategory === 'Tutti' && (
-                    <div className="px-4 lg:px-0 mt-3 mb-2">
-                      <DealsSection maxEuro={null} />
-                    </div>
-                  )}
-
-                {/* FEATURED CAROUSEL - STATIC (Visible on Home) */}
+                {/* FEATURED CAROUSEL — prima delle Offerte (ordine: hero → evidenza → selezione → offerte) */}
                 {isHome && activeCategory === 'Tutti' && (
                   <div className="px-4 lg:px-0 py-2 mt-1 mb-0">
                     <div className="flex items-end justify-between mb-2">
@@ -2280,7 +2283,7 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Banner Offerte anche in categoria Offerte (max 4, non 8) */}
+                {/* Banner Offerte in categoria Offerte (max 4) */}
                 {isHome &&
                   !isSearch &&
                   deals.length > 0 &&
@@ -2290,22 +2293,30 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                {/* MOVED: Social Banner placed EXTERNALLY above the News Section Content */}
-                {isHome && activeCategory === 'Tutti' && !isSearch && (
-                  <div ref={staticBannerRef} className="px-4 lg:px-0 mt-6 mb-2">
-                    <SocialBannerMobile />
-                  </div>
-                )}
-
               </div>
             </section>
 
-            {/* Category Spotlight - hidden on mobile (avoid ULTIME OFFERTE etc on phone home, go straight to news).
-                On desktop it alternates categories daily. */}
+            {/* Selezione (es. App & Giochi / categoria del giorno) — prima delle Offerte del Giorno */}
             {isHome && activeCategory === 'Tutti' && !isSearch && (
               <div className="hidden md:block">
-                {/* Call as function (not <Component />) so expand state/DOM stay stable across App re-renders */}
                 {AppsGamesMenu()}
+              </div>
+            )}
+
+            {/* Offerte del Giorno: DOPO In evidenza e DOPO la selezione (non sotto l'hero) */}
+            {isHome &&
+              !isSearch &&
+              deals.length > 0 &&
+              activeCategory === 'Tutti' && (
+                <div className="max-w-7xl mx-auto px-4 lg:px-0 mt-3 mb-2 md:mt-5">
+                  <DealsSection maxEuro={null} />
+                </div>
+              )}
+
+            {/* Social banner — sotto le offerte */}
+            {isHome && activeCategory === 'Tutti' && !isSearch && (
+              <div ref={staticBannerRef} className="max-w-7xl mx-auto px-4 lg:px-0 mt-4 mb-2">
+                <SocialBannerMobile />
               </div>
             )}
 
