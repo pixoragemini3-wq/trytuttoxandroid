@@ -328,6 +328,10 @@ const App: React.FC = () => {
           sessionStorage.removeItem('txa_telegram_deals_v3_time');
           sessionStorage.removeItem('txa_telegram_deals_v4');
           sessionStorage.removeItem('txa_telegram_deals_v4_time');
+          sessionStorage.removeItem('txa_telegram_deals_v5');
+          sessionStorage.removeItem('txa_telegram_deals_v5_time');
+          sessionStorage.removeItem('txa_telegram_deals_v6');
+          sessionStorage.removeItem('txa_telegram_deals_v6_time');
         } catch { /* private mode */ }
         const dealsData = await fetchBloggerDeals();
         if (dealsData.length > 0) setDeals(dealsData);
@@ -921,8 +925,8 @@ const App: React.FC = () => {
       });
       pool = under.length > 0 ? under : deals;
     }
-    // Home: 4 offerte prodotto; Offerte: fino a 8 (solo deal reali, no card CTA)
-    const dealsToShow = activeCategory === 'Offerte' ? 8 : 4;
+    // Sempre massimo 4 offerte prodotto (home e categoria Offerte)
+    const dealsToShow = 4;
     const dealCards = pool.slice(0, dealsToShow);
 
     if (dealCards.length === 0) return null;
@@ -939,25 +943,27 @@ const App: React.FC = () => {
         onClick={() => handleDealClick(deal, 'home_deals')}
         className={
           compact
-            ? 'txa-deal-card shrink-0 w-[132px] snap-start bg-black/35 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-1.5 p-2'
-            : 'txa-deal-card bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-2 p-2.5 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 h-full'
+            ? 'txa-deal-card shrink-0 w-[128px] snap-start bg-black/35 backdrop-blur-md rounded-xl border border-white/10 shadow-md flex flex-col gap-1.5 p-2'
+            : 'txa-deal-card bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg hover:bg-black/50 transition-all group flex flex-col gap-2 p-2.5 hover:-translate-y-1 duration-300 hover:border-[#e31b23]/50 h-full min-h-0'
         }
         style={{ color: '#ffffff' }}
       >
-        {/* Immagine quadrata (non striscia orizzontale) */}
-        <div
-          className={`txa-deal-card-img relative w-full shrink-0 bg-white rounded-lg overflow-hidden aspect-square ${
-            compact ? '' : ''
-          }`}
-        >
-          <DealImage
-            src={deal.imageUrl}
-            link={deal.link}
-            alt={productTitle}
-            className={`absolute inset-0 w-full h-full object-contain object-center p-2 mix-blend-multiply ${
-              compact ? '' : 'group-hover:scale-105 transition-transform duration-500'
+        {/* Box immagine quadrato compatto (max ~132px: niente griglia a 2 righe gigante) */}
+        <div className="w-full flex justify-center shrink-0">
+          <div
+            className={`txa-deal-card-img relative bg-white rounded-lg overflow-hidden aspect-square ${
+              compact ? 'w-full max-w-[112px]' : 'w-full max-w-[132px]'
             }`}
-          />
+          >
+            <DealImage
+              src={deal.imageUrl}
+              link={deal.link}
+              alt={productTitle}
+              className={`absolute inset-0 w-full h-full object-contain object-center p-1.5 mix-blend-multiply ${
+                compact ? '' : 'group-hover:scale-105 transition-transform duration-500'
+              }`}
+            />
+          </div>
         </div>
         <div className="flex-1 min-w-0 flex flex-col justify-between gap-1">
           <h4
@@ -992,7 +998,7 @@ const App: React.FC = () => {
 
     return (
       <section
-        className="txa-deals-banner py-3 lg:py-6 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-x-clip overflow-y-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
+        className="txa-deals-banner py-3 lg:py-4 bg-gradient-to-r from-gray-900 via-gray-900 to-[#e31b23] rounded-2xl lg:rounded-[1.5rem] mx-0 overflow-x-clip overflow-y-visible shadow-2xl relative border-t-4 border-[#e31b23] mb-3 lg:mb-4 animate-in slide-in-from-right duration-500"
         style={{ color: '#ffffff' }}
       >
         <style>{`
@@ -1030,7 +1036,7 @@ const App: React.FC = () => {
           <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2.5 lg:mb-4">
             <div className="flex items-center gap-2 min-w-0 flex-1 pr-1 flex-wrap">
               <h2
-                className="txa-deals-banner-title font-condensed text-[1rem] xs:text-lg sm:text-xl lg:text-[3.2rem] font-black uppercase tracking-[-0.02em] italic leading-[1.05] break-words"
+                className="txa-deals-banner-title font-condensed text-[1rem] xs:text-lg sm:text-xl lg:text-[2.4rem] font-black uppercase tracking-[-0.02em] italic leading-[1.05] break-words"
                 style={{
                   color: '#e8ff00',
                   WebkitTextFillColor: '#e8ff00',
@@ -1096,16 +1102,14 @@ const App: React.FC = () => {
             {dealCards.map((deal) => dealCard(deal, true))}
           </div>
 
-          {/* Desktop: home = 4 colonne fisse; categoria Offerte = fino a 8 */}
+          {/* Desktop: sempre max 4 card in una riga */}
           <div
             className={`hidden lg:grid gap-2.5 xl:gap-3 items-stretch ${
-              activeCategory === 'Offerte' && dealCards.length > 4
+              dealCards.length >= 4
                 ? 'grid-cols-4'
-                : dealCards.length >= 4
-                  ? 'grid-cols-4'
-                  : dealCards.length === 3
-                    ? 'grid-cols-3'
-                    : 'grid-cols-2'
+                : dealCards.length === 3
+                  ? 'grid-cols-3'
+                  : 'grid-cols-2'
             }`}
           >
             {dealCards.map((deal) => dealCard(deal, false))}
@@ -2204,6 +2208,16 @@ const App: React.FC = () => {
                   </div>
                 )}
 
+                {/* Banner Offerte del Giorno — subito dopo hero in home (visibile senza scroll lungo) */}
+                {isHome &&
+                  !isSearch &&
+                  deals.length > 0 &&
+                  activeCategory === 'Tutti' && (
+                    <div className="px-4 lg:px-0 mt-3 mb-2">
+                      <DealsSection maxEuro={null} />
+                    </div>
+                  )}
+
                 {/* FEATURED CAROUSEL - STATIC (Visible on Home) */}
                 {isHome && activeCategory === 'Tutti' && (
                   <div className="px-4 lg:px-0 py-2 mt-1 mb-0">
@@ -2244,22 +2258,14 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 )}
-                
-                {/* Banner Offerte del Giorno (Telegram) — home Tutti + sezione Offerte */}
+
+                {/* Banner Offerte anche in categoria Offerte (max 4, non 8) */}
                 {isHome &&
                   !isSearch &&
                   deals.length > 0 &&
-                  (activeCategory === 'Tutti' || activeCategory === 'Offerte') && (
-                    <div
-                      className={`px-4 lg:px-0 ${
-                        activeCategory === 'Offerte' ? 'mt-6' : 'mt-4'
-                      }`}
-                    >
-                      <DealsSection
-                        maxEuro={
-                          activeCategory === 'Offerte' ? maxBudgetEuro : null
-                        }
-                      />
+                  activeCategory === 'Offerte' && (
+                    <div className="px-4 lg:px-0 mt-4 mb-2">
+                      <DealsSection maxEuro={maxBudgetEuro} />
                     </div>
                   )}
 
