@@ -1866,11 +1866,38 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                       }}
                     />
 
-                    {/* Banner Offerte del Giorno a metà articolo (React nativo) */}
-                    {isDealCategory && midDeals.length > 0 && (
+                    {/* Banner Offerte Italy a metà articolo: prodotti TG (sempre montato su post Offerte) */}
+                    {isDealCategory && (
                       <div className="not-prose my-8 clear-both" data-txa-mid-deals="1" style={{ display: 'block' }}>
-                        <MobileDealsCarousel />
-                        <DesktopDealsBanner />
+                        {midDeals.length > 0 ? (
+                          <>
+                            <MobileDealsCarousel />
+                            <DesktopDealsBanner />
+                          </>
+                        ) : (
+                          <div
+                            className="txa-deals-banner my-8 rounded-2xl bg-gradient-to-r from-gray-900 to-[#e31b23] p-6 text-center shadow-xl"
+                            style={{ color: '#fff' }}
+                          >
+                            <h3
+                              className="txa-deals-banner-title font-condensed text-2xl md:text-3xl font-black uppercase italic mb-2"
+                              style={{ color: '#e8ff00' }}
+                            >
+                              Offerte del Giorno
+                            </h3>
+                            <p className="text-sm text-white/90 mb-4">
+                              Prodotti in tempo reale dal canale Telegram Offerte Italy.
+                            </p>
+                            <a
+                              href="https://t.me/tuttoxandroid"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-white text-gray-900 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest no-underline"
+                            >
+                              Apri Offerte Italy
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
 

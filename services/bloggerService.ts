@@ -1577,11 +1577,17 @@ export const isTelegramProductDeal = (deal: Pick<Deal, 'link' | 'product'> | nul
     return false;
   }
   // Shop reali (canale Offerte Italy → Amazon e simili)
-  if (/amazon\.|amzn\.|amzn\.eu|ebay\.|mediaworld|unieuro|trendyol|aliexpress|apple\.com\/it|samsung\.com/i.test(link)) {
+  // Nota: link.amazon/ASIN non ha il punto dopo "amazon"
+  if (
+    /amazon\.|amzn\.|link\.amazon|\/\/amazon\/|ebay\.|mediaworld|unieuro|trendyol|aliexpress|apple\.com\/it|samsung\.com/i.test(
+      link
+    )
+  ) {
     return true;
   }
   // ASIN-style path
   if (/\/(?:dp|gp\/product)\/[a-z0-9]{10}/i.test(link)) return true;
+  if (/link\.amazon\/[a-z0-9]{8,}/i.test(link)) return true;
   return false;
 };
 
@@ -1825,6 +1831,7 @@ export const extractAmazonAsin = (link: string): string | null => {
     /\/(?:dp|gp\/product|gp\/aw\/d|gp\/offer-listing|d|product)\/([A-Z0-9]{10})(?:[/?]|$)/i,
     /[?&]asin=([A-Z0-9]{10})(?:&|$)/i,
     /amzn\.eu\/d\/([A-Z0-9]{10})/i,
+    /link\.amazon\/([A-Z0-9]{10})(?:[/?#]|$)/i,
     /amazon\.[a-z.]+\/([A-Z0-9]{10})(?:[/?]|$)/i,
   ];
   for (const re of patterns) {
@@ -2236,28 +2243,42 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
   const seenLinks = new Set<string>();
 
   const pushDeal = (product: string, link: string, priceText: string) => {
-    if (seenLinks.has(link) || /tuttoxandroid\.com/i.test(link)) return false;
-    seenLinks.add(link);
+    // jina markdown a volte lascia ]( o ) finali
+    const cleanLink = (link || '').replace(/[)\]>,.;]+$/g, '').trim();
+    if (!cleanLink || seenLinks.has(cleanLink) || /tuttoxandroid\.com/i.test(cleanLink)) return false;
+    seenLinks.add(cleanLink);
     const { newPrice, oldPrice } = extractPricesFromText(priceText);
     // Preferisci foto del post Telegram (è la copertina offerta corretta);
     // i path Amazon /images/P/ sono spesso riquadri bianchi.
     const tgImg = nextMedia();
+    const asin = extractAmazonAsin(cleanLink) || '';
+    // link.amazon/ASIN → dp amazon.it
+    let finalLink = cleanLink;
+    const shortAsin = cleanLink.match(/link\.amazon\/([A-Za-z0-9]{8,12})/i)?.[1];
+    if (shortAsin && shortAsin.length >= 10) {
+      finalLink = rewriteDealAffiliateLink(
+        `https://www.amazon.it/dp/${shortAsin.toUpperCase()}`
+      );
+    } else {
+      finalLink = rewriteDealAffiliateLink(cleanLink);
+    }
     const imageUrl =
       (tgImg && !/Q2dx|FGGwFKd/i.test(tgImg) ? tgImg : null) ||
-      amazonImageCandidates(link).find((u) => /amazon-adsystem/i.test(u)) ||
-      amazonImageFromLink(link) ||
+      amazonImageCandidates(finalLink).find((u) => /amazon-adsystem/i.test(u)) ||
+      amazonImageFromLink(finalLink) ||
       DEAL_IMG_FALLBACK;
     let cleanProduct = formatDealProductTitle(product);
     if (cleanProduct === 'Offerta Amazon') {
       cleanProduct = extractProductNameFromContext(priceText);
     }
+    const idTail = (asin || shortAsin || finalLink).slice(-12);
     deals.push({
-      id: `tg-${deals.length}-${(asin || link).slice(-12)}`,
+      id: `tg-${deals.length}-${idTail}`,
       product: cleanProduct,
       oldPrice,
       newPrice,
       saveAmount: 'Telegram',
-      link,
+      link: finalLink,
       imageUrl,
       brandColor: 'bg-[#24A1DE]',
     });
@@ -2266,20 +2287,21 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
 
   // Prefer numbered product blocks: "1. Product ... 21,15 € ... amazon.it/dp/..."
   const numberedRe =
-    /(?:^|\n)\s*(?:\d+\.\s+)([^\n]{8,140})\n[\s\S]{0,280}?(https?:\/\/(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+))/gi;
+    /(?:^|\n)\s*(?:\d+\.\s+)([^\n]{8,140})\n[\s\S]{0,280}?(https?:\/\/(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+|link\.amazon\/[^\s\)"'<>]+))/gi;
   let m: RegExpExecArray | null;
   while ((m = numberedRe.exec(text)) !== null) {
     const product = formatDealProductTitle(m[1].replace(/[*_#]/g, '').trim());
-    const link = rewriteDealAffiliateLink(m[2].replace(/[),.;]+$/, ''));
+    const link = m[2].replace(/[),.;]+$/, '');
     pushDeal(product, link, m[0]);
     // Pool ampio: poi pickDealsWithPreviewImages tiene solo quelle con foto
     if (deals.length >= 28) return deals;
   }
 
   // Fallback: every amazon link with ~350 chars of preceding context
-  const linkRe = /https?:\/\/(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+)/gi;
+  const linkRe =
+    /https?:\/\/(?:(?:www\.)?(?:amazon\.[^\s\)"'<>]+|amzn\.[^\s\)"'<>]+)|link\.amazon\/[A-Za-z0-9]+)/gi;
   while ((m = linkRe.exec(text)) !== null) {
-    const link = rewriteDealAffiliateLink(m[0].replace(/[),.;]+$/, ''));
+    const link = m[0].replace(/[),.;]+$/, '');
     if (seenLinks.has(link)) continue;
     const start = Math.max(0, m.index - 350);
     const context = text.slice(start, m.index + m[0].length);
@@ -2294,7 +2316,11 @@ const parseDealsFromTelegramText = (rawText: string): Deal[] => {
 const parseDealsFromHtml = (htmlText: string): Deal[] => {
   try {
     // If proxy returned markdown/text (jina etc.), parse as text
-    if (!htmlText.includes('tgme_widget_message') && /amazon\.|amzn\./i.test(htmlText)) {
+    // link.amazon non matcha amazon\. (punto prima di amazon, non dopo)
+    if (
+      !htmlText.includes('tgme_widget_message') &&
+      /amazon\.|amzn\.|link\.amazon/i.test(htmlText)
+    ) {
       return parseDealsFromTelegramText(htmlText);
     }
 
@@ -2407,21 +2433,23 @@ export const fetchTelegramDeals = async (
 
   // Canale pubblico Offerte Italy (stesso feed usato in home)
   const telegramUrl = 'https://t.me/s/tuttoxandroid';
+  // jina prima: corsproxy spesso 403; jina restituisce markdown con amazon.it/dp e link.amazon
   const fetchTargets = fast
     ? [
-        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
+        `https://r.jina.ai/${telegramUrl}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
       ]
     : [
+        `https://r.jina.ai/${telegramUrl}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(telegramUrl)}`,
         `https://corsproxy.io/?${encodeURIComponent(telegramUrl)}`,
         `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(telegramUrl)}`,
-        `https://r.jina.ai/${telegramUrl}`,
       ];
 
   const tryProxy = async (proxyUrl: string): Promise<Deal[] | null> => {
     try {
-      const response = await fetchWithTimeout(proxyUrl, fast ? 5500 : 10000);
+      const response = await fetchWithTimeout(proxyUrl, fast ? 8000 : 12000);
       if (!response.ok) return null;
       const body = await response.text();
       if (!body || body.length < 200) return null;
@@ -2433,22 +2461,18 @@ export const fetchTelegramDeals = async (
       if (deals.length < MIN_DEALS) {
         deals = await softFillDealsToCount(deals, raw, MIN_DEALS, { fast });
       }
+      deals = filterTelegramProductDeals(deals, Math.max(MIN_DEALS, TARGET_WITH_IMG));
       return deals.length > 0 ? deals : null;
     } catch {
       return null;
     }
   };
 
-  // In fast: gareggia i 2 proxy e usa il primo valido
+  // Gareggia i proxy: primo con prodotti vince (non aspetta i falliti oltre il timeout)
   let dealsOut: Deal[] | null = null;
-  if (fast) {
+  {
     const raced = await Promise.all(fetchTargets.map(tryProxy));
     dealsOut = raced.find((d) => d && d.length > 0) || null;
-  } else {
-    for (const proxyUrl of fetchTargets) {
-      dealsOut = await tryProxy(proxyUrl);
-      if (dealsOut?.length) break;
-    }
   }
 
   if (dealsOut?.length) {
