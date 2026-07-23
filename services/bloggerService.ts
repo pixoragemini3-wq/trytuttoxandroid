@@ -1563,6 +1563,115 @@ export type FetchDealsOptions = {
   fast?: boolean;
 };
 
+/**
+ * Card offerte “semplici” dal feed Blogger label=offerte (stesso dominio = veloce).
+ * Non dipende da widget Amazon/Telegram: titolo + thumb + link post.
+ * Ideale per banner mid-articolo che deve sempre riempirsi.
+ */
+export const fetchOfferCardsQuick = async (max = 4): Promise<Deal[]> => {
+  const labels = ['offerte', 'offerteimperdibili'];
+  const colors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
+  const seen = new Set<string>();
+  const out: Deal[] = [];
+
+  const tryUrl = async (url: string): Promise<any[]> => {
+    try {
+      // Stesso origine: fetch diretto (niente proxy, ~200ms)
+      const sameOrigin =
+        typeof window !== 'undefined' &&
+        url.startsWith(window.location.origin);
+      const res = sameOrigin
+        ? await fetch(url, { credentials: 'omit' })
+        : await fetchWithProxyFallback(url, 3500);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.feed?.entry || []) as any[];
+    } catch {
+      return [];
+    }
+  };
+
+  for (const label of labels) {
+    if (out.length >= max) break;
+    const path = `/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=10`;
+    const urls: string[] = [];
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      urls.push(`${window.location.origin}${path}`);
+    }
+    urls.push(`${TARGET_DOMAIN}${path}`);
+
+    let entries: any[] = [];
+    for (const u of urls) {
+      entries = await tryUrl(u);
+      if (entries.length) break;
+    }
+
+    for (const entry of entries) {
+      if (out.length >= max) break;
+      const id = entry.id?.$t || '';
+      if (id && seen.has(id)) continue;
+      if (id) seen.add(id);
+      const title = stripHtml(entry.title?.$t || '').trim();
+      if (!title) continue;
+      const postUrl =
+        entry.link?.find((l: any) => l.rel === 'alternate')?.href || '';
+      if (!postUrl) continue;
+      let imageUrl = entry.media$thumbnail?.url || '';
+      if (!imageUrl) {
+        const content = entry.content?.$t || entry.summary?.$t || '';
+        imageUrl = getFirstImageFromContent(content) || '';
+      }
+      if (imageUrl) imageUrl = forceHighResImage(imageUrl);
+      // Prezzo grezzo dal titolo se c’è
+      const priceM = title.match(
+        /(\d+[.,]\d{2}|\d+)\s*€|€\s*(\d+[.,]\d{2}|\d+)|sotto\s+(?:i\s+)?(\d+)/i
+      );
+      const newPrice = priceM
+        ? `${(priceM[1] || priceM[2] || priceM[3] || '').replace(',', '.')}€`
+        : 'Vedi offerta';
+
+      out.push({
+        id: `q-${id || out.length}`,
+        product: formatDealProductTitle(title),
+        oldPrice: '',
+        newPrice,
+        saveAmount: '',
+        link: postUrl,
+        imageUrl:
+          imageUrl ||
+          'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400',
+        brandColor: colors[out.length % colors.length],
+      });
+    }
+  }
+
+  if (out.length) persistHomeDealsCache(out);
+  return out.slice(0, max);
+};
+
+/** Converte un articolo Offerte in card deal per il banner mid-articolo. */
+export const articleToDealCard = (a: Article, idx = 0): Deal | null => {
+  if (!a) return null;
+  const link = a.dealData?.link || a.url || '';
+  if (!link) return null;
+  const colors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
+  const newPrice =
+    a.dealData?.newPrice ||
+    (a.priceEuro != null && a.priceEuro > 0 ? `${Math.round(a.priceEuro)}€` : 'Vedi offerta');
+  return {
+    id: `art-${a.id}`,
+    product: formatDealProductTitle(a.title),
+    oldPrice: a.dealData?.oldPrice || '',
+    newPrice,
+    saveAmount: '',
+    link,
+    imageUrl:
+      a.imageUrl ||
+      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400',
+    brandColor: colors[idx % colors.length],
+  };
+};
+
 /** Cache home / Telegram — lettura sincrona per banner istantaneo (0 rete). */
 export const HOME_DEALS_SESSION_KEY = 'txa_home_deals_v1';
 export const HOME_DEALS_LOCAL_KEY = 'txa_home_deals_v2';
@@ -1703,8 +1812,17 @@ export const fetchBloggerDeals = async (opts: FetchDealsOptions = {}): Promise<D
       }
     })();
 
-    const telegramPromise = fetchTelegramDeals({ fast });
-    const [bloggerDeals, telegramDeals] = await Promise.all([bloggerPromise, telegramPromise]);
+    // Telegram non deve bloccare: in fast max ~2.5s altrimenti []
+    const telegramPromise = Promise.race([
+      fetchTelegramDeals({ fast }),
+      new Promise<Deal[]>((resolve) =>
+        setTimeout(() => resolve([]), fast ? 2500 : 8000)
+      ),
+    ]);
+    const [bloggerDeals, telegramDeals] = await Promise.all([
+      bloggerPromise,
+      telegramPromise,
+    ]);
 
     const rawPool: Deal[] = [];
     const rawSeen = new Set<string>();

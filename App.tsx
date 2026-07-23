@@ -2154,7 +2154,15 @@ const App: React.FC = () => {
                   relatedArticle={articles.find(a => a.category === currentArticle.category && a.id !== currentArticle.id) || articles[0]}
                   moreArticles={shuffledMoreArticles} 
                   deals={deals}
-                  offerNews={articles.filter(a => a.category === 'Offerte' && a.id !== currentArticle.id).slice(0, 4)}
+                  offerNews={articles
+                    .filter((a) => {
+                      if (a.id === currentArticle.id) return false;
+                      if (a.category === 'Offerte') return true;
+                      return (a.tags || []).some((t) =>
+                        /offert|amazon|sconto|imperdibil/i.test(String(t))
+                      );
+                    })
+                    .slice(0, 8)}
                   onArticleClick={handleArticleClick}
                   onHomeClick={goToHome}
                   onCategoryClick={(cat) => handleNavClick(cat)}

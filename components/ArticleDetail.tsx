@@ -8,6 +8,8 @@ import {
   AMAZON_AFFILIATE_TAG,
   fetchArticleById,
   fetchBloggerDeals,
+  fetchOfferCardsQuick,
+  articleToDealCard,
   getQuoteLeadText,
   truncateLeadForQuote,
   hydrateArticle,
@@ -270,7 +272,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     }
   }, [article]);
 
-  // Check if article is deals related (categoria, deal box, o segnali prezzo/Amazon)
+  // Articolo Offerte: tag Blogger, categoria, deal box, o segnali nel testo
   const isDealCategory = useMemo(() => {
     const cat = String(article.category || '').toLowerCase().trim();
     if (cat === 'offerte' || cat === 'offerteimperdibili' || cat === 'offerta') return true;
@@ -283,8 +285,18 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     ) {
       return true;
     }
-    const hay = `${article.title} ${article.excerpt || ''}`.toLowerCase();
-    return /(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli)/i.test(hay);
+    const hay = `${article.title} ${article.excerpt || ''} ${(article.content || '').slice(0, 800)}`.toLowerCase();
+    if (/(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli|amz-safe|mediaworld|ebay)/i.test(hay)) {
+      return true;
+    }
+    // Permalink tipici post offerta
+    try {
+      const path = (article.url || (typeof window !== 'undefined' ? window.location.pathname : '')).toLowerCase();
+      if (/offerta|sconto|crolla|prezzo|amazon|mediaworld|ebay/i.test(path)) return true;
+    } catch {
+      /* */
+    }
+    return false;
   }, [article]);
 
   // Sync da home (quando il parent finisce il fetch)
@@ -292,30 +304,72 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     if (deals?.length) setLiveDeals(deals.slice(0, 4));
   }, [deals]);
 
-  // Solo path Veloce: niente secondo fetch lento (~30s). Cache già in state.
+  /**
+   * Pool mid-articolo: sempre riempito per post Offerte.
+   * 1) props/cache  2) feed label=offerte (stesso dominio, veloce)
+   * 3) fetchBloggerDeals  4) offerNews / moreArticles come card
+   */
   useEffect(() => {
     if (!isDealCategory) return;
     let cancelled = false;
     (async () => {
       try {
-        // Se non c’era cache, prova subito di nuovo la lettura (race con home)
-        if (liveDeals.length < 2) {
-          const cached = readCachedDealsInstant(4);
-          if (cached.length && !cancelled) setLiveDeals(cached);
+        const cached = readCachedDealsInstant(4);
+        if (cached.length && !cancelled) setLiveDeals(cached);
+
+        // Feed Blogger same-origin: affidabile e rapido
+        const quick = await fetchOfferCardsQuick(4);
+        if (!cancelled && quick.length) {
+          setLiveDeals(quick);
+          persistHomeDealsCache(quick);
         }
+
+        // Arricchimento TG/Amazon in background (non blocca, non svuota se fallisce)
         const list = await fetchBloggerDeals({ fast: true });
-        if (cancelled || !list.length) return;
-        setLiveDeals(list.slice(0, 4));
-        persistHomeDealsCache(list);
+        if (!cancelled && list.length >= 2) {
+          setLiveDeals(list.slice(0, 4));
+          persistHomeDealsCache(list);
+        }
       } catch {
-        /* mantieni cache / props */
+        /* mantieni cache / quick */
       }
     })();
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh solo al cambio articolo
   }, [article.id, isDealCategory]);
+
+  /** Deal da mostrare a metà pezzo (mai array vuoto se abbiamo offerNews). */
+  const midDeals = useMemo(() => {
+    const pool: Deal[] = [];
+    const seen = new Set<string>();
+    const push = (d: Deal | null | undefined) => {
+      if (!d?.link) return;
+      const key = (d.id || d.link).toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      pool.push(d);
+    };
+    liveDeals.forEach((d) => push(d));
+    deals.forEach((d) => push(d));
+    let i = 0;
+    for (const a of offerNews) {
+      if (pool.length >= 4) break;
+      if (a.id === article.id) continue;
+      push(articleToDealCard(a, i++));
+    }
+    for (const a of moreArticles) {
+      if (pool.length >= 4) break;
+      if (a.id === article.id) continue;
+      const tags = (a.tags || []).map((t) => t.toLowerCase());
+      const isOff =
+        a.category === 'Offerte' ||
+        tags.some((t) => /offert|amazon|sconto/i.test(t));
+      if (!isOff) continue;
+      push(articleToDealCard(a, i++));
+    }
+    return pool.slice(0, 4);
+  }, [liveDeals, deals, offerNews, moreArticles, article.id]);
 
   /**
    * "Continua a leggere" solo se il testo è davvero incompleto.
@@ -1562,7 +1616,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         .txa-offer-live-title{min-height:2.75rem;}
       `}</style>
       <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 items-stretch">
-           {[...liveDeals, ...liveDeals].slice(0, 10).map((deal, idx) => (
+           {[...midDeals, ...midDeals].slice(0, 10).map((deal, idx) => (
             <a 
               key={`${deal.id}-${idx}`} 
               href={deal.link} 
@@ -1646,7 +1700,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
           }
         `}</style>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 relative z-10 items-stretch">
-           {liveDeals.slice(0, 4).map(deal => (
+           {midDeals.slice(0, 4).map(deal => (
               <a key={deal.id} href={deal.link} target="_blank" rel="noopener noreferrer" onClick={() => handleDealClick(deal, 'desktop_banner')} className="bg-black/40 backdrop-blur-sm rounded-xl p-4 flex flex-col gap-3 hover:bg-black/60 transition-colors group h-full min-h-[200px]" style={{ color: '#ffffff' }}>
                  <div className="txa-deal-desk-img">
                     <DealImage src={deal.imageUrl} link={deal.link} alt={deal.product} className="" />
@@ -1831,9 +1885,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
                       }}
                     />
 
-                    {/* Banner Offerte: solo se abbiamo deal (cache/props/rete). Niente “Caricamento” da 30s. */}
-                    {isDealCategory && liveDeals.length > 0 && (
-                      <div className="not-prose my-8" data-txa-mid-deals="1">
+                    {/* Banner Offerte del Giorno a metà articolo (React nativo) */}
+                    {isDealCategory && midDeals.length > 0 && (
+                      <div className="not-prose my-8 clear-both" data-txa-mid-deals="1" style={{ display: 'block' }}>
                         <MobileDealsCarousel />
                         <DesktopDealsBanner />
                       </div>
