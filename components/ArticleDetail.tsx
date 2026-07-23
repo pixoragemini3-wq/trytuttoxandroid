@@ -286,13 +286,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       return true;
     }
     const hay = `${article.title} ${article.excerpt || ''} ${(article.content || '').slice(0, 800)}`.toLowerCase();
-    if (/(?:€\s*\d|\d+\s*€|sconto|offerta|su amazon|coupon|a soli|amz-safe|mediaworld|ebay)/i.test(hay)) {
+    // offert* copre offerta/offerte (es. "TIM rinnova le offerte XTE")
+    if (/(?:€\s*\d|\d+\s*€|sconto|offert|su amazon|coupon|a soli|amz-safe|mediaworld|ebay)/i.test(hay)) {
       return true;
     }
-    // Permalink tipici post offerta
+    // Permalink tipici post offerta (slug con "offerte", non solo "offerta")
     try {
       const path = (article.url || (typeof window !== 'undefined' ? window.location.pathname : '')).toLowerCase();
-      if (/offerta|sconto|crolla|prezzo|amazon|mediaworld|ebay/i.test(path)) return true;
+      if (/offert|sconto|crolla|prezzo|amazon|mediaworld|ebay/i.test(path)) return true;
     } catch {
       /* */
     }
