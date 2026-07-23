@@ -8,8 +8,8 @@ import {
   AMAZON_AFFILIATE_TAG,
   fetchArticleById,
   fetchBloggerDeals,
-  fetchOfferCardsQuick,
-  articleToDealCard,
+  fetchTelegramDeals,
+  filterTelegramProductDeals,
   getQuoteLeadText,
   truncateLeadForQuote,
   hydrateArticle,
@@ -299,15 +299,15 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     return false;
   }, [article]);
 
-  // Sync da home (quando il parent finisce il fetch)
+  // Sync da home: solo prodotti shop (Telegram Offerte Italy), mai post blog
   useEffect(() => {
-    if (deals?.length) setLiveDeals(deals.slice(0, 4));
+    const products = filterTelegramProductDeals(deals || [], 4);
+    if (products.length) setLiveDeals(products);
   }, [deals]);
 
   /**
-   * Pool mid-articolo: sempre riempito per post Offerte.
-   * 1) props/cache  2) feed label=offerte (stesso dominio, veloce)
-   * 3) fetchBloggerDeals  4) offerNews / moreArticles come card
+   * Mid-articolo Offerte del Giorno = prodotti dal canale Telegram Offerte Italy
+   * (t.me/tuttoxandroid → link Amazon/shop). NON altri articoli con tag offerte.
    */
   useEffect(() => {
     if (!isDealCategory) return;
@@ -317,21 +317,28 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         const cached = readCachedDealsInstant(4);
         if (cached.length && !cancelled) setLiveDeals(cached);
 
-        // Feed Blogger same-origin: affidabile e rapido
-        const quick = await fetchOfferCardsQuick(4);
-        if (!cancelled && quick.length) {
-          setLiveDeals(quick);
-          persistHomeDealsCache(quick);
+        // 1) Canale Telegram prodotti (fonte primaria)
+        const tg = filterTelegramProductDeals(
+          await fetchTelegramDeals({ fast: true }),
+          4
+        );
+        if (!cancelled && tg.length) {
+          setLiveDeals(tg);
+          persistHomeDealsCache(tg);
+          return;
         }
 
-        // Arricchimento TG/Amazon in background (non blocca, non svuota se fallisce)
-        const list = await fetchBloggerDeals({ fast: true });
-        if (!cancelled && list.length >= 2) {
-          setLiveDeals(list.slice(0, 4));
+        // 2) Fallback: pipeline completa ma solo deal con link shop
+        const list = filterTelegramProductDeals(
+          await fetchBloggerDeals({ fast: true }),
+          4
+        );
+        if (!cancelled && list.length) {
+          setLiveDeals(list);
           persistHomeDealsCache(list);
         }
       } catch {
-        /* mantieni cache / quick */
+        /* mantieni cache prodotti */
       }
     })();
     return () => {
@@ -339,37 +346,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     };
   }, [article.id, isDealCategory]);
 
-  /** Deal da mostrare a metà pezzo (mai array vuoto se abbiamo offerNews). */
-  const midDeals = useMemo(() => {
-    const pool: Deal[] = [];
-    const seen = new Set<string>();
-    const push = (d: Deal | null | undefined) => {
-      if (!d?.link) return;
-      const key = (d.id || d.link).toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      pool.push(d);
-    };
-    liveDeals.forEach((d) => push(d));
-    deals.forEach((d) => push(d));
-    let i = 0;
-    for (const a of offerNews) {
-      if (pool.length >= 4) break;
-      if (a.id === article.id) continue;
-      push(articleToDealCard(a, i++));
-    }
-    for (const a of moreArticles) {
-      if (pool.length >= 4) break;
-      if (a.id === article.id) continue;
-      const tags = (a.tags || []).map((t) => t.toLowerCase());
-      const isOff =
-        a.category === 'Offerte' ||
-        tags.some((t) => /offert|amazon|sconto/i.test(t));
-      if (!isOff) continue;
-      push(articleToDealCard(a, i++));
-    }
-    return pool.slice(0, 4);
-  }, [liveDeals, deals, offerNews, moreArticles, article.id]);
+  /** Solo prodotti Telegram/shop a metà pezzo. */
+  const midDeals = useMemo(
+    () => filterTelegramProductDeals([...(liveDeals || []), ...(deals || [])], 4),
+    [liveDeals, deals]
+  );
 
   /**
    * "Continua a leggere" solo se il testo è davvero incompleto.

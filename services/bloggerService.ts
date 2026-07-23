@@ -1564,118 +1564,45 @@ export type FetchDealsOptions = {
 };
 
 /**
- * Card offerte “semplici” dal feed Blogger label=offerte (stesso dominio = veloce).
- * Non dipende da widget Amazon/Telegram: titolo + thumb + link post.
- * Ideale per banner mid-articolo che deve sempre riempirsi.
+ * Solo prodotti da canale Telegram Offerte Italy / shop (Amazon, e-commerce).
+ * Esclude link ad articoli del blog (non devono finire in Offerte del Giorno).
  */
-export const fetchOfferCardsQuick = async (max = 4): Promise<Deal[]> => {
-  const labels = ['offerte', 'offerteimperdibili'];
-  const colors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
-  const seen = new Set<string>();
-  const out: Deal[] = [];
-
-  const tryUrl = async (url: string): Promise<any[]> => {
-    try {
-      // Stesso origine: fetch diretto (niente proxy, ~200ms)
-      const sameOrigin =
-        typeof window !== 'undefined' &&
-        url.startsWith(window.location.origin);
-      const res = sameOrigin
-        ? await fetch(url, { credentials: 'omit' })
-        : await fetchWithProxyFallback(url, 3500);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.feed?.entry || []) as any[];
-    } catch {
-      return [];
-    }
-  };
-
-  for (const label of labels) {
-    if (out.length >= max) break;
-    const path = `/feeds/posts/default/-/${encodeURIComponent(label)}?alt=json&max-results=10`;
-    const urls: string[] = [];
-    if (typeof window !== 'undefined' && window.location?.origin) {
-      urls.push(`${window.location.origin}${path}`);
-    }
-    urls.push(`${TARGET_DOMAIN}${path}`);
-
-    let entries: any[] = [];
-    for (const u of urls) {
-      entries = await tryUrl(u);
-      if (entries.length) break;
-    }
-
-    for (const entry of entries) {
-      if (out.length >= max) break;
-      const id = entry.id?.$t || '';
-      if (id && seen.has(id)) continue;
-      if (id) seen.add(id);
-      const title = stripHtml(entry.title?.$t || '').trim();
-      if (!title) continue;
-      const postUrl =
-        entry.link?.find((l: any) => l.rel === 'alternate')?.href || '';
-      if (!postUrl) continue;
-      let imageUrl = entry.media$thumbnail?.url || '';
-      if (!imageUrl) {
-        const content = entry.content?.$t || entry.summary?.$t || '';
-        imageUrl = getFirstImageFromContent(content) || '';
-      }
-      if (imageUrl) imageUrl = forceHighResImage(imageUrl);
-      // Prezzo grezzo dal titolo se c’è
-      const priceM = title.match(
-        /(\d+[.,]\d{2}|\d+)\s*€|€\s*(\d+[.,]\d{2}|\d+)|sotto\s+(?:i\s+)?(\d+)/i
-      );
-      const newPrice = priceM
-        ? `${(priceM[1] || priceM[2] || priceM[3] || '').replace(',', '.')}€`
-        : 'Vedi offerta';
-
-      out.push({
-        id: `q-${id || out.length}`,
-        product: formatDealProductTitle(title),
-        oldPrice: '',
-        newPrice,
-        saveAmount: '',
-        link: postUrl,
-        imageUrl:
-          imageUrl ||
-          'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400',
-        brandColor: colors[out.length % colors.length],
-      });
-    }
+export const isTelegramProductDeal = (deal: Pick<Deal, 'link' | 'product'> | null | undefined): boolean => {
+  if (!deal?.link) return false;
+  const link = deal.link.toLowerCase();
+  if (
+    /tuttoxandroid\.com|blogspot\.com|blogger\.com|\/\d{4}\/\d{2}\//i.test(link) ||
+    /t\.me\/|telegram\.me/i.test(link)
+  ) {
+    return false;
   }
-
-  if (out.length) persistHomeDealsCache(out);
-  return out.slice(0, max);
+  // Shop reali (canale Offerte Italy → Amazon e simili)
+  if (/amazon\.|amzn\.|amzn\.eu|ebay\.|mediaworld|unieuro|trendyol|aliexpress|apple\.com\/it|samsung\.com/i.test(link)) {
+    return true;
+  }
+  // ASIN-style path
+  if (/\/(?:dp|gp\/product)\/[a-z0-9]{10}/i.test(link)) return true;
+  return false;
 };
 
-/** Converte un articolo Offerte in card deal per il banner mid-articolo. */
-export const articleToDealCard = (a: Article, idx = 0): Deal | null => {
-  if (!a) return null;
-  const link = a.dealData?.link || a.url || '';
-  if (!link) return null;
-  const colors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
-  const newPrice =
-    a.dealData?.newPrice ||
-    (a.priceEuro != null && a.priceEuro > 0 ? `${Math.round(a.priceEuro)}€` : 'Vedi offerta');
-  return {
-    id: `art-${a.id}`,
-    product: formatDealProductTitle(a.title),
-    oldPrice: a.dealData?.oldPrice || '',
-    newPrice,
-    saveAmount: '',
-    link,
-    imageUrl:
-      a.imageUrl ||
-      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=400',
-    brandColor: colors[idx % colors.length],
-  };
+export const filterTelegramProductDeals = (deals: Deal[], max = 4): Deal[] => {
+  const out: Deal[] = [];
+  const seen = new Set<string>();
+  for (const d of deals || []) {
+    if (!isTelegramProductDeal(d)) continue;
+    const key = (d.link || d.id || '').toLowerCase().replace(/[?#].*$/, '');
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(d);
+    if (out.length >= max) break;
+  }
+  return out;
 };
 
-/** Cache home / Telegram — lettura sincrona per banner istantaneo (0 rete). */
-export const HOME_DEALS_SESSION_KEY = 'txa_home_deals_v1';
-export const HOME_DEALS_LOCAL_KEY = 'txa_home_deals_v2';
-export const TELEGRAM_DEALS_CACHE_KEY = 'txa_telegram_deals_v8';
+/** Cache home / Telegram prodotti — v3 ignora vecchia cache con post blog. */
+export const HOME_DEALS_SESSION_KEY = 'txa_home_deals_v3';
+export const HOME_DEALS_LOCAL_KEY = 'txa_home_deals_v3';
+export const TELEGRAM_DEALS_CACHE_KEY = 'txa_telegram_deals_v9';
 
 export const readCachedDealsInstant = (max = 4): Deal[] => {
   const parseList = (raw: string | null): Deal[] => {
@@ -1683,10 +1610,10 @@ export const readCachedDealsInstant = (max = 4): Deal[] => {
     try {
       const parsed = JSON.parse(raw) as Deal[] | { deals?: Deal[]; t?: number };
       if (Array.isArray(parsed)) {
-        return parsed.filter((d) => d && (d.link || d.product)).slice(0, max);
+        return filterTelegramProductDeals(parsed, max);
       }
       if (parsed && Array.isArray(parsed.deals)) {
-        return parsed.deals.filter((d) => d && (d.link || d.product)).slice(0, max);
+        return filterTelegramProductDeals(parsed.deals, max);
       }
     } catch {
       /* */
@@ -1714,11 +1641,23 @@ export const readCachedDealsInstant = (max = 4): Deal[] => {
   } catch {
     /* */
   }
+  // Legacy keys (filtrate: solo prodotti shop)
+  try {
+    const legacy = parseList(
+      sessionStorage.getItem('txa_home_deals_v1') ||
+        localStorage.getItem('txa_home_deals_v2') ||
+        sessionStorage.getItem('txa_telegram_deals_v8') ||
+        localStorage.getItem('txa_telegram_deals_v8')
+    );
+    if (legacy.length) return legacy;
+  } catch {
+    /* */
+  }
   return [];
 };
 
 export const persistHomeDealsCache = (list: Deal[]): void => {
-  const top = list.slice(0, 4);
+  const top = filterTelegramProductDeals(list, 4);
   if (!top.length) return;
   try {
     sessionStorage.setItem(HOME_DEALS_SESSION_KEY, JSON.stringify(top));
@@ -1826,7 +1765,9 @@ export const fetchBloggerDeals = async (opts: FetchDealsOptions = {}): Promise<D
 
     const rawPool: Deal[] = [];
     const rawSeen = new Set<string>();
+    // Solo prodotti shop (Amazon…): niente card che puntano ad articoli del blog
     for (const deal of [...telegramDeals, ...bloggerDeals]) {
+      if (!isTelegramProductDeal(deal)) continue;
       const key = dealDedupeKey(deal);
       if (!key || rawSeen.has(key)) continue;
       rawSeen.add(key);
@@ -1843,11 +1784,11 @@ export const fetchBloggerDeals = async (opts: FetchDealsOptions = {}): Promise<D
       // Soft fill leggero: solo widget ads-system, niente rete extra
       allDeals = await softFillDealsToCount(allDeals, rawPool, 4, { fast: true });
     }
-    // Rete vuota/lenta → non lasciare il banner “Caricamento” per 30s
+    // Rete vuota/lenta → cache prodotti TG (mai post blog)
     if (!allDeals.length && instantCache.length) {
       allDeals = instantCache;
     }
-    allDeals = allDeals.slice(0, 4);
+    allDeals = filterTelegramProductDeals(allDeals, 4);
 
     const dealColors = ['bg-[#e31b23]', 'bg-blue-600', 'bg-neutral-900', 'bg-purple-600'];
     const out = allDeals.map((deal, idx) => ({
@@ -2421,9 +2362,9 @@ export const fetchTelegramDeals = async (
   opts: { fast?: boolean } = {}
 ): Promise<Deal[]> => {
   const fast = opts.fast !== false;
-  // v8: cache più lunga + fetch parallelo proxy (home veloce)
-  const CACHE_KEY = 'txa_telegram_deals_v8';
-  const CACHE_TIME_KEY = 'txa_telegram_deals_v8_time';
+  // v9: solo prodotti shop (canale Offerte Italy / t.me/tuttoxandroid)
+  const CACHE_KEY = TELEGRAM_DEALS_CACHE_KEY;
+  const CACHE_TIME_KEY = `${TELEGRAM_DEALS_CACHE_KEY}_time`;
   const CACHE_EXPIRY = 1000 * 60 * (fast ? 25 : 10);
   const TARGET_WITH_IMG = fast ? 4 : 6;
   const MIN_DEALS = 4;
@@ -2443,22 +2384,28 @@ export const fetchTelegramDeals = async (
 
   if (cachedData && cachedTime && Date.now() - parseInt(cachedTime, 10) < CACHE_EXPIRY) {
     try {
-      const cached = JSON.parse(cachedData) as Deal[];
-      if (Array.isArray(cached) && cached.length > 0) {
-        if (cached.length >= MIN_DEALS && cached.every(hasRealPreview)) return cached;
+      const cached = filterTelegramProductDeals(JSON.parse(cachedData) as Deal[], 12);
+      if (cached.length > 0) {
+        if (cached.length >= MIN_DEALS && cached.every(hasRealPreview)) {
+          return cached.slice(0, TARGET_WITH_IMG);
+        }
         if (fast) return cached.slice(0, TARGET_WITH_IMG);
         let fixed = await pickDealsWithPreviewImages(cached, TARGET_WITH_IMG, 24, { fast });
-        fixed = await softFillDealsToCount(
-          fixed,
-          cached,
-          Math.max(MIN_DEALS, Math.min(12, cached.length)),
-          { fast }
+        fixed = filterTelegramProductDeals(
+          await softFillDealsToCount(
+            fixed,
+            cached,
+            Math.max(MIN_DEALS, Math.min(12, cached.length)),
+            { fast }
+          ),
+          TARGET_WITH_IMG
         );
         if (fixed.length > 0) return fixed;
       }
     } catch { /* ignore */ }
   }
 
+  // Canale pubblico Offerte Italy (stesso feed usato in home)
   const telegramUrl = 'https://t.me/s/tuttoxandroid';
   const fetchTargets = fast
     ? [
@@ -2505,22 +2452,26 @@ export const fetchTelegramDeals = async (
   }
 
   if (dealsOut?.length) {
-    try {
-      const payload = JSON.stringify(dealsOut);
-      const now = Date.now().toString();
-      sessionStorage.setItem(CACHE_KEY, payload);
-      sessionStorage.setItem(CACHE_TIME_KEY, now);
-      localStorage.setItem(CACHE_KEY, payload);
-      localStorage.setItem(CACHE_TIME_KEY, now);
-    } catch { /* ignore */ }
-    return dealsOut;
+    const products = filterTelegramProductDeals(dealsOut, Math.max(MIN_DEALS, TARGET_WITH_IMG));
+    if (products.length) {
+      try {
+        const payload = JSON.stringify(products);
+        const now = Date.now().toString();
+        sessionStorage.setItem(CACHE_KEY, payload);
+        sessionStorage.setItem(CACHE_TIME_KEY, now);
+        localStorage.setItem(CACHE_KEY, payload);
+        localStorage.setItem(CACHE_TIME_KEY, now);
+      } catch { /* ignore */ }
+      persistHomeDealsCache(products);
+      return products;
+    }
   }
 
   if (cachedData) {
     try {
-      const stale = JSON.parse(cachedData) as Deal[];
-      if (Array.isArray(stale) && stale.length > 0) {
-        return fast ? stale.slice(0, MIN_DEALS) : softFillDealsToCount(stale, stale, MIN_DEALS);
+      const stale = filterTelegramProductDeals(JSON.parse(cachedData) as Deal[], MIN_DEALS);
+      if (stale.length > 0) {
+        return fast ? stale : softFillDealsToCount(stale, stale, MIN_DEALS);
       }
     } catch { /* ignore */ }
   }
