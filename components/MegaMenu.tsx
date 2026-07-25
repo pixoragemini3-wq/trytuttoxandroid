@@ -24,7 +24,28 @@ interface MegaMenuProps {
   onSeeAllOffers?: () => void;
   /** Guide Acquisto: fascia smartphone (null = tutti / migliori 2026). */
   onSmartphonePriceGuide?: (maxEuro: number | null) => void;
+  /** Apre ricerca/filtro Guide per una query (topic o "guide"). */
+  onGuideSearch?: (query: string) => void;
 }
+
+/** Voci del mega-menu Guide → parole chiave per matchare l’articolo pubblicato. */
+const GUIDE_TOPIC_MATCH: { label: string; match: RegExp; query: string }[] = [
+  { label: 'Come aumentare durata batteria', match: /durata.*batteria|batteria.*android.*guida/i, query: 'durata batteria android' },
+  { label: 'Liberare spazio memoria', match: /liberare spazio|spazio memoria/i, query: 'liberare spazio memoria' },
+  { label: 'Velocizzare telefono lento', match: /velocizzare.*lento|telefono android lento/i, query: 'velocizzare telefono lento' },
+  { label: 'Problemi Wi-Fi e Dati', match: /problemi wi-?fi|wifi e dati/i, query: 'problemi wifi dati android' },
+  { label: 'Migliori Launcher 2026', match: /migliori launcher|launcher android 2026/i, query: 'migliori launcher 2026' },
+  { label: 'Installare Icon Pack', match: /icon pack|installare un icon/i, query: 'installare icon pack' },
+  { label: 'Automazione con Tasker', match: /tasker|automazione con tasker/i, query: 'tasker android' },
+  { label: 'Sfondi Animati', match: /sfondi animati|live wallpaper/i, query: 'sfondi animati android' },
+  { label: 'Da iPhone ad Android', match: /iphone ad android|da iphone/i, query: 'da iphone ad android' },
+  { label: 'Configurazione nuovo telefono', match: /configurazione nuovo telefono|checklist del primo giorno/i, query: 'configurazione nuovo telefono' },
+  { label: 'Backup WhatsApp e Foto', match: /backup whatsapp|whatsapp e foto/i, query: 'backup whatsapp foto' },
+  { label: 'Trova il mio dispositivo', match: /trova il mio dispositivo|find my device/i, query: 'trova il mio dispositivo' },
+  { label: 'Sblocco Bootloader', match: /sblocco bootloader|bootloader android/i, query: 'sblocco bootloader' },
+  { label: 'Root con Magisk', match: /root con magisk|magisk su android/i, query: 'root magisk' },
+  { label: 'Custom ROM', match: /custom rom/i, query: 'custom rom android' },
+];
 
 const IT_MONTH_NAMES = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -41,6 +62,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
   onBudgetFilter,
   onSeeAllOffers,
   onSmartphonePriceGuide,
+  onGuideSearch,
 }) => {
   const [showAllYears, setShowAllYears] = useState(false);
   const [priceRange, setPriceRange] = useState(1); // 0: <100, 1: <200, 2: <300, 3: <400, 4: <500
@@ -51,6 +73,57 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
     () => (articles && articles.length > 0 ? articles : MOCK_ARTICLES),
     [articles]
   );
+
+  /** Ultime guide (label/categoria guide o tutorial). */
+  const latestGuideArticles = useMemo(() => {
+    const scored = sourceArticles
+      .map((a) => {
+        const cat = String(a.category || '').toLowerCase();
+        const tags = (a.tags || []).map((t) => t.toLowerCase());
+        const hay = `${a.title} ${a.excerpt || ''}`.toLowerCase();
+        const isGuide =
+          cat === 'guide' ||
+          cat === 'guida' ||
+          cat === 'tutorial' ||
+          tags.some((t) => /guide|guida|tutorial|how.?to|troubleshooting|modding|primi passi|personalizzazione/.test(t)) ||
+          /guida|tutorial|come |passo.?passo|checklist/i.test(hay);
+        return { a, isGuide };
+      })
+      .filter((x) => x.isGuide)
+      .map((x) => x.a);
+    // preferisci pezzi con immagine
+    const withImg = scored.filter((a) => !!a.imageUrl);
+    const pool = withImg.length >= 4 ? withImg : scored;
+    return pool.slice(0, 4);
+  }, [sourceArticles]);
+
+  const findGuideArticle = (label: string): Article | undefined => {
+    const meta = GUIDE_TOPIC_MATCH.find((g) => g.label === label);
+    if (!meta) return undefined;
+    return sourceArticles.find((a) => meta.match.test(a.title || ''));
+  };
+
+  const openGuideTopic = (label: string) => {
+    const hit = findGuideArticle(label);
+    if (hit) {
+      onArticleClick(hit);
+      onClose();
+      return;
+    }
+    const meta = GUIDE_TOPIC_MATCH.find((g) => g.label === label);
+    if (onGuideSearch) {
+      onGuideSearch(meta?.query || label);
+      onClose();
+      return;
+    }
+    // fallback: ricerca Blogger sul sito
+    try {
+      const q = encodeURIComponent(meta?.query || label);
+      window.location.href = `https://www.tuttoxandroid.com/search?q=${q}`;
+    } catch {
+      /* */
+    }
+  };
 
   // Archivio storico a cascata: anni → mesi → articoli (conteggi ufficiali Blogger)
   const [archiveYear, setArchiveYear] = useState<number | null>(null);
@@ -515,6 +588,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
             ],
           },
         ];
+        const openAllGuides = () => {
+          if (onGuideSearch) {
+            onGuideSearch('guide');
+          }
+          onClose();
+        };
         return (
           <>
             {guideCols.map((col) => (
@@ -532,6 +611,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
                           type="button"
                           className={megaLink}
                           style={megaLinkStyle}
+                          onClick={() => openGuideTopic(item)}
                           onMouseEnter={(e) => megaLinkHover(e, true)}
                           onMouseLeave={(e) => megaLinkHover(e, false)}
                         >
@@ -540,7 +620,12 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
                       </li>
                     ))}
                   </ul>
-                  <button type="button" className={megaSeeAll} style={megaSeeAllStyle}>
+                  <button
+                    type="button"
+                    className={megaSeeAll}
+                    style={megaSeeAllStyle}
+                    onClick={openAllGuides}
+                  >
                     Vedi tutti →
                   </button>
                 </div>
@@ -568,6 +653,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
                         <button
                           type="button"
                           className="flex items-center gap-2 text-[13px] font-medium text-white/90 hover:text-white transition-colors w-full text-left"
+                          onClick={() => openGuideTopic(item)}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
                           {item}
@@ -579,6 +665,7 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
                 <button
                   type="button"
                   className="relative z-10 mt-5 w-full rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[11px] font-bold uppercase tracking-wider py-2.5 transition-colors"
+                  onClick={openAllGuides}
                 >
                   Esplora le guide →
                 </button>
@@ -1340,8 +1427,83 @@ const MegaMenu: React.FC<MegaMenuProps> = ({
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <div className="grid grid-cols-4 gap-4 xl:gap-5">
-            {renderColumns()}
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-5">
+              {renderColumns()}
+            </div>
+
+            {/* Ultime guide con anteprima (tag/categoria guide) */}
+            {category === 'Guide' && latestGuideArticles.length > 0 && (
+              <div
+                className="rounded-2xl bg-white border p-4 sm:p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)]"
+                style={{ borderColor: rgba(accent, 0.2) }}
+              >
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <p
+                      className="text-[10px] font-black uppercase tracking-[0.18em] mb-0.5"
+                      style={{ color: accent }}
+                    >
+                      Aggiornate
+                    </p>
+                    <h3 className="font-semibold text-[15px] sm:text-base text-slate-900 tracking-tight">
+                      Ultime guide pubblicate
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[12px] font-bold shrink-0 hover:opacity-80"
+                    style={{ color: accent }}
+                    onClick={() => {
+                      if (onGuideSearch) onGuideSearch('guide');
+                      onClose();
+                    }}
+                  >
+                    Tutte le guide →
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {latestGuideArticles.map((art) => (
+                    <button
+                      key={art.id}
+                      type="button"
+                      onClick={() => {
+                        onArticleClick(art);
+                        onClose();
+                      }}
+                      className="group text-left rounded-xl border border-slate-100 bg-slate-50/80 hover:bg-white hover:border-teal-200 hover:shadow-md transition-all overflow-hidden"
+                    >
+                      <div className="relative aspect-[16/10] bg-slate-200 overflow-hidden">
+                        <img
+                          src={
+                            art.imageUrl ||
+                            'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=400'
+                          }
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src =
+                              'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=400';
+                          }}
+                        />
+                      </div>
+                      <div className="p-2.5">
+                        <span
+                          className="text-[9px] font-black uppercase tracking-wider"
+                          style={{ color: accent }}
+                        >
+                          {art.category || 'Guide'}
+                        </span>
+                        <p className="mt-0.5 text-[12px] sm:text-[13px] font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-[#0f766e]">
+                          {art.title}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

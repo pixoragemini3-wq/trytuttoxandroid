@@ -881,6 +881,21 @@ const App: React.FC = () => {
     void handleNavClick('Smartphone', { phoneBand: band });
   };
 
+  /** Mega-menu Guide: ricerca topic o lista guide. */
+  const handleGuideSearch = (query: string) => {
+    const q = (query || '').trim();
+    if (!q || /^guide$/i.test(q)) {
+      void handleNavClick('Guide');
+      return;
+    }
+    setSearchQuery(q);
+    setIsSearchVisible(true);
+    // trigger ricerca come da form
+    setTimeout(() => {
+      handleSearchSubmit({ preventDefault: () => {} } as React.FormEvent);
+    }, 10);
+  };
+
   const handleDealClick = (deal: Deal, location: string) => {
     if (typeof (window as any).gtag === 'function') {
       (window as any).gtag('event', 'select_promotion', {
@@ -2128,6 +2143,7 @@ const App: React.FC = () => {
       handleBudgetFilter={handleBudgetFilter}
       handleSeeAllOffers={handleSeeAllOffers}
       handleSmartphonePriceGuide={handleSmartphonePriceGuide}
+      handleGuideSearch={handleGuideSearch}
       handleArticleClick={handleArticleClick}
       handleFooterLinkClick={handleFooterLinkClick}
       goToHome={goToHome}
