@@ -520,8 +520,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       ''
     );
 
+  /** Decodifica entità HTML in src (Blogger salva &amp; nelle query Unsplash/CDN). */
+  const decodeImgSrc = (src: string): string => {
+    if (!src) return '';
+    return src
+      .trim()
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>');
+  };
+
   const normalizeImgSrc = (src: string): string => {
-    const s = (src || '').toLowerCase().trim();
+    const s = decodeImgSrc(src || '').toLowerCase().trim();
     const bloggerToken = s.match(/googleusercontent\.com\/img\/a\/([a-z0-9_-]+)/i);
     if (bloggerToken) return bloggerToken[1];
     const wpUpload = s.match(/\/wp-content\/uploads\/[^"']+/i);
@@ -539,7 +551,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     const re = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(html)) !== null) {
-      const src = m[1].trim();
+      const src = decodeImgSrc(m[1]);
       if (src && !srcs.some((s) => normalizeImgSrc(s) === normalizeImgSrc(src))) {
         srcs.push(src);
       }
@@ -550,9 +562,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   /** Esclude pixel, icone, loghi e immagini non editoriali. */
   const isEditorialArticleImage = (src: string): boolean => {
     if (!src || !/^https?:\/\//i.test(src)) return false;
-    const s = src.toLowerCase();
+    const s = decodeImgSrc(src).toLowerCase();
     if (s.startsWith('data:')) return false;
-    if (/pixel|spacer|tracking|1x1|favicon|emoji|badge|button|sprite/i.test(s)) return false;
+    // Word-boundary: evita falsi positivi su path casuali; "pixel" = tracking pixel non "Google Pixel" brand in path
+    if (/(?:^|[\/?&_.-])(?:pixel|spacer|tracking|1x1|favicon|emoji|badge|button|sprite)(?:[\/?&_.-]|$)/i.test(s) &&
+        !/unsplash\.com|googleusercontent\.com|bp\.blogspot\.com|imgur\.com|wp-content\/uploads/i.test(s)) {
+      return false;
+    }
     if (/doubleclick|googlesyndication|facebook\.com\/tr|analytics/i.test(s)) return false;
     // Thumbnail Blogger minimi (s72, s160) — non foto articolo
     if (/\/s(3[2-9]|[4-9]\d|1[0-5]\d)(-c)?\//i.test(s)) return false;
@@ -562,13 +578,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
   const forceArticleImgRes = (url: string): string => {
     if (!url) return url;
-    if (/googleusercontent\.com|bp\.blogspot\.com/i.test(url)) {
-      return url
+    const u = decodeImgSrc(url);
+    if (/googleusercontent\.com|bp\.blogspot\.com/i.test(u)) {
+      return u
         .replace(/\/s\d+(-c)?\//, '/s1600/')
         .replace(/\/w\d+-h\d+(-c)?\//, '/s1600/')
         .replace(/=[sNw]\d+.*$/i, '=s1600');
     }
-    return url;
+    return u;
   };
 
   const escapeHtmlAttr = (v: string): string =>

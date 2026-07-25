@@ -892,14 +892,24 @@ const forceHighResImage = (url: string): string => {
   return url;
 };
 
+const decodeHtmlImgSrc = (src: string): string =>
+  (src || '')
+    .trim()
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'");
+
 const getFirstImageFromContent = (htmlContent: string): string | null => {
     try {
         const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
         // Prioritize images inside figure or standard img tags
         const img = doc.querySelector('figure img, img');
-        return img ? img.getAttribute('src') : null;
+        const raw = img ? img.getAttribute('src') : null;
+        return raw ? decodeHtmlImgSrc(raw) : null;
     } catch (e) {
-        return null;
+        // Fallback regex se DOMParser non è disponibile
+        const m = htmlContent.match(/<img[^>]+src=["']([^"']+)["']/i);
+        return m ? decodeHtmlImgSrc(m[1]) : null;
     }
 };
 
