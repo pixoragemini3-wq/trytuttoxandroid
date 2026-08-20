@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     }
 
     return {
+      base: env.VITE_PUBLIC_BASE || '/trytuttoxandroid/',
       server: {
         port: 3000,
         host: '0.0.0.0',
@@ -31,6 +32,19 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+        }
+      },
+      build: {
+        outDir: 'dist',
+        // Stable, unhashed filenames: the Blogger template references this exact
+        // URL directly, so it must not change between builds (cache-bust via ?v=).
+        rollupOptions: {
+          output: {
+            entryFileNames: 'assets/txa-app.js',
+            chunkFileNames: 'assets/txa-app-[name].js',
+            assetFileNames: 'assets/txa-app.[ext]',
+            inlineDynamicImports: true,
+          }
         }
       }
     };
