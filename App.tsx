@@ -134,11 +134,17 @@ const App: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
-  const isAbout = location.pathname === '/about';
-  const isCollab = location.pathname === '/collab';
-  const isPrivacy = location.pathname === '/privacy';
+  // Le pagine reali vivono su Blogger (/p/....html, indicizzabili e accessibili
+  // anche senza JS); le vecchie route fittizie restano riconosciute per compatibilità.
+  const isAbout = location.pathname === '/about' || location.pathname === '/p/chi-siamo.html';
+  const isCollab = location.pathname === '/collab' || location.pathname === '/p/collabora-con-noi.html';
+  const isPrivacy = location.pathname === '/privacy' || location.pathname === '/p/privacy-policy.html';
   const isGPS = location.pathname === '/calcolatore-gps';
-  const isArticle = location.pathname.endsWith('.html') || location.pathname.startsWith('/article/');
+  // Le pagine statiche (/p/....html) terminano anch'esse in .html: escluse esplicitamente
+  // per non essere scambiate per un articolo del blog.
+  const isArticle =
+    !isAbout && !isCollab && !isPrivacy &&
+    (location.pathname.endsWith('.html') || location.pathname.startsWith('/article/'));
   const isSearch = location.pathname === '/search';
   const isHome = !isAbout && !isCollab && !isPrivacy && !isArticle && !isSearch && !isGPS;
   /** Pagina post Blogger: navigate() SPA non esce dalla .html → serve location.assign */
@@ -362,7 +368,8 @@ const App: React.FC = () => {
     const handleDeepLink = async () => {
       const path = location.pathname;
       // Check if it looks like a blog post URL (ends in .html) and we don't have the article
-      if (path.endsWith('.html') && !currentArticle && !isResolvingUrl) {
+      // (le pagine statiche /p/....html sono già gestite da isAbout/isCollab/isPrivacy)
+      if (isArticle && path.endsWith('.html') && !currentArticle && !isResolvingUrl) {
         setIsResolvingUrl(true);
         try {
            const found = await fetchArticleByUrl(path);
@@ -627,7 +634,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFooterLinkClick = (path: '/about' | '/collab' | '/privacy' | '/') => {
+  const handleFooterLinkClick = (
+    path: '/p/chi-siamo.html' | '/p/collabora-con-noi.html' | '/p/privacy-policy.html' | '/'
+  ) => {
     navigate(path);
     window.scrollTo(0, 0);
   };

@@ -28,7 +28,9 @@ interface LayoutProps {
   handleSmartphonePriceGuide?: (maxEuro: number | null) => void;
   handleGuideSearch?: (query: string) => void;
   handleArticleClick: (article: Article) => void;
-  handleFooterLinkClick: (path: '/about' | '/collab' | '/privacy' | '/') => void;
+  handleFooterLinkClick: (
+    path: '/p/chi-siamo.html' | '/p/collabora-con-noi.html' | '/p/privacy-policy.html' | '/'
+  ) => void;
   goToHome: () => void;
   showStickyBanner: boolean;
   showScrollTop: boolean;
@@ -162,8 +164,8 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="hidden md:block border-b border-white/[0.06] shrink-0">
           <div className="max-w-[1200px] mx-auto px-6 flex justify-between items-center h-8">
             <div className="flex gap-5 text-[10px] font-medium tracking-widest text-white/30 uppercase">
-              <button onClick={() => handleFooterLinkClick('/about')} className="hover:text-white/70 transition-colors">Chi Siamo</button>
-              <button onClick={() => handleFooterLinkClick('/collab')} className="hover:text-white/70 transition-colors">Lavora con noi</button>
+              <button onClick={() => handleFooterLinkClick('/p/chi-siamo.html')} className="hover:text-white/70 transition-colors">Chi Siamo</button>
+              <button onClick={() => handleFooterLinkClick('/p/collabora-con-noi.html')} className="hover:text-white/70 transition-colors">Lavora con noi</button>
               <span className="cursor-pointer hover:text-white/70 transition-colors">Pubblicità</span>
             </div>
             <div className="text-[10px] text-white/20 font-medium tracking-widest uppercase">
@@ -312,9 +314,9 @@ const Layout: React.FC<LayoutProps> = ({
           />
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 mb-8">
             {([
-              { label: 'Chi Siamo', path: '/about' as const },
-              { label: 'Collabora', path: '/collab' as const },
-              { label: 'Privacy Policy', path: '/privacy' as const },
+              { label: 'Chi Siamo', path: '/p/chi-siamo.html' as const },
+              { label: 'Collabora', path: '/p/collabora-con-noi.html' as const },
+              { label: 'Privacy Policy', path: '/p/privacy-policy.html' as const },
             ]).map(({ label, path }) => (
               <button
                 key={label}
@@ -395,8 +397,8 @@ const Layout: React.FC<LayoutProps> = ({
               );
             })}
             <div className="pt-5 flex flex-col gap-2.5">
-              <button onClick={() => { handleFooterLinkClick('/about'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Chi Siamo</button>
-              <button onClick={() => { handleFooterLinkClick('/collab'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Collabora</button>
+              <button onClick={() => { handleFooterLinkClick('/p/chi-siamo.html'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Chi Siamo</button>
+              <button onClick={() => { handleFooterLinkClick('/p/collabora-con-noi.html'); setIsMobileMenuOpen(false); }} className="text-left text-xs text-white/30 uppercase tracking-widest hover:text-white/60">Collabora</button>
             </div>
 
             <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
