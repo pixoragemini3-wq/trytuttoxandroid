@@ -251,40 +251,54 @@
               <!--
                 STRUCTURED DATA (JSON-LD) FOR GOOGLE — NewsArticle
                 Fix (2026-08-25): Search Console reported "Missing ',' or '}'" on
-                unparsable structured data. Root cause: the live theme rendered
-                "headline" from a raw <data:post.title/> tag. Titles containing a
-                straight double-quote (e.g. a size in inches, 13" or 7,5") broke
-                the JSON string mid-value. Fix: use .jsEscaped on every string field
-                sourced from post content, and guard "image" with a fallback chain
-                so an unresolved post.featuredImage can't leak a literal
-                "Can't find substitution" comment into the field.
+                unparsable structured data. First attempt used .jsEscaped directly
+                inside a static application/ld+json block, but that surfaced two
+                more Blogger quirks: (1) .jsEscaped renders quotes as \x22, which
+                is valid JavaScript but NOT valid JSON, so a title containing a
+                straight double-quote (13", 7,5") still broke parsing; (2) Blogger
+                can't resolve .jsEscaped chained onto a nested attribute like
+                post.author.name (3+ levels deep) and silently emits a literal
+                "Can't find substitution" comment instead.
+                Fix: build the schema as a real JS object (where .jsEscaped output
+                is valid) inside a normal <script>, then let JSON.stringify()
+                produce guaranteed-correct JSON at runtime and inject it as
+                application/ld+json. b:with flattens post.author.name to a single
+                level so .jsEscaped resolves on it.
               -->
-              <script type='application/ld+json'>
-                {
-                  "@context": "https://schema.org",
-                  "@type": "NewsArticle",
-                  "mainEntityOfPage": {
-                    "@type": "WebPage",
-                    "@id": "<data:post.url.canonical/>"
-                  },
-                  "headline": "<data:post.title.jsEscaped/>",
-                  "image": ["<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://i.imgur.com/l7YwbQe.png</b:if></b:if>"],
-                  "datePublished": "<data:post.date.iso8601/>",
-                  "author": {
-                    "@type": "Person",
-                    "name": "<data:post.author.name.jsEscaped/>"
-                  },
-                  "publisher": {
-                    "@type": "Organization",
-                    "name": "TuttoXAndroid",
-                    "logo": {
-                      "@type": "ImageObject",
-                      "url": "https://i.imgur.com/l7YwbQe.png"
-                    }
-                  },
-                  "description": "<data:post.snippet.jsEscaped/>"
-                }
+              <b:with value='data:post.author.name' var='authorName'>
+              <script>
+                (function() {
+                  var articleSchema = {
+                    "@context": "https://schema.org",
+                    "@type": "NewsArticle",
+                    "mainEntityOfPage": {
+                      "@type": "WebPage",
+                      "@id": "<data:post.url.canonical/>"
+                    },
+                    "headline": "<data:post.title.jsEscaped/>",
+                    "image": ["<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://i.imgur.com/l7YwbQe.png</b:if></b:if>"],
+                    "datePublished": "<data:post.date.iso8601/>",
+                    "author": {
+                      "@type": "Person",
+                      "name": "<data:authorName.jsEscaped/>"
+                    },
+                    "publisher": {
+                      "@type": "Organization",
+                      "name": "TuttoXAndroid",
+                      "logo": {
+                        "@type": "ImageObject",
+                        "url": "https://i.imgur.com/l7YwbQe.png"
+                      }
+                    },
+                    "description": "<data:post.snippet.jsEscaped/>"
+                  };
+                  var ld = document.createElement('script');
+                  ld.type = 'application/ld+json';
+                  ld.text = JSON.stringify(articleSchema);
+                  document.head.appendChild(ld);
+                })();
               </script>
+              </b:with>
 
               <script>
                 (function() {
