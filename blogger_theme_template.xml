@@ -248,6 +248,44 @@
                   </article>
               </noscript>
 
+              <!--
+                STRUCTURED DATA (JSON-LD) FOR GOOGLE — NewsArticle
+                Fix (2026-08-25): Search Console reported "Missing ',' or '}'" on
+                unparsable structured data. Root cause: the live theme rendered
+                "headline" from a raw <data:post.title/> tag. Titles containing a
+                straight double-quote (e.g. a size in inches, 13" or 7,5") broke
+                the JSON string mid-value. Fix: use .jsEscaped on every string field
+                sourced from post content, and guard "image" with a fallback chain
+                so an unresolved post.featuredImage can't leak a literal
+                "Can't find substitution" comment into the field.
+              -->
+              <script type='application/ld+json'>
+                {
+                  "@context": "https://schema.org",
+                  "@type": "NewsArticle",
+                  "mainEntityOfPage": {
+                    "@type": "WebPage",
+                    "@id": "<data:post.url.canonical/>"
+                  },
+                  "headline": "<data:post.title.jsEscaped/>",
+                  "image": ["<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://i.imgur.com/l7YwbQe.png</b:if></b:if>"],
+                  "datePublished": "<data:post.date.iso8601/>",
+                  "author": {
+                    "@type": "Person",
+                    "name": "<data:post.author.name.jsEscaped/>"
+                  },
+                  "publisher": {
+                    "@type": "Organization",
+                    "name": "TuttoXAndroid",
+                    "logo": {
+                      "@type": "ImageObject",
+                      "url": "https://i.imgur.com/l7YwbQe.png"
+                    }
+                  },
+                  "description": "<data:post.snippet.jsEscaped/>"
+                }
+              </script>
+
               <script>
                 (function() {
                   var ta = document.getElementById("single-post-body-<data:post.id/>");
