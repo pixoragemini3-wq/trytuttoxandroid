@@ -259,13 +259,17 @@
                 can't resolve .jsEscaped chained onto a nested attribute like
                 post.author.name (fails identically whether chained directly or
                 via a b:with-aliased variable — it only works one hop off the
-                loop variable, e.g. post.title, post.snippet).
+                loop variable, e.g. post.title, post.snippet). Turns out even
+                the *unescaped* post.author.name tag doesn't resolve at all in
+                this b:loop scope ("Can't find substitution"), so whatever
+                produced "Vincenzo C." on the old live theme wasn't this tag.
                 Fix: build the schema as a real JS object (where .jsEscaped output
                 is valid) inside a normal <script>, then let JSON.stringify()
                 produce guaranteed-correct JSON at runtime and inject it as
-                application/ld+json. post.author.name is used unescaped (no
-                .jsEscaped support at that nesting level) — acceptable because
-                author names are staff-curated, not arbitrary user content.
+                application/ld+json. "author" now points at the same
+                Organization as "publisher" (a standard, always-valid
+                schema.org NewsArticle pattern) instead of a per-post byline,
+                removing any dependency on post.author.name resolving at all.
               -->
               <script>
                 (function() {
@@ -280,8 +284,9 @@
                     "image": ["<b:if cond='data:post.featuredImage'><data:post.featuredImage/><b:else/><b:if cond='data:post.thumbnailUrl'><data:post.thumbnailUrl/><b:else/>https://i.imgur.com/l7YwbQe.png</b:if></b:if>"],
                     "datePublished": "<data:post.date.iso8601/>",
                     "author": {
-                      "@type": "Person",
-                      "name": "<data:post.author.name/>"
+                      "@type": "Organization",
+                      "name": "TuttoXAndroid",
+                      "url": "https://www.tuttoxandroid.com"
                     },
                     "publisher": {
                       "@type": "Organization",
