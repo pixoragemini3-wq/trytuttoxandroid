@@ -257,15 +257,16 @@
                 is valid JavaScript but NOT valid JSON, so a title containing a
                 straight double-quote (13", 7,5") still broke parsing; (2) Blogger
                 can't resolve .jsEscaped chained onto a nested attribute like
-                post.author.name (3+ levels deep) and silently emits a literal
-                "Can't find substitution" comment instead.
+                post.author.name (fails identically whether chained directly or
+                via a b:with-aliased variable — it only works one hop off the
+                loop variable, e.g. post.title, post.snippet).
                 Fix: build the schema as a real JS object (where .jsEscaped output
                 is valid) inside a normal <script>, then let JSON.stringify()
                 produce guaranteed-correct JSON at runtime and inject it as
-                application/ld+json. b:with flattens post.author.name to a single
-                level so .jsEscaped resolves on it.
+                application/ld+json. post.author.name is used unescaped (no
+                .jsEscaped support at that nesting level) — acceptable because
+                author names are staff-curated, not arbitrary user content.
               -->
-              <b:with value='data:post.author.name' var='authorName'>
               <script>
                 (function() {
                   var articleSchema = {
@@ -280,7 +281,7 @@
                     "datePublished": "<data:post.date.iso8601/>",
                     "author": {
                       "@type": "Person",
-                      "name": "<data:authorName.jsEscaped/>"
+                      "name": "<data:post.author.name/>"
                     },
                     "publisher": {
                       "@type": "Organization",
@@ -298,7 +299,6 @@
                   document.head.appendChild(ld);
                 })();
               </script>
-              </b:with>
 
               <script>
                 (function() {
